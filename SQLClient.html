@@ -24,10 +24,13 @@
           <a href="#001000000000">The SQLClient library</a>
         </li>
         <li>
-          <a href="#001001000000">Overview</a>
+          <a href="#001001000000">What is the SQLClient library?</a>
         </li>
         <li>
-          <a href="#001002000000">Backends</a>
+          <a href="#001002000000">What backend bundles are available?</a>
+        </li>
+        <li>
+          <a href="#001003000000">Where can you get it? How can you install it?</a>
         </li>
         <li>
           <a href="#002000000000">Software documentation for the SQLClient class</a>
@@ -56,7 +59,7 @@
 
           <h1><a name="001000000000">The SQLClient library</a></h1>
 
-            <h2><a name="001001000000">Overview</a></h2>
+            <h2><a name="001001000000">What is the SQLClient library?</a></h2>
     <p>
 
           The SQLClient library is designed to provide a simple
@@ -113,7 +116,9 @@ The major features of the SQLClient library are -    </p>
       </li>
     </ul>
 
-            <h2><a name="001002000000">Backends</a></h2>
+            <h2><a name="001002000000">
+          What backend bundles are available?
+        </a></h2>
     <p>
 Current backend bundles are -    </p>
     <ul>
@@ -155,6 +160,71 @@ Current backend bundles are -    </p>
           
       </li>
     </ul>
+
+            <h2><a name="001003000000">
+          Where can you get it? How can you install it?
+        </a></h2>
+    <p>
+
+          The SQLClient library is currently only available via CVS
+          from the GNUstep CVS repository. <br /> See
+          &lt;https://savannah.gnu.org/cvs/?group=gnustep&gt;
+          <br /> You need to check out
+          <code>gnustep/dev-libs/SQLClient</code>
+            </p>
+    <p>
+
+          To build this library you must have a basic GNUstep
+          environment set up...
+            </p>
+    <ul>
+      <li>
+        
+            The gnustep-make package must have been built and
+            installed.
+          
+      </li>
+      <li>
+        
+            The gnustep-base package must have been built and
+            installed.
+          
+      </li>
+      <li>
+        
+            You must hace sourced the GNUstep.sh script (from
+            gnustep-make) to set up environment variables
+            needed for building this.
+          
+      </li>
+      <li>
+        
+            If this environment is in place, all you should need to
+            do is run &apos;make&apos; to configure and build the library,
+            &apos;make install&apos; to install it.
+          
+      </li>
+      <li>
+        Then you can run the test programs.
+      </li>
+      <li>
+        
+            Your most likely problems are that the configure
+            script may not detect the database libraries you
+            want... Please figure out how to modify
+            <code>configure.ac</code> so that it will detect the
+            required headers and libraries on your system, and
+            supply na patch.
+          
+      </li>
+    </ul>
+    <p>
+
+          Bug reports, patches, and contributions (eg a backend
+          bundle for a new database) should be entered on the
+          GNUstep project page
+          &lt;http://savannah.gnu.org/support/?group-gnustep&gt;
+            </p>
 
           <h1><a name="002000000000">
         Software documentation for the SQLClient class

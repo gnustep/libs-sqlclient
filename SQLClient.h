@@ -24,7 +24,7 @@
 <chapter>
   <heading>The SQLClient library</heading>
   <section>
-    <heading>Overview</heading>
+    <heading>What is the SQLClient library?</heading>
     <p>
       The SQLClient library is designed to provide a simple interface to SQL
       databases for GNUstep applications.  It does not attempt the sort of
@@ -65,7 +65,7 @@
     </list>
   </section>
   <section>
-    <heading>Backends</heading>
+    <heading>What backend bundles are available?</heading>
     <p>
       Current backend bundles are -
     </p>
@@ -94,6 +94,48 @@
 	No support for BLOBs yet.
       </item>
     </list>
+  </section>
+  <section>
+    <heading>Where can you get it? How can you install it?</heading>
+    <p>
+      The SQLClient library is currently only available via CVS from the
+      GNUstep CVS repository.<br />
+      See &lt;https://savannah.gnu.org/cvs/?group=gnustep&gt;<br />
+      You need to check out <code>gnustep/dev-libs/SQLClient</code>
+    </p>
+    <p>
+      To build this library you must have a basic GNUstep environment set up ...
+    </p>
+    <list>
+      <item>
+	The gnustep-make package must have been built and installed.
+      </item>
+      <item>
+	The gnustep-base package must have been built and installed.
+      </item>
+      <item>
+	You must hace sourced the GNUstep.sh script (from gnustep-make) to set
+	up environment variables needed for building this.
+      </item>
+      <item>
+	If this environment is in place, all you should need to do is run 'make'
+	to configure and build the library, 'make install' to install it.
+      </item>
+      <item>
+	Then you can run the test programs.
+      </item>
+      <item>
+	Your most likely problems are that the configure script may not
+	detect the database libraries you want ...  Please figure out how
+	to modify <code>configure.ac</code> so that it will detect the
+	required headers and libraries on your system, and supply na patch.
+      </item>
+    </list>
+    <p>
+      Bug reports, patches, and contributions (eg a backend bundle for a
+      new database) should be entered on the GNUstep project page
+      &lt;http://savannah.gnu.org/support/?group-gnustep&gt;
+    </p>
   </section>
 </chapter>
 
