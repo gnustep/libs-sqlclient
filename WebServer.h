@@ -56,6 +56,7 @@
 #include	<Foundation/NSFileHandle.h>
 #include	<Foundation/NSNotification.h>
 #include	<Foundation/NSArray.h>
+#include	<Foundation/NSSet.h>
 #include	<Foundation/NSTimer.h>
 #include	<GNUstepBase/GSMime.h>
 
@@ -124,6 +125,7 @@
  */
 @interface	WebServer : NSObject
 {
+@private
   NSNotificationCenter	*_nc;
   NSString		*_port;
   BOOL			_accepting;
@@ -133,7 +135,8 @@
   unsigned int		_substitutionLimit;
   unsigned int		_maxBodySize;
   unsigned int		_maxRequestSize;
-  unsigned int		_maxSess;
+  unsigned int		_maxSessions;
+  unsigned int		_maxPerHost;
   id			_delegate;
   NSFileHandle		*_listener;
   NSMapTable		*_sessions;
@@ -142,6 +145,7 @@
   NSTimer		*_ticker;
   NSTimeInterval	_sessionTimeout;
   NSTimeInterval	_ticked;
+  NSCountedSet		*_perHost;
 }
 
 /**         
@@ -268,9 +272,16 @@
  * Sets the maximum number of simultaneous sessions with clients.<br />
  * The default is 32.<br />
  * A value of zero permits unlimited connections.
- * Setting a value greater than 512 is treated as a setting of 512
  */
 - (void) setMaxSessions: (unsigned)max;
+
+/**
+ * Sets the maximum number of simultaneous sessions with a particular
+ * remote host.<br />
+ * The default is 8.<br />
+ * A value of zero permits unlimited connections.
+ */
+- (void) setMaxSessionsPerHost: (unsigned)max;
 
 /**
  * Sets the port and security information for the receiver ... without

@@ -179,6 +179,7 @@
   DESTROY(_nc);
   DESTROY(_root);
   DESTROY(_hosts);
+  DESTROY(_perHost);
   if (_sessions != 0)
     {
       NSFreeMapTable(_sessions);
@@ -346,20 +347,22 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 {
   return [NSString stringWithFormat:
     @"%@ on %@, %u of %u sessions active, %u requests, listening: %@",
-    [super description], _port, NSCountMapTable(_sessions), _maxSess, _handled,
-    _accepting == YES ? @"yes" : @"no"];
+    [super description], _port, NSCountMapTable(_sessions),
+    _maxSessions, _handled, _accepting == YES ? @"yes" : @"no"];
 }
 
 - (id) init
 {
   _nc = RETAIN([NSNotificationCenter defaultCenter]);
   _sessionTimeout = 30.0;
-  _maxSess = 32;
+  _maxPerHost = 8;
+  _maxSessions = 32;
   _maxBodySize = 8*1024;
   _maxRequestSize = 4*1024*1024;
   _substitutionLimit = 4;
   _sessions = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
     NSObjectMapValueCallBacks, 0);
+  _perHost = [NSMutableSet new];
   _ticker = [NSTimer scheduledTimerWithTimeInterval: 0.8
 					     target: self
 					   selector: @selector(_timeout:)
@@ -575,11 +578,12 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
 - (void) setMaxSessions: (unsigned)max
 {
-  _maxSess = max;
-  if (_maxSess > 512)
-    {
-      _maxSess = 512;
-    }
+  _maxSessions = max;
+}
+
+- (void) setMaxSessionsPerHost: (unsigned)max
+{
+  _maxPerHost = max;
 }
 
 - (BOOL) setPort: (NSString*)aPort secure: (NSDictionary*)secure
@@ -639,8 +643,8 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 		      selector: @selector(_didConnect:)
 			  name: NSFileHandleConnectionAcceptedNotification
 			object: _listener];
-	      if (_accepting == NO
-		&& (_maxSess <= 0 || NSCountMapTable(_sessions) < _maxSess))
+	      if (_accepting == NO && (_maxSessions <= 0
+		|| NSCountMapTable(_sessions) < _maxSessions))
 		{
 		  [_listener acceptConnectionInBackgroundAndNotify];
 		  _accepting = YES;
@@ -823,6 +827,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	{
 	  [self _alert: @"Invalid host (%@) on new connection.", a];
 	}
+      else if (_maxPerHost > 0 && [_perHost countForObject: a] >= _maxPerHost)
+	{
+	  [self _alert: @"Too many connections from (%@) for new connect.", a];
+	}
       else if (_sslConfig != nil && [hdl sslAccept] == NO)
 	{
 	  [self _alert: @"SSL accept fail on new connection (%@).", a];
@@ -836,6 +844,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	  [session setBuffer: [NSMutableData dataWithCapacity: 1024]];
 	  [session setTicked: _ticked];
 	  NSMapInsert(_sessions, (void*)hdl, (void*)session);
+	  [_perHost addObject: [session address]];
 	  RELEASE(session);
 	  [_nc addObserver: self
 		  selector: @selector(_didRead:)
@@ -850,7 +859,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	}
     }
   if (_accepting == NO
-    && (_maxSess == 0 || NSCountMapTable(_sessions) < _maxSess))
+    && (_maxSessions == 0 || NSCountMapTable(_sessions) < _maxSessions))
     {
       [_listener acceptConnectionInBackgroundAndNotify];
       _accepting = YES;
@@ -1153,9 +1162,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   [_nc removeObserver: self
 		 name: GSFileHandleWriteCompletionNotification
 	       object: hdl];
+  [_perHost removeObject: [session address]];
   NSMapRemove(_sessions, (void*)hdl);
   if (_accepting == NO
-    && (_maxSess <= 0 || NSCountMapTable(_sessions) < _maxSess))
+    && (_maxSessions <= 0 || NSCountMapTable(_sessions) < _maxSessions))
     {
       [_listener acceptConnectionInBackgroundAndNotify];
       _accepting = YES;
