@@ -89,7 +89,7 @@ connectQuote(NSString *str)
 {
   if (connection == 0)
     {
-      connected = YES;
+      connected = NO;
       if ([self database] != nil)
 	{
 	  NSString		*host = nil;
@@ -162,10 +162,10 @@ connectQuote(NSString *str)
 		[self name], m, PQerrorMessage(connection)];
 	      PQfinish(connection);
 	      extra = 0;
-	      connected = NO;
 	    }
 	  else
 	    {
+	      connected = YES;
 	      if ([self debugging] > 0)
 		{
 		  [self debug: @"Connected to '%@'", [self name]];
