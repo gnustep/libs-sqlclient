@@ -213,8 +213,8 @@ NSString	*SQLUniqueException = @"SQLUniqueException";
 
 @implementation	SQLClient (Logging)
 
-static unsigned int	classDebugging = 9;
-static NSTimeInterval	classDuration = 0;
+static unsigned int	classDebugging = 0;
+static NSTimeInterval	classDuration = -1;
 
 + (unsigned int) debugging
 {
