@@ -40,7 +40,7 @@ BUNDLE_INSTALL_DIR=$(GNUSTEP_LOCAL_ROOT)/Library/Bundles/SQLClient
 ifneq ($(ECPG),)
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
-ECPG_LDFLAGS = -L./obj
+ECPG_LIB_DIRS = -L./obj
 ECPG_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
 endif
@@ -48,7 +48,7 @@ endif
 ifneq ($(POSTGRES),)
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
-Postgres_LDFLAGS = -L./obj
+Postgres_LIB_DIRS = -L./obj
 Postgres_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
 endif
@@ -56,7 +56,7 @@ endif
 ifneq ($(MYSQL),)
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
-MySQL_LDFLAGS = -L./obj
+MySQL_LIB_DIRS = -L./obj
 MySQL_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
 endif
@@ -64,7 +64,7 @@ endif
 ifneq ($(ORACLE_HOME),)
 BUNDLE_NAME += Oracle
 Oracle_OBJC_FILES = Oracle.m
-Oracle_LDFLAGS = -L$(ORACLE_HOME)/lib -L./obj \
+Oracle_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./obj \
 			$(shell cat $(ORACLE_HOME)/lib/ldflags)
 Oracle_BUNDLE_LIBS += -lclntsh \
 		      -lSQLClient -lgnustep-base -lobjc \
