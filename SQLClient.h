@@ -33,9 +33,16 @@
       statements.
     </p>
     <p>
+      SQLClient provides for the Objective-C programmer much the same thing
+      that JDBC provides for the Java programmer (though SQLClient is a bit
+      faster, easier to use, and easier to add new database backends for
+      than JDBC).
+    </p>
+    <p>
       The library also provides a framework for making such simple database
       applications readily available as web applications using the
-      [WebServer] class.
+      [WebServer] class, which allows your applications to act as stand-alone
+      web servers.
     </p>
     <p>
       The major features of the SQLClient library are -
@@ -48,11 +55,16 @@
 	statement and executed.
       </item>
       <item>
-        Support multiple sumultaneous named connections to a database
+        Simple API ([SQLTransaction])for combining multiple SQL statements
+	into a single transaction which can be used to minimise client-server
+	interactions to get the best possible performance from your database.
+      </item>
+      <item>
+        Supports multiple sumultaneous named connections to a database
 	server in a thread-safe manner.<br />
       </item>
       <item>
-	Support multiple simultaneous connections to different database
+	Supports multiple simultaneous connections to different database
 	servers with backend driver bundles loaded for different database
 	engines.  Clear, simple subclassing of the abstract base class to
 	enable easy implementation of new backend bundles.
@@ -81,15 +93,15 @@
     <list>
       <item>
         ECPG - a bundle using the embedded SQL interface for postgres.<br />
-	This is based on a similar code which has been in production use
-	for over eighteen months, so it should be reliable.
+	This is based on a similar code which was in production use
+	for over eighteen months, so it should be reliable, but inefficient.
       </item>
       <item>
         Postgres - a bundle using the libpq native interface for postgres.<br />
 	This is the preferred backend as it allows 'SELECT FOR UPDATE', which
 	the ECPG backend cannot support due to limitations in the postgres
-	implementation of cursors.  The code is however not as well tested
-	as the ECPG interface.
+	implementation of cursors.  The code is now well tested and known
+	to be efficient.
       </item>
       <item>
         MySQL - a bundle using the mysqlclient library for *recent* MySQL.<br />
@@ -326,6 +338,9 @@ extern NSTimeInterval	SQLClientTimeNow();
  * which would start a transaction directly ... use only this
  * method.
  * </p>
+ * <p>Where possible, consider using the [SQLTransaction] class rather
+ * than calling -begin -commit or -rollback yourself.
+ * </p>
  */
 - (void) begin;
 
@@ -347,6 +362,9 @@ extern NSTimeInterval	SQLClientTimeNow();
  * <p>NB. You must <strong>not</strong> execute an SQL statement
  * which would commit or rollback a transaction directly ... use
  * only this method or the -rollback method.
+ * </p>
+ * <p>Where possible, consider using the [SQLTransaction] class rather
+ * than calling -begin -commit or -rollback yourself.
  * </p>
  */
 - (void) commit;
@@ -568,6 +586,9 @@ extern NSTimeInterval	SQLClientTimeNow();
  * <p>NB. You must <strong>not</strong> execute an SQL statement
  * which would commit or rollback a transaction directly ... use
  * only this method or the -rollback method.
+ * </p>
+ * <p>Where possible, consider using the [SQLTransaction] class rather
+ * than calling -begin -commit or -rollback yourself.
  * </p>
  */
 - (void) rollback;
@@ -929,10 +950,8 @@ extern NSTimeInterval	SQLClientTimeNow();
  * This does not alter the other transaction, so if the execution of
  * a group of merged transactions fails, it is then possible to attempt
  * to commit the individual transactions separately.<br />
- * NB. All transactions appended ought to be using the same type of database
- * connection, so that their quoting conventions are consistent.  If you
- * attempt to append transactions relating to SQLClients with different
- * quoting conventions, the resulting transaction may not work.
+ * NB. All transactions appended must be using the same database
+ * connection (SQLClient instance).
  */
 - (void) append: (SQLTransaction*)other;
 

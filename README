@@ -2,11 +2,18 @@ What is the SQLClient library?
 
 The SQLClient library is designed to provide a simple interface to SQL databases for GNUstep applications. It does not attempt the sort of abstraction provided by the much more sophisticated GDL2 library, but rather allows applications to directly execute SQL queries and statements.
 
+SQLClient provides for the Objective-C programmer
+much the same thing that JDBC provides for the Java
+programmer (though SQLClient is a bit faster,
+easier to use, and easier to add new database backends
+for than JDBC).
+
 The major features of the SQLClient library are -
 
     * Simple API for executing queries and statements... a variable length sequence of comma separated strings and other objects (NSNumber, NSDate, NSData) are concatenated into a single SQL statement and executed.
-    * Support multiple sumultaneous named connections to a database server in a thread-safe manner.
-    * Support multiple simultaneous connections to different database servers with backend driver bundles loaded for different database engines. Clear, simple subclassing of the abstract base class to enable easy implementation of new backend bundles.
+    * Simple API for combining multiple SQL statements into a single transaction which can be used to minimise client-server interactions to get the best possible performance from your database.
+    * Supports multiple sumultaneous named connections to a database server in a thread-safe manner.
+    * Supports multiple simultaneous connections to different database servers with backend driver bundles loaded for different database engines. Clear, simple subclassing of the abstract base class to enable easy implementation of new backend bundles.
     * Configuration for all connections held in one place and referenced by connection name for ease of configuration control. Changes via NSUserDefaults can even allow reconfiguration of client instances within a running application.
     * Thread safe operation... The base class supports locking such that a single instance can be shared between multiple threads.
 
@@ -17,7 +24,7 @@ Current backend bundles are -
     * ECPG - a bundle using the embedded SQL interface for postgres.
       This is based on a similar code which has been in production use for over eighteen months, so it should be reliable.
     * Postgres - a bundle using the libpq native interface for postgres.
-      This is the preferred backend as it allows 'SELECT FOR UPDATE', which the ECPG backend cannot support due to limitations in the postgres implementation of cursors. The code is however not as well tested as the ECPG interface.
+      This is the preferred backend as it allows 'SELECT FOR UPDATE', which the ECPG backend cannot support due to limitations in the postgres implementation of cursors. Now well tested and efficient.
     * MySQL - a bundle using the mysqlclient library for *recent* MySQL.
       I don't use MySQL... but the test program ran successfully with a vanilla install of the MySQL packages for recent Debian unstable.
     * Oracle - a bundle using embedded SQL for Oracle.

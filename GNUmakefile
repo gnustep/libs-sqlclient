@@ -8,6 +8,7 @@ TEST_TOOL_NAME=
 
 LIBRARY_NAME=SQLClient
 
+SQLClient_INTERFACE_VERSION=1.1
 
 SQLClient_OBJC_FILES = SQLClient.m WebServer.m WebServerBundles.m
 SQLClient_LIBRARIES_DEPEND_UPON =
