@@ -322,7 +322,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	    fromTemplate: (NSString*)aPath
 		   using: (NSDictionary*)map
 {
-  CREATE_AUTORELEASE_POOL(arp)
+  CREATE_AUTORELEASE_POOL(arp);
   NSString	*path = (_root == nil) ? (id)@"" : (id)_root;
   NSString	*str;
   NSFileManager	*mgr;
