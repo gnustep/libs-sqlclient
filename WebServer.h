@@ -105,7 +105,7 @@
  * be closed.
  */
 - (BOOL) processRequest: (GSMimeDocument*)request
-	       response: (GSMimeDocument*)reponse
+	       response: (GSMimeDocument*)response
 		    for: (WebServer*)http;
 /**
  * Log an error or warning ... if the delegate does not implement this

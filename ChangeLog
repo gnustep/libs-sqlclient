@@ -1,3 +1,7 @@
+Wed Oct 06 15:04:23 2004  Nicola Pero <n.pero@mi.flashnet.it>
+
+	* WebServer.h: Fixed typo in parameter name.
+
 Wed Oct 06 13:10:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.[hm]: Allow a database transaction to already have been
