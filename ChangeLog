@@ -1,3 +1,7 @@
+Thu Jul 02 13:25:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: Fix error response when an exception occurs.
+
 Thu Jul 01 18:00:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.m: Make ([setPort:secure:]) return a status.

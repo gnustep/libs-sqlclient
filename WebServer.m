@@ -1065,7 +1065,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     {
       [self _alert: @"Exception %@, processing %@", localException, request];
       [response setHeader: @"http"
-		    value: @"500 Internal Server Error"
+		    value: @"HTTP/1.0 500 Internal Server Error"
 	       parameters: nil];
     }
   NS_ENDHANDLER
@@ -1133,7 +1133,14 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     {
       [out appendData: [hdr rawMimeData]];
     }
-  [out appendData: raw];
+  if ([raw length] > 0)
+    {
+      [out appendData: raw];
+    }
+  else
+    {
+      [out appendBytes: "\r\n" length: 2];	// Terminate headers
+    }
   if (_verbose == YES) NSLog(@"Response %@ - %@", session, out);
   [[session handle] writeInBackgroundAndNotify: out];
 }
