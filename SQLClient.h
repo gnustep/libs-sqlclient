@@ -538,6 +538,11 @@ extern NSTimeInterval	SQLClientTimeNow();
 - (NSString*) quote: (id)obj;
 
 /**
+ * Produce a quoted string from the supplied arguments (printf style).
+ */
+- (NSString*) quotef: (NSString*)fmt, ...;
+
+/**
  * Convert a 'C' string to a string suitable for use in an SQL query.
  */
 - (NSString*) quoteCString: (const char *)s;

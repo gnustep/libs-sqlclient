@@ -737,10 +737,29 @@ static unsigned int	maxConnections = 8;
   return result;
 }
 
-- (NSString*) quote: (id)obj
+static void	quoteString(NSMutableString *s)
 {
   NSRange	r;
 
+  /* Escape the string.  */
+  r = [s rangeOfString: @"\\"];
+  if (r.length != 0)
+    {
+      [s replaceString: @"\\" withString: @"\\\\"];
+    }
+  r = [s rangeOfString: @"'"];
+  if (r.length != 0)
+    {
+      [s replaceString: @"'" withString: @"\\'"];
+    }
+
+  /* Add quoting around it.  */
+  [s replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
+  [s appendString: @"'"];
+}
+
+- (NSString*) quote: (id)obj
+{
   /**
    * For a nil object, we return NULL.
    */
@@ -795,23 +814,24 @@ static unsigned int	maxConnections = 8;
 
   /* Get a string description of the object.  */
   obj = AUTORELEASE([obj mutableCopy]);
+  quoteString(obj);
 
-  /* Escape the string.  */
-  r = [obj rangeOfString: @"\\"];
-  if (r.length != 0)
-    {
-      [obj replaceString: @"\\" withString: @"\\\\"];
-    }
-  r = [obj rangeOfString: @"'"];
-  if (r.length != 0)
-    {
-      [obj replaceString: @"'" withString: @"\\'"];
-    }
-
-  /* Add quoting around it.  */
-  [obj replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
-  [obj appendString: @"'"];
   return obj;
+}
+
+- (NSString*) quotef: (NSString*)fmt, ...
+{
+  va_list		ap;
+  NSMutableString	*s;
+
+  va_start(ap, fmt);
+  s = [[NSMutableString allocWithZone: NSDefaultMallocZone()]
+    initWithFormat: fmt arguments: ap];
+  va_end(ap);
+
+  quoteString(s);
+
+  return AUTORELEASE(s);
 }
 
 - (NSString*) quoteCString: (const char *)s

@@ -1,3 +1,8 @@
+Thu Oct 08 10:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.[hm]: Add ([-quotef:,...]) to perform efficient quoting
+	of a string produced using printf style format and arguments.
+
 Thu Oct 07 10:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.[hm]: Optimise timing operations somewhat.
