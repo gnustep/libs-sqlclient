@@ -32,6 +32,10 @@
       intended to permit a program to easily handle requests from automated
       systems which are intended to control, monitor, or use the services
       provided by the program in which the class is embedded.<br />
+      The emphasis is on making it robust/reliable/simple, so you can rapidly
+      develop software using it.  It is a single-threaded, single-process
+      system using asynchronous I/O, so you can easily run it under
+      debug in gdb to fix any bugs in your delegate object.<br />
       In particular of course, it may be used in conjunction with the
       [SQLClient] class to implement web-based database applications.
     </p>
@@ -41,6 +45,22 @@
       The delegate must at least implement the
       [(WebServerDelegate)-processRequest:response:for:] method.
     </p>
+    <p>
+      Built-in facilities include -
+    </p>
+    <list>
+      <item>Parsing of parameter string in request URL</item>
+      <item>Parsing of url encoded form data in a POST request</item>
+      <item>Parsing of form encoded data in a POST request</item>
+      <item>Substitution into template pages on output</item>
+      <item>SSL support</item>
+      <item>Limit access by IP address</item>
+      <item>Limit total number of simultaneous connections</item>
+      <item>Limit number of simultaneous connectionsform one address</item>
+      <item>Limit idle time permitted on a connection</item>
+      <item>Limit size of request headers permitted</item>
+      <item>Limit size of request body permitted</item>
+    </list>
   </section>
 </chapter>
 

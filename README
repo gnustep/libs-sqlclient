@@ -1,34 +1,57 @@
 What is the SQLClient library?
 
-The SQLClient library is designed to provide a simple interface to SQL databases for GNUstep applications. It does not attempt the sort of abstraction provided by the much more sophisticated GDL2 library, but rather allows applications to directly execute SQL queries and statements.
+The SQLClient library is designed to provide a simple interface to SQL
+databases for GNUstep applications. It does not attempt the sort of
+abstraction provided by the much more sophisticated GDL2 library
+but rather allows applications to directly execute SQL queries and statements.
 
-SQLClient provides for the Objective-C programmer
-much the same thing that JDBC provides for the Java
-programmer (though SQLClient is a bit faster,
-easier to use, and easier to add new database backends
-for than JDBC).
+SQLClient provides for the Objective-C programmer much the same thing that
+JDBC provides for the Java programmer (though SQLClient is a bit faster,
+easier to use, and easier to add new database backends for than JDBC).
 
 The major features of the SQLClient library are -
 
-    * Simple API for executing queries and statements... a variable length sequence of comma separated strings and other objects (NSNumber, NSDate, NSData) are concatenated into a single SQL statement and executed.
-    * Simple API for combining multiple SQL statements into a single transaction which can be used to minimise client-server interactions to get the best possible performance from your database.
-    * Supports multiple sumultaneous named connections to a database server in a thread-safe manner.
-    * Supports multiple simultaneous connections to different database servers with backend driver bundles loaded for different database engines. Clear, simple subclassing of the abstract base class to enable easy implementation of new backend bundles.
-    * Configuration for all connections held in one place and referenced by connection name for ease of configuration control. Changes via NSUserDefaults can even allow reconfiguration of client instances within a running application.
-    * Thread safe operation... The base class supports locking such that a single instance can be shared between multiple threads.
+    * Simple API for executing queries and statements...
+      a variable length sequence of comma separated strings and other
+      objects (NSNumber, NSDate, NSData) are concatenated into a single
+      SQL statement and executed.
+    * Simple API for combining multiple SQL statements into a single
+      transaction which can be used to minimise client-server interactions
+      to get the best possible performance from your database.
+    * Supports multiple sumultaneous named connections to a database server
+      in a thread-safe manner.
+    * Supports multiple simultaneous connections to different database
+      servers with backend driver bundles loaded for different database
+      engines. Clear, simple subclassing of the abstract base class to
+      enable easy implementation of new backend bundles.
+    * Configuration for all connections held in one place and referenced
+      by connection name for ease of configuration control. Changes via
+      NSUserDefaults can even allow reconfiguration of client instances
+      within a running application.
+    * Thread safe operation... The base class supports locking such that
+      a single instance can be shared between multiple threads.
 
 What backend bundles are available?
 
 Current backend bundles are -
 
     * ECPG - a bundle using the embedded SQL interface for postgres.
-      This is based on a similar code which has been in production use for over eighteen months, so it should be reliable.
+      This is based on a similar code which has been in production
+      use for over eighteen months, so it should be reliable.
+
     * Postgres - a bundle using the libpq native interface for postgres.
-      This is the preferred backend as it allows 'SELECT FOR UPDATE', which the ECPG backend cannot support due to limitations in the postgres implementation of cursors. Now well tested and efficient.
+      This is the preferred backend as it allows 'SELECT FOR UPDATE',
+      which the ECPG backend cannot support due to limitations in the
+      postgres implementation of cursors. Now well tested efficient,
+      and in use in large commercial systems.
+
     * MySQL - a bundle using the mysqlclient library for *recent* MySQL.
-      I don't use MySQL... but the test program ran successfully with a vanilla install of the MySQL packages for recent Debian unstable.
+      I don't use MySQL... but the test program ran successfully with a
+      vanilla install of the MySQL packages for recent Debian unstable.
+
     * Oracle - a bundle using embedded SQL for Oracle.
-      Completely untested... may even need some work to compile... but this *is* based on code which was working about a year ago.
+      Completely untested... may even need some work to compile...
+      but this *is* based on code which was working about a year ago.
       No support for BLOBs yet.
 
 Where can you get it? How can you install it?
@@ -41,10 +64,51 @@ To build this library you must have a basic GNUstep environment set up...
 
     * The gnustep-make package must have been built and installed.
     * The gnustep-base package must have been built and installed.
-    * You must hace sourced the GNUstep.sh script (from gnustep-make) to set up environment variables needed for building this.
-    * If this environment is in place, all you should need to do is run 'make' to configure and build the library, 'make install' to install it.
+    * You must hace sourced the GNUstep.sh script (from gnustep-make)
+      to set up environment variables needed for building this.
+    * If this environment is in place, all you should need to do is
+      run 'make' to configure and build the library, 'make install'
+      to install it.
     * Then you can run the test programs.
-    * Your most likely problems are that the configure script may not detect the database libraries you want... Please figure out how to modify configure.ac so that it will detect the required headers and libraries on your system, and supply na patch.
+    * Your most likely problems are that the configure script may
+      not detect the database libraries you want... Please figure
+      out how to modify configure.ac so that it will detect the
+      required headers and libraries on your system, and supply a patch.
 
-Bug reports, patches, and contributions (eg a backend bundle for a new database) should be entered on the GNUstep project page <http://savannah.gnu.org/support/?group-gnustep>
+Bug reports, patches, and contributions (eg a backend bundle for a new database)
+should be entered on the GNUstep project page
+<http://savannah.gnu.org/support/?group-gnustep>
+
+
+
+The WebServer class provides the framework for a GNUstep program to act as
+an HTTP or HTTPS server for simple applications.
+It does not attempt to be a general-purpose web server, but is rather
+intended to permit a program to easily handle requests from automated
+systems which are intended to control, monitor, or use the services
+provided by the program in which the class is embedded.
+The emphasis is on making it robust/reliable/simple, so you can rapidly
+develop software using it. It is a single-threaded, single-process
+system using asynchronous I/O, so you can easily run it under debug
+in gdb to fix any bugs in your delegate object.
+In particular of course, it may be used in conjunction with the
+SQLClient class to implement web-based database applications.
+
+The class is controlled by a few straightforward settings and basically
+operates by handing over requests to its delegate. The delegate must at
+least implement the -processRequest:response:for: method.
+
+Built-in facilities include -
+
+* Parsing of parameter string in request URL
+* Parsing of url encoded form data in a POST request
+* Parsing of form encoded data in a POST request
+* Substitution into template pages on output
+* SSL support
+* Limit access by IP address
+* Limit total number of simultaneous connections
+* Limit number of simultaneous connectionsform one address
+* Limit idle time permitted on a connection
+* Limit size of request headers permitted
+* Limit size of request body permitted
 
