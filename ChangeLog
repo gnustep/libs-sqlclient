@@ -1,3 +1,8 @@
+Thu Oct 28 08:45:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: Don't generate alert about connection with empty
+	request if we have lready handled a request and reset.
+
 Tue Oct 26 16:50:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: debug and duration logging should be turned off

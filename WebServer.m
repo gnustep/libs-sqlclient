@@ -36,10 +36,12 @@
   NSTimeInterval	ticked;
   BOOL			processing;
   BOOL			shouldEnd;
+  BOOL			hasReset;
 }
 - (NSString*) address;
 - (NSMutableData*) buffer;
 - (NSFileHandle*) handle;
+- (BOOL) hasReset;
 - (unsigned) moreBytes: (unsigned)count;
 - (GSMimeParser*) parser;
 - (BOOL) processing;
@@ -87,6 +89,11 @@
   return handle;
 }
 
+- (BOOL) hasReset
+{
+  return hasReset;
+}
+
 - (unsigned) moreBytes: (unsigned)count
 {
   byteCount += count;
@@ -105,6 +112,7 @@
 
 - (void) reset
 {
+  hasReset = YES;
   [self setBuffer: [NSMutableData dataWithCapacity: 1024]];
   [self setParser: nil];
   [self setProcessing: NO];
@@ -923,10 +931,13 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	  if ([buffer length] == 0)
 	    {
 	      /*
+	       * Don't log if we have already reset after handling
+	       * a request.
 	       * Don't log this in quiet mode as it could just be a
 	       * test connection that we are ignoring.
 	       */
-	      if ([_quiet containsObject: [session address]] == NO)
+	      if ([session hasReset] == NO
+		&& [_quiet containsObject: [session address]] == NO)
 		{
 		  [self _alert: @"%@ read end-of-file in empty request",
 		    session];
