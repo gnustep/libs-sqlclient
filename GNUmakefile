@@ -2,6 +2,8 @@ include $(GNUSTEP_MAKEFILES)/common.make
 
 -include config.make
 
+PACKAGE_NAME = SQLClient
+
 TEST_TOOL_NAME = testPostgres testMySQL testECPG
 testPostgres_OBJC_FILES = testPostgres.m
 testPostgres_LIB_DIRS += -L./obj
@@ -17,7 +19,13 @@ testECPG_LIB_DIRS += -L./obj
 
 
 LIBRARY_NAME=SQLClient
+
 SQLClient_OBJC_FILES = SQLClient.m
+
+SQLClient_HEADER_FILES = SQLClient.h 
+
+
+SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
 
 
 DOCUMENT_NAME=SQLClient

@@ -130,6 +130,11 @@
 	to modify <code>configure.ac</code> so that it will detect the
 	required headers and libraries on your system, and supply na patch.
       </item>
+      <item>
+        Once the library is installed, you can include the header file
+	<code>&lt;SQLClient/SQLClient.h%gt;</code> and link your programs
+       	with the <code>SQLClient</code> library to use it.
+      </item>
     </list>
     <p>
       Bug reports, patches, and contributions (eg a backend bundle for a

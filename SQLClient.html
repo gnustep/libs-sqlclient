@@ -12,8 +12,8 @@
       <dd>
       </dd>
     </dl>
-    <p><b>Version:</b> 1.2</p>
-    <p><b>Date:</b> 2004/04/27 08:23:15</p>
+    <p><b>Version:</b> 1.4</p>
+    <p><b>Date:</b> 2004/05/07 08:16:16</p>
     <p><b>Copyright:</b> (C) 2004 Free Software Foundation, Inc.</p>
 
         <div>
@@ -217,6 +217,15 @@ Current backend bundles are -    </p>
             supply na patch.
           
       </li>
+      <li>
+        
+            Once the library is installed, you can include the
+            header file
+            <code>&lt;SQLClient/SQLClient.h%gt;</code> and link
+            your programs with the <code>SQLClient</code> library
+            to use it.
+          
+      </li>
     </ul>
     <p>
 
@@ -268,11 +277,99 @@ Current backend bundles are -    </p>
     </p>
     <br/><hr width="50%" align="left" />
     <h2>Instance Variables for SQLClient Class</h2>
-    <h3><a name="ivariable$SQLClient*client">client</a></h3>
-    @private NSString* <b>client</b>;<br />
+    <h3><a name="ivariable$SQLClient*_client">_client</a></h3>
+    @private NSString* <b>_client</b>;<br />
     <p>
       
             Identifier within backend
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_database">_database</a></h3>
+    @private NSString* <b>_database</b>;<br />
+    <p>
+      
+            The configured database name/host
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_debugging">_debugging</a></h3>
+    @private unsigned int <b>_debugging</b>;<br />
+    <p>
+      
+            The current debugging level
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_duration">_duration</a></h3>
+    @private NSTimeInterval <b>_duration</b>;<br />
+    <p>
+      
+            <em>Description forthcoming.</em>
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_inTransaction">_inTransaction</a></h3>
+    @private BOOL <b>_inTransaction</b>;<br />
+    <p>
+      
+            A flag indicating whether this instance is currently
+            within a transaction. This variable must
+            <em>only</em> be set by the
+            <a rel="gsdoc" href="#method$SQLClient-begin">
+              -begin
+            </a>
+
+            , <a rel="gsdoc" href="#method$SQLClient-commit">-commit</a>
+ or
+            <a rel="gsdoc" href="#method$SQLClient-rollback">
+              -rollback
+            </a>
+
+            methods. <br /> Are we inside a transaction?
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_lastOperation">_lastOperation</a></h3>
+    @private NSDate* <b>_lastOperation</b>;<br />
+    <p>
+      
+            Timestamp of last operation. <br /> Maintained by
+            the
+            <a rel="gsdoc" href="#method$SQLClient-simpleExecute:">
+              -simpleExecute:
+            </a>
+
+            and
+            <a rel="gsdoc" href="#method$SQLClient-simpleQuery:">
+              -simpleQuery:
+            </a>
+
+            methods.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_name">_name</a></h3>
+    @private NSString* <b>_name</b>;<br />
+    <p>
+      
+            Unique identifier for instance
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_password">_password</a></h3>
+    @private NSString* <b>_password</b>;<br />
+    <p>
+      
+            The configured password
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*_user">_user</a></h3>
+    @private NSString* <b>_user</b>;<br />
+    <p>
+      
+            The configured user
           
     </p>
     <hr width="25%" align="left" />
@@ -296,67 +393,11 @@ Current backend bundles are -    </p>
           
     </p>
     <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*database">database</a></h3>
-    @private NSString* <b>database</b>;<br />
-    <p>
-      
-            The configured database name/host
-          
-    </p>
-    <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*debugging">debugging</a></h3>
-    @private unsigned int <b>debugging</b>;<br />
-    <p>
-      
-            The current debugging level
-          
-    </p>
-    <hr width="25%" align="left" />
     <h3><a name="ivariable$SQLClient*extra">extra</a></h3>
     @private void* <b>extra</b>;<br />
     <p>
       
             For subclass specific data
-          
-    </p>
-    <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*inTransaction">inTransaction</a></h3>
-    @private BOOL <b>inTransaction</b>;<br />
-    <p>
-      
-            A flag indicating whether this instance is currently
-            within a transaction. This variable must
-            <em>only</em> be set by the
-            <a rel="gsdoc" href="#method$SQLClient-begin">
-              -begin
-            </a>
-
-            , <a rel="gsdoc" href="#method$SQLClient-commit">-commit</a>
- or
-            <a rel="gsdoc" href="#method$SQLClient-rollback">
-              -rollback
-            </a>
-
-            methods. <br /> Are we inside a transaction?
-          
-    </p>
-    <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*lastOperation">lastOperation</a></h3>
-    @private NSDate* <b>lastOperation</b>;<br />
-    <p>
-      
-            Timestamp of last operation. <br /> Maintained by
-            the
-            <a rel="gsdoc" href="#method$SQLClient-simpleExecute:">
-              -simpleExecute:
-            </a>
-
-            and
-            <a rel="gsdoc" href="#method$SQLClient-simpleQuery:">
-              -simpleQuery:
-            </a>
-
-            methods.
           
     </p>
     <hr width="25%" align="left" />
@@ -368,30 +409,6 @@ Current backend bundles are -    </p>
           
     </p>
     <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*name">name</a></h3>
-    @private NSString* <b>name</b>;<br />
-    <p>
-      
-            Unique identifier for instance
-          
-    </p>
-    <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*password">password</a></h3>
-    @private NSString* <b>password</b>;<br />
-    <p>
-      
-            The configured password
-          
-    </p>
-    <hr width="25%" align="left" />
-    <h3><a name="ivariable$SQLClient*user">user</a></h3>
-    @private NSString* <b>user</b>;<br />
-    <p>
-      
-            The configured user
-          
-    </p>
-    <hr width="25%" align="left" />
     <br/><hr width="50%" align="left" /><br/>
     <b>Method summary</b>
     <ul>
@@ -399,10 +416,14 @@ Current backend bundles are -    </p>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Convenience)-queryString:,...">-queryString:,...</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Convenience)-singletons:">-singletons:</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)+debugging">+debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)+durationLogging">+durationLogging</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)+setDebugging:">+setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)+setDurationLogging:">+setDurationLogging:</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-debug:,...">-debug:,...</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-debugging">-debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-durationLogging">-durationLogging</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-setDebugging:">-setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-setDurationLogging:">-setDurationLogging:</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendConnect">-backendConnect</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendDisconnect">-backendDisconnect</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendExecute:">-backendExecute:</a></li>
@@ -1371,10 +1392,14 @@ NULL field items are returned as NSNull objects.    </p>
     <b>Method summary</b>
     <ul>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+debugging">+debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+durationLogging">+durationLogging</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+setDebugging:">+setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+setDurationLogging:">+setDurationLogging:</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-debug:,...">-debug:,...</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-debugging">-debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-durationLogging">-durationLogging</a></li>
       <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setDebugging:">-setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setDurationLogging:">-setDurationLogging:</a></li>
     </ul>
     <hr width="50%" align="left" />
     <h3><a name="method$SQLClient(Logging)+debugging">debugging&nbsp;</a></h3>
@@ -1382,7 +1407,16 @@ NULL field items are returned as NSNull objects.    </p>
     <p>
       
             Return the class-wide debugging level, which is
-            inherited by all newly created minstances.
+            inherited by all newly created instances.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)+durationLogging">durationLogging&nbsp;</a></h3>
+    + (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/TypesAndConstants.html#type$NSTimeInterval">NSTimeInterval</a>) <b>durationLogging</b>;<br />
+    <p>
+      
+            Return the class-wide duration logging threshold,
+            which is inherited by all newly created instances.
           
     </p>
     <hr width="25%" align="left" />
@@ -1392,6 +1426,15 @@ NULL field items are returned as NSNull objects.    </p>
       
             Set the debugging <var>level</var> to be inherited by
             all new instances.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)+setDurationLogging:">setDurationLogging:&nbsp;</a></h3>
+    + (void) <b>setDurationLogging:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/TypesAndConstants.html#type$NSTimeInterval">NSTimeInterval</a>)threshold;<br />
+    <p>
+      
+            Set the duration logging <var>threshold</var> to be
+            inherited by all new instances.
           
     </p>
     <hr width="25%" align="left" />
@@ -1413,6 +1456,18 @@ NULL field items are returned as NSNull objects.    </p>
           
     </p>
     <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)-durationLogging">durationLogging&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/TypesAndConstants.html#type$NSTimeInterval">NSTimeInterval</a>) <b>durationLogging</b>;<br />
+    <p>
+      
+            Returns the threshold above which queries and
+            statements taking a long time to execute are
+            logged. A negative value (default) indicates that
+            this logging is disabled. A value of zero means that
+            all statements are logged.
+          
+    </p>
+    <hr width="25%" align="left" />
     <h3><a name="method$SQLClient(Logging)-setDebugging:">setDebugging:&nbsp;</a></h3>
     - (void) <b>setDebugging:</b> (unsigned int)level;<br />
     <p>
@@ -1420,6 +1475,17 @@ NULL field items are returned as NSNull objects.    </p>
             Set the debugging <var>level</var> of this instance...
             overrides the default <var>level</var> inherited
             from the class.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)-setDurationLogging:">setDurationLogging:&nbsp;</a></h3>
+    - (void) <b>setDurationLogging:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/TypesAndConstants.html#type$NSTimeInterval">NSTimeInterval</a>)threshold;<br />
+    <p>
+      
+            Set a <var>threshold</var> above which queries and
+            statements taking a long time to execute are
+            logged. A negative value (default) disables this
+            logging. A value of zero logs all statements.
           
     </p>
     <hr width="25%" align="left" />
