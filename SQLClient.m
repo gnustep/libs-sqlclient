@@ -266,9 +266,16 @@ static unsigned int	maxConnections = 8;
 
   if ([reference isKindOfClass: [NSString class]] == NO)
     {
-      reference = [[NSUserDefaults standardUserDefaults] stringForKey:
-	@"SQLClientName"];
-      if (reference == nil)
+      if (config == nil)
+	{
+	  reference = [[NSUserDefaults standardUserDefaults] objectForKey:
+	    @"SQLClientName"];
+	}
+      else
+	{
+	  reference = [config objectForKey: @"SQLClientName"];
+	}
+      if ([reference isKindOfClass: [NSString class]] == NO)
 	{
 	  reference = @"Database";
 	}
@@ -578,15 +585,20 @@ static unsigned int	maxConnections = 8;
 			name: (NSString*)reference
 {
   NSNotification	*n;
+  id			conf = config;
   id			existing;
+
+  if (conf == nil)
+    {
+      conf = [NSUserDefaults standardUserDefaults];
+    }
 
   if ([reference isKindOfClass: [NSString class]] == NO)
     {
-      reference = [[NSUserDefaults standardUserDefaults] stringForKey:
-	@"SQLClientName"];
-      if (reference == nil)
+      reference = [conf objectForKey: @"SQLClientName"];
+      if ([reference isKindOfClass: [NSString class]] == NO)
 	{
-	  reference = @"Database";
+	  reference = [conf objectForKey: @"Database"];
 	}
     }
 
@@ -599,29 +611,21 @@ static unsigned int	maxConnections = 8;
       [self setDurationLogging: [[self class] durationLogging]];
       [self setName: reference];	// Set name and store in cache.
 
-      if (config == nil)
+      if ([conf isKindOfClass: [NSUserDefaults class]] == YES)
 	{
 	  NSNotificationCenter	*nc;
-	  NSUserDefaults	*defs;
 
-	  defs = [NSUserDefaults standardUserDefaults];
 	  nc = [NSNotificationCenter defaultCenter];
 	  [nc addObserver: self
 		 selector: @selector(_configure:)
 		     name: NSUserDefaultsDidChangeNotification
-		   object: defs];
-	  n = [NSNotification
-	    notificationWithName: NSUserDefaultsDidChangeNotification
-	    object: defs
-	    userInfo: nil];
+		   object: conf];
 	}
-      else
-	{
-	  n = [NSNotification
-	    notificationWithName: NSUserDefaultsDidChangeNotification
-	    object: config
-	    userInfo: nil];
-	}
+      n = [NSNotification
+	notificationWithName: NSUserDefaultsDidChangeNotification
+	object: conf
+	userInfo: nil];
+
       [self _configure: n];	// Actually set up the configuration.
     }
   else

@@ -1,3 +1,12 @@
+Tue Jun 29 18:10:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Fix code for retrieving reference name ... look in
+	the config dictionary first, and in user defaults if not found
+	there.
+	* SQLClient.h: Document change.
+	* GNUmakefile: Link bundles with the library to ensure that they
+	find the SQLRecord class when loaded.
+
 Mon Jun 28 12:55:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.h: New file.

@@ -388,8 +388,9 @@ extern NSString	*SQLUniqueException;
  * use values from NSUserDefaults (and automatically update when the
  * defaults change).<br />
  * Uses the reference name to determine configuration information ... and if
- * a nil name is supplied, defaults to the value of the SQLClientName
- * as a user default string or 'Database' if no other name is provided.<br />
+ * a nil name is supplied, defaults to the value of SQLClientName in the
+ * configuration dictionary (or in the standard user defaults).  If there is
+ * no value for SQLClientName, uses the string 'Database'.<br />
  * If a SQLClient instance already exists with the name used for this
  * instance, the receiver is deallocated and the existing instance is
  * retained and returned ... there may only ever be one instance for a
