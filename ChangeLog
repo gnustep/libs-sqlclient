@@ -1,3 +1,7 @@
+Thu Oct 07 10:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.[hm]: Optimise timing operations somewhat.
+
 Wed Oct 06 15:04:23 2004  Nicola Pero <n.pero@mi.flashnet.it>
 
 	* WebServer.h: Fixed typo in parameter name.

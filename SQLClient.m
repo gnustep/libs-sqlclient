@@ -53,6 +53,16 @@ typedef	struct {
 
 static NSNull	*null = nil;
 
+static Class		NSStringClass = 0;
+static Class		NSDateClass = 0;
+static SEL		tiSel = 0;
+static NSTimeInterval	(*tiImp)(Class,SEL) = 0;
+
+inline NSTimeInterval	SQLClientTimeNow()
+{
+  return (*tiImp)(NSDateClass, tiSel);
+}
+
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
 {
@@ -295,7 +305,7 @@ static unsigned int	maxConnections = 8;
 {
   SQLClient	*o;
 
-  if ([reference isKindOfClass: [NSString class]] == NO)
+  if ([reference isKindOfClass: NSStringClass] == NO)
     {
       if (config == nil)
 	{
@@ -306,7 +316,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  reference = [config objectForKey: @"SQLClientName"];
 	}
-      if ([reference isKindOfClass: [NSString class]] == NO)
+      if ([reference isKindOfClass: NSStringClass] == NO)
 	{
 	  reference = @"Database";
 	}
@@ -325,7 +335,7 @@ static unsigned int	maxConnections = 8;
 {
   SQLClient	*existing;
 
-  if ([reference isKindOfClass: [NSString class]] == NO)
+  if ([reference isKindOfClass: NSStringClass] == NO)
     {
       reference = [[NSUserDefaults standardUserDefaults] stringForKey:
 	@"SQLClientName"];
@@ -352,6 +362,11 @@ static unsigned int	maxConnections = 8;
       beginStatement = RETAIN([NSArray arrayWithObject: beginString]);
       commitStatement = RETAIN([NSArray arrayWithObject: commitString]);
       rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
+      NSStringClass = [NSString class];
+      NSDateClass = [NSDate class];
+      tiSel = @selector(timeIntervalSinceReferenceDate);
+      tiImp
+	= (NSTimeInterval (*)(Class,SEL))[NSDateClass methodForSelector: tiSel];
     }
 }
 
@@ -364,8 +379,9 @@ static unsigned int	maxConnections = 8;
 {
   NSMapEnumerator	e;
   NSString		*n;
-  SQLClient			*o;
+  SQLClient		*o;
   unsigned int		connectionCount = 0;
+  NSTimeInterval	t = [since timeIntervalSinceReferenceDate];
 
   [cacheLock lock];
   e = NSEnumerateMapTable(cache);
@@ -373,9 +389,9 @@ static unsigned int	maxConnections = 8;
     {
       if (since != nil)
 	{
-	  NSDate	*when = [o lastOperation];
+	  NSTimeInterval	when = o->_lastOperation;
 
-	  if (when == nil || [when earlierDate: since] != since)
+	  if (when < t)
 	    {
 	      [o disconnect];
 	    }
@@ -391,7 +407,7 @@ static unsigned int	maxConnections = 8;
   while (connectionCount >= maxConnections)
     {
       SQLClient		*other = nil;
-      NSDate		*oldest = nil;
+      NSTimeInterval	oldest = 0.0;
   
       connectionCount = 0;
       [cacheLock lock];
@@ -400,11 +416,10 @@ static unsigned int	maxConnections = 8;
 	{
 	  if ([o connected] == YES)
 	    {
-	      NSDate	*when = [o lastOperation];
+	      NSTimeInterval	when = o->_lastOperation;
 
 	      connectionCount++;
-	      if (oldest == nil || when == nil
-		|| [oldest earlierDate: when] == when)
+	      if (oldest == 0.0 || when < oldest)
 		{
 		  oldest = when;
 		  other = o;
@@ -542,7 +557,6 @@ static unsigned int	maxConnections = 8;
   DESTROY(_password);
   DESTROY(_user);
   DESTROY(_name);
-  DESTROY(_lastOperation);
   DESTROY(_statements);
   [super dealloc];
 }
@@ -625,10 +639,10 @@ static unsigned int	maxConnections = 8;
       conf = [NSUserDefaults standardUserDefaults];
     }
 
-  if ([reference isKindOfClass: [NSString class]] == NO)
+  if ([reference isKindOfClass: NSStringClass] == NO)
     {
       reference = [conf objectForKey: @"SQLClientName"];
-      if ([reference isKindOfClass: [NSString class]] == NO)
+      if ([reference isKindOfClass: NSStringClass] == NO)
 	{
 	  reference = [conf objectForKey: @"Database"];
 	}
@@ -678,7 +692,11 @@ static unsigned int	maxConnections = 8;
 
 - (NSDate*) lastOperation
 {
-  return _lastOperation;
+  if (_lastOperation > 0.0)
+    {
+      return [NSDate dateWithTimeIntervalSinceReferenceDate: _lastOperation];
+    }
+  return nil;
 }
 
 - (NSString*) name
@@ -724,49 +742,58 @@ static unsigned int	maxConnections = 8;
   NSRange	r;
 
   /**
-   * For a nil or NSNull object, we return NULL.
+   * For a nil object, we return NULL.
    */
-  if (obj == nil || [obj isKindOfClass: [NSNull class]] == YES)
+  if (obj == nil)
     {
       return @"NULL";
     }
-
-  /**
-   * For a number, we simply convert directly to a string.
-   */
-  if ([obj isKindOfClass: [NSNumber class]] == YES)
+  else if ([obj isKindOfClass: NSStringClass] == NO)
     {
-      return [obj description];
-    }
+      /**
+       * For a nil or NSNull object, we return NULL.
+       */
+      if ([obj isKindOfClass: [NSNull class]] == YES)
+	{
+	  return @"NULL";
+	}
 
-  /**
-   * For a date, we convert to the text format used by the database,
-   * and add leading and trailing quotes.
-   */
-  if ([obj isKindOfClass: [NSDate class]] == YES)
-    {
-      return [obj descriptionWithCalendarFormat: @"'%Y-%m-%d %H:%M:%S.%F %z'"
-				       timeZone: nil
-					 locale: nil];
-    }
+      /**
+       * For a number, we simply convert directly to a string.
+       */
+      if ([obj isKindOfClass: [NSNumber class]] == YES)
+	{
+	  return [obj description];
+	}
 
-  /**
-   * For a data object, we don't quote ... the other parts of the code
-   * need to know they have an NSData object and pass it on unchanged
-   * to the -backendExecute: method.
-   */
-  if ([obj isKindOfClass: [NSData class]] == YES)
-    {
-      return obj;
-    }
+      /**
+       * For a date, we convert to the text format used by the database,
+       * and add leading and trailing quotes.
+       */
+      if ([obj isKindOfClass: NSDateClass] == YES)
+	{
+	  return [obj descriptionWithCalendarFormat:
+	    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil];
+	}
 
-  /**
-   * For any other type of data, we just produce a quoted string
-   * representation.
-   */
+      /**
+       * For a data object, we don't quote ... the other parts of the code
+       * need to know they have an NSData object and pass it on unchanged
+       * to the -backendExecute: method.
+       */
+      if ([obj isKindOfClass: [NSData class]] == YES)
+	{
+	  return obj;
+	}
+
+      /**
+       * For any other type of data, we just produce a quoted string
+       * representation of the objects description.
+       */
+      obj = [obj description];
+    }
 
   /* Get a string description of the object.  */
-  obj = [obj description];
   obj = AUTORELEASE([obj mutableCopy]);
 
   /* Escape the string.  */
@@ -918,25 +945,24 @@ static unsigned int	maxConnections = 8;
 {
   NSString	*statement;
 
- [lock lock];
+  [lock lock];
   statement = [info objectAtIndex: 0];
   NS_DURING
     {
-      NSDate	*start = nil;
+      NSTimeInterval	start = 0.0;
 
       if (_duration >= 0)
 	{
-	  start = [NSDate date];
+	  start = SQLClientTimeNow();
 	}
       [self backendExecute: info];
-      RELEASE(_lastOperation);
-      _lastOperation = [NSDate new];
+      _lastOperation = SQLClientTimeNow();
       [_statements addObject: statement];
       if (_duration >= 0)
 	{
 	  NSTimeInterval	d;
 
-	  d = [_lastOperation timeIntervalSinceDate: start];
+	  d = _lastOperation - start;
 	  if (d >= _duration)
 	    {
 	      if (statement == commitString || statement == rollbackString)
@@ -999,20 +1025,19 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
-      NSDate	*start = nil;
+      NSTimeInterval	start = 0.0;
 
       if (_duration >= 0)
 	{
-	  start = [NSDate date];
+	  start = SQLClientTimeNow();
 	}
       result = [self backendQuery: stmt];
-      RELEASE(_lastOperation);
-      _lastOperation = [NSDate new];
+      _lastOperation = SQLClientTimeNow();
       if (_duration >= 0)
 	{
 	  NSTimeInterval	d;
 
-	  d = [_lastOperation timeIntervalSinceDate: start];
+	  d = _lastOperation - start;
 	  if (d >= _duration)
 	    {
 	      [self debug: @"Duration %g for query %@", d, stmt];
@@ -1173,7 +1198,7 @@ static unsigned int	maxConnections = 8;
     }
 
   s = [d objectForKey: @"ServerType"];
-  if ([s isKindOfClass: [NSString class]] == NO)
+  if ([s isKindOfClass: NSStringClass] == NO)
     {
       s = @"Postgres";
     }
@@ -1226,10 +1251,10 @@ static unsigned int	maxConnections = 8;
     }
 
   s = [d objectForKey: @"Database"];
-  if ([s isKindOfClass: [NSString class]] == NO)
+  if ([s isKindOfClass: NSStringClass] == NO)
     {
       s = [o objectForKey: @"Database"];
-      if ([s isKindOfClass: [NSString class]] == NO)
+      if ([s isKindOfClass: NSStringClass] == NO)
 	{
 	  s = nil;
 	}
@@ -1237,10 +1262,10 @@ static unsigned int	maxConnections = 8;
   [self setDatabase: s];
 
   s = [d objectForKey: @"User"];
-  if ([s isKindOfClass: [NSString class]] == NO)
+  if ([s isKindOfClass: NSStringClass] == NO)
     {
       s = [o objectForKey: @"User"];
-      if ([s isKindOfClass: [NSString class]] == NO)
+      if ([s isKindOfClass: NSStringClass] == NO)
 	{
 	  s = @"";
 	}
@@ -1248,10 +1273,10 @@ static unsigned int	maxConnections = 8;
   [self setUser: s];
 
   s = [d objectForKey: @"Password"];
-  if ([s isKindOfClass: [NSString class]] == NO)
+  if ([s isKindOfClass: NSStringClass] == NO)
     {
       s = [o objectForKey: @"Password"];
-      if ([s isKindOfClass: [NSString class]] == NO)
+      if ([s isKindOfClass: NSStringClass] == NO)
 	{
 	  s = @"";
 	}
@@ -1282,7 +1307,7 @@ static unsigned int	maxConnections = 8;
        */ 
       while (tmp != nil)
 	{
-	  if ([tmp isKindOfClass: [NSString class]] == NO)
+	  if ([tmp isKindOfClass: NSStringClass] == NO)
 	    {
 	      if ([tmp isKindOfClass: [NSData class]] == YES)
 		{
@@ -1441,7 +1466,7 @@ static unsigned int	maxConnections = 8;
 	    }
 	  else
 	    {
-	      if ([o isKindOfClass: [NSString class]] == YES)
+	      if ([o isKindOfClass: NSStringClass] == YES)
 		{
 		  v = o;
 		}

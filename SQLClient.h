@@ -213,6 +213,11 @@ extern NSString	*SQLEmptyException;
 extern NSString	*SQLUniqueException;
 
 /**
+ * Convenience function to provide timing information quickly.
+ */
+extern NSTimeInterval	SQLClientTimeNow();
+
+/**
  * <p>The SQLClient class encapsulates dynamic SQL access to relational
  * database systems.  A shared instance of the class is used for
  * each database (as identified by the name of the database), and
@@ -249,7 +254,7 @@ extern NSString	*SQLUniqueException;
    * Timestamp of last operation.<br />
    * Maintained by the -simpleExecute: and -simpleQuery: methods.
    */
-  NSDate		*_lastOperation;	
+  NSTimeInterval	_lastOperation;	
   NSTimeInterval	_duration;
   unsigned int		_debugging;	/** The current debugging level */
 }
