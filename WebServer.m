@@ -355,7 +355,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 - (NSString*) description
 {
   return [NSString stringWithFormat:
-    @"%@ on %@, %u of %u sessions active, %u total, %u requests, listening: %@",
+    @"%@ on %@, %u of %u sessions active, %u ended, %u requests, listening: %@",
     [super description], _port, NSCountMapTable(_sessions),
     _maxSessions, _handled, _requests, _accepting == YES ? @"yes" : @"no"];
 }
@@ -391,6 +391,84 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
       return NO;
     }
   return YES;
+}
+
+- (BOOL) produceResponse: (GSMimeDocument*)aResponse
+	  fromStaticPage: (NSString*)aPath
+		   using: (NSDictionary*)map
+{
+  CREATE_AUTORELEASE_POOL(arp);
+  NSString	*path = (_root == nil) ? (id)@"" : (id)_root;
+  NSString	*ext = [aPath pathExtension];
+  NSString	*type;
+  NSString	*str;
+  id		data;
+  NSFileManager	*mgr;
+  BOOL		string = NO;
+  BOOL		result = YES;
+
+  if (map == nil)
+    {
+      static NSDictionary	*defaultMap = nil;
+
+      if (defaultMap == nil)
+	{
+	  defaultMap = [[NSDictionary alloc] initWithObjectsAndKeys:
+	    @"image/gif", @"gif",
+	    @"image/png", @"png",
+	    @"image/jpeg", @"jpeg",
+	    @"text/html", @"html",
+	    @"text/plain", @"txt",
+	    @"text/xml", @"xml",
+	    nil];
+	}
+      map = defaultMap;
+    }
+
+  type = [map objectForKey: ext]; 
+  if (type == nil)
+    {
+      type = [map objectForKey: [ext lowercaseString]]; 
+    }
+  if (type == nil)
+    {
+      type = @"application/octet-stream";
+    }
+  string = [type hasPrefix: @"text/"];
+
+  path = [path stringByAppendingString: @"/"];
+  str = [path stringByStandardizingPath];
+  path = [path stringByAppendingPathComponent: aPath];
+  path = [path stringByStandardizingPath];
+  mgr = [NSFileManager defaultManager];
+  if ([path hasPrefix: str] == NO)
+    {
+      [self _alert: @"Illegal static page '%@' ('%@')", aPath, path];
+      result = NO;
+    }
+  else if ([mgr isReadableFileAtPath: path] == NO)
+    {
+      [self _alert: @"Can't read static page '%@' ('%@')", aPath, path];
+      result = NO;
+    }
+  else if (string == YES
+    && (data = [NSString stringWithContentsOfFile: path]) == nil)
+    {
+      [self _alert: @"Failed to load string '%@' ('%@')", aPath, path];
+      result = NO;
+    }
+  else if (string == NO
+    && (data = [NSData dataWithContentsOfFile: path]) == nil)
+    {
+      [self _alert: @"Failed to load data '%@' ('%@')", aPath, path];
+      result = NO;
+    }
+  else
+    {
+      [aResponse setContent: data type: type name: nil];
+    }
+  DESTROY(arp);
+  return result;
 }
 
 - (BOOL) produceResponse: (GSMimeDocument*)aResponse
@@ -717,7 +795,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	  r = NSMakeRange(pos, r.location - pos);
 	  [result appendString: [aTemplate substringWithRange: r]];
 	}
-      pos = r.location;
+      pos = start;
       r = NSMakeRange(start + 4, length - start - 4);
       r = [aTemplate rangeOfString: @"-->"
 			   options: NSLiteralSearch
