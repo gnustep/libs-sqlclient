@@ -921,7 +921,11 @@ extern NSTimeInterval	SQLClientTimeNow();
  * together in a single operation (for efficiency etc).<br />
  * This does not alter the other transaction, so if the execution of
  * a group of merged transactions fails, it is then possible to attempt
- * to commit the individual transactions separately.
+ * to commit the individual transactions separately.<br />
+ * NB. All transactions appended ought to be using the same type of database
+ * connection, so that their quoting conventions are consistent.  If you
+ * attempt to append transactions relating to SQLClients with different
+ * quoting conventions, the resulting transaction may not work.
  */
 - (void) append: (SQLTransaction*)other;
 
