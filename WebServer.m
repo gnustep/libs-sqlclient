@@ -35,6 +35,7 @@
   unsigned		byteCount;
   NSTimeInterval	ticked;
   BOOL			processing;
+  BOOL			shouldEnd;
 }
 - (NSString*) address;
 - (NSMutableData*) buffer;
@@ -42,12 +43,15 @@
 - (unsigned) moreBytes: (unsigned)count;
 - (GSMimeParser*) parser;
 - (BOOL) processing;
+- (void) reset;
 - (void) setAddress: (NSString*)aString;
 - (void) setBuffer: (NSMutableData*)aBuffer;
 - (void) setHandle: (NSFileHandle*)aHandle;
 - (void) setParser: (GSMimeParser*)aParser;
 - (void) setProcessing: (BOOL)aFlag;
+- (void) setShouldEnd: (BOOL)aFlag;
 - (void) setTicked: (NSTimeInterval)when;
+- (BOOL) shouldEnd;
 - (NSTimeInterval) ticked;
 @end
 
@@ -99,6 +103,13 @@
   return processing;
 }
 
+- (void) reset
+{
+  [self setBuffer: [NSMutableData dataWithCapacity: 1024]];
+  [self setParser: nil];
+  [self setProcessing: NO];
+}
+
 - (void) setAddress: (NSString*)aString
 {
   ASSIGN(address, aString);
@@ -124,9 +135,19 @@
   processing = aFlag;
 }
 
+- (void) setShouldEnd: (BOOL)aFlag
+{
+  shouldEnd = aFlag;
+}
+
 - (void) setTicked: (NSTimeInterval)when
 {
   ticked = when;
+}
+
+- (BOOL) shouldEnd
+{
+  return shouldEnd;
 }
 
 - (NSTimeInterval) ticked
@@ -915,6 +936,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
       if (pos >= _maxBodySize)
 	{
 	  [self _alert: @"Request too long ... rejected"];
+	  [session setShouldEnd: YES];
 	  [hdl writeInBackgroundAndNotify:
 	    [@"HTTP/1.0 500 Request data too long\r\n\r\n"
 	    dataUsingEncoding: NSASCIIStringEncoding]];
@@ -957,6 +979,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 		  end += 5;
 		  version = [NSString stringWithUTF8String: bytes + end];
 		}
+	    }
+	  if ([version floatValue] < 1.1)
+	    {
+	      [session setShouldEnd: YES];	// Not persistent.
 	    }
 
 	  /*
@@ -1014,6 +1040,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	  if ([method isEqualToString: @"GET"] == NO
 	    && [method isEqualToString: @"POST"] == NO)
 	    {
+	      [session setShouldEnd: YES];	// Not persistent.
 	      [hdl writeInBackgroundAndNotify:
 		[@"HTTP/1.0 501 Not Implemented\r\n\r\n"
 		dataUsingEncoding: NSASCIIStringEncoding]];
@@ -1067,6 +1094,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   if ([session moreBytes: [d length]] > _maxRequestSize)
     {
       [self _alert: @"Request body too long ... rejected"];
+      [session setShouldEnd: YES];	// Not persistent.
       [hdl writeInBackgroundAndNotify:
 	[@"HTTP/1.0 500 Request body too long\r\n\r\n"
 	dataUsingEncoding: NSASCIIStringEncoding]];
@@ -1103,7 +1131,15 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   session = (WebServerSession*)NSMapGet(_sessions, (void*)hdl);
   NSAssert(session != nil, NSInternalInconsistencyException);
 
-  [self _endSession: session];
+  if ([session shouldEnd] == YES)
+    {
+      [self _endSession: session];
+    }
+  else
+    {
+      [session reset];
+      [hdl readInBackgroundAndNotify];	// Want another request.
+    }
 }
 
 - (void) _endSession: (WebServerSession*)session
@@ -1132,6 +1168,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   GSMimeDocument	*request;
   GSMimeDocument	*response;
   BOOL			responded = NO;
+  NSString		*con;
   NSMutableData		*raw;
   NSMutableData		*out;
   unsigned char		*buf;
@@ -1143,6 +1180,16 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
   AUTORELEASE(RETAIN(session));
   request = [[session parser] mimeDocument];
+
+  /*
+   * If the client specified that the connection should close, we don't
+   * keep it open.
+   */
+  con = [[request headerNamed: @"connection"] value]; 
+  if (con != nil && [con caseInsensitiveCompare: @"close"] == NSOrderedSame)
+    {
+      [session setShouldEnd: YES];	// Not persistent.
+    }
 
   /*
    * Provide more information about the connection.
@@ -1226,11 +1273,11 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
       if (contentLength == 0)
 	{
-	  s = "HTTP/1.0 204 No Content\r\n";
+	  s = "HTTP/1.1 204 No Content\r\n";
 	}
       else
 	{
-	  s = "HTTP/1.0 200 Success\r\n";
+	  s = "HTTP/1.1 200 Success\r\n";
 	}
       [out appendBytes: s length: strlen(s)];
     }
@@ -1241,6 +1288,15 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
       s = [s stringByAppendingString: @"\r\n"];
       [out appendData: [s dataUsingEncoding: NSASCIIStringEncoding]];
       [response deleteHeader: hdr];
+      /*
+       * If the http version has been set to be an old one,
+       * we must be prepared to close the connection at once.
+       */
+      if ([s hasPrefix: @"HTTP/"] == NO
+	|| [[s substringFromIndex: 5] floatValue] < 1.1) 
+	{
+	  [session setShouldEnd: YES];
+	}
     }
 
   enumerator = [[response allHeaders] objectEnumerator];

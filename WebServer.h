@@ -96,11 +96,12 @@
  * The 'content-length' header need not be set in the response as it will
  * be overridden anyway.<br />
  * The special 'http' header will be used as the response/status line.
- * If not supplied, 'HTTP/1.0 200 Success' or 'HTTP/1.0 204 No Content' will
+ * If not supplied, 'HTTP/1.1 200 Success' or 'HTTP/1.1 204 No Content' will
  * be used as the response line, depending on whether the data is empty or
  * not.<br />
  * If an exception is raised by this method, the response produced will
- * be set to 'HTTP/1.0 500 Internal Server Error'
+ * be set to 'HTTP/1.0 500 Internal Server Error' and the connection will
+ * be closed.
  */
 - (BOOL) processRequest: (GSMimeDocument*)request
 	       response: (GSMimeDocument*)reponse
