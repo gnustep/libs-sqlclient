@@ -33,15 +33,19 @@
   [super dealloc];
 }
 
-- (void) defaultsUpdate: (NSNotification *)aNotification
+- (BOOL) defaultsUpdate: (NSNotification *)aNotification
 {
   NSUserDefaults	*defs = [aNotification object];
   NSString		*port;
   NSDictionary		*secure;
 
   port = [defs stringForKey: @"WebServerPort"];
+  if ([port length] == 0)
+    {
+      return NO;	// Can't make web server active.
+    }
   secure = [defs dictionaryForKey: @"WebServerSecure"];
-  [_http setPort: port secure: secure];
+  return [_http setPort: port secure: secure];
 }
 
 - (NSMutableDictionary*) handlers
@@ -90,7 +94,10 @@
 	notificationWithName: NSUserDefaultsDidChangeNotification
 		      object: defs
 		    userInfo: nil];
-      [self defaultsUpdate: n];
+      if ([self defaultsUpdate: n] == NO)
+	{
+	  DESTROY(self);
+	}
     }
   return self;
 }

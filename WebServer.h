@@ -251,9 +251,15 @@
  * If secure is a dictionary containing <code>CertificateFile</code>,
  * <code>KeyFile</code> and <code>Password</code> then the server will
  * use the specified certificate and key files (which it will access
- * using the password).
+ * using the password).<br />
+ * This method returns YES on success, NO on failure ... if it returns NO
+ * then the receiver will <em>not</em> be capable of handling incoming
+ * web requests!<br />
+ * Typically a failure will be due to an invalid port being specified ...
+ * a port may not already be in use and may not be in the range up to 1024
+ * (unless running as the super-user).
  */
-- (void) setPort: (NSString*)aPort secure: (NSDictionary*)secure;
+- (BOOL) setPort: (NSString*)aPort secure: (NSDictionary*)secure;
 
 /**
  * Sets the maximum recursion depth allowed for subsititutions into
@@ -329,8 +335,10 @@
  *     See [WebServer-setPort:secure:] for details.
  *   </item>
  * </list>
+ * Returns YES on success, NO on failure (if the port of the WebServer
+ * cannot be set).
  */
-- (void) defaultsUpdate: (NSNotification *)aNotification;
+- (BOOL) defaultsUpdate: (NSNotification *)aNotification;
 
 /**
  * Return dictionary of all handlers by name (path in request which maps

@@ -497,8 +497,9 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     }
 }
 
-- (void) setPort: (NSString*)aPort secure: (NSDictionary*)secure
+- (BOOL) setPort: (NSString*)aPort secure: (NSDictionary*)secure
 {
+  BOOL	ok = YES;
   BOOL	update = NO;
 
   if (aPort == nil || [aPort isEqual: _port] == NO)
@@ -544,6 +545,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	    {
 	      [self _alert: @"Failed to listen on port %@", _port];
 	      DESTROY(_port);
+	      ok = NO;
 	    }
 	  else
 	    {
@@ -561,6 +563,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	    }
 	}
     }
+  return ok;
 }
 
 - (void) setRoot: (NSString*)aPath
