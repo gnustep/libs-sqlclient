@@ -1,0 +1,1810 @@
+<html>
+
+    <head>
+    <title>SQLClient documentation</title>
+  </head>
+  <body>
+    <font face="palatino linotype">
+    <h1><a name="title$SQLClient">SQLClient documentation</a></h1>
+    <h3>Authors</h3>
+    <dl>
+      <dt>Richard Frith-Macdonald (<a href="mailto:rfm@gnu.org"><code>rfm@gnu.org</code></a>)</dt>
+      <dd>
+      </dd>
+    </dl>
+    <p><b>Version:</b> 1.1</p>
+    <p><b>Date:</b> 2004/04/26 15:13:27</p>
+    <p><b>Copyright:</b> (C) 2004 Free Software Foundation, Inc.</p>
+
+        <div>
+      <hr width="50%" align="left" />
+      <h3>Contents -</h3>
+      <ol>
+        <li>
+          <a href="#001000000000">The SQLClient library</a>
+        </li>
+        <li>
+          <a href="#001001000000">Overview</a>
+        </li>
+        <li>
+          <a href="#001002000000">Backends</a>
+        </li>
+        <li>
+          <a href="#002000000000">Software documentation for the SQLClient class</a>
+        </li>
+        <li>
+          <a href="#003000000000">Software documentation for the SQLRecord class</a>
+        </li>
+        <li>
+          <a href="#004000000000">Software documentation for the SQLClient(Convenience)
+        category</a>
+        </li>
+        <li>
+          <a href="#005000000000">Software documentation for the SQLClient(Logging)
+        category</a>
+        </li>
+        <li>
+          <a href="#006000000000">Software documentation for the SQLClient(Subclass)
+        category</a>
+        </li>
+        <li>
+          <a href="#007000000000">SQLClient variables</a>
+        </li>
+      </ol>
+      <hr width="50%" align="left" />
+    </div>
+
+          <h1><a name="001000000000">The SQLClient library</a></h1>
+
+            <h2><a name="001001000000">Overview</a></h2>
+    <p>
+
+          The SQLClient library is designed to provide a simple
+          interface to SQL databases for GNUstep
+          applications. It does not attempt the sort of
+          abstraction provided by the much more
+          sophisticated GDL2 library, but rather allows
+          applications to directly execute SQL queries and
+          statements.
+            </p>
+    <p>
+The major features of the SQLClient library are -    </p>
+    <ul>
+      <li>
+        
+            Simple API for executing queries and statements... a
+            variable length sequence of comma separated
+            strings and other objects (NSNumber, NSDate,
+            NSData) are concatenated into a single SQL
+            statement and executed.
+          
+      </li>
+      <li>
+        
+            Support multiple sumultaneous named connections to
+            a database server in a thread-safe manner. <br />
+          
+      </li>
+      <li>
+        
+            Support multiple simultaneous connections to
+            different database servers with backend driver
+            bundles loaded for different database engines.
+            Clear, simple subclassing of the abstract base class
+            to enable easy implementation of new backend bundles.
+          
+      </li>
+      <li>
+        
+            Configuration for all connections held in one
+            place and referenced by connection name for ease of
+            configuration control. Changes via
+            NSUserDefaults can even allow
+            reconfiguration of client instances within
+            a running application.
+          
+      </li>
+      <li>
+        
+            Thread safe operation... The base class supports
+            locking such that a single instance can be shared
+            between multiple threads.
+          
+      </li>
+    </ul>
+
+            <h2><a name="001002000000">Backends</a></h2>
+    <p>
+Current backend bundles are -    </p>
+    <ul>
+      <li>
+        
+            ECPG - a bundle using the embedded SQL interface for
+            postgres. <br /> This is based on a similar code
+            which has been in production use for over eighteen
+            months, so it should be reliable.
+          
+      </li>
+      <li>
+        
+            Postgres - a bundle using the libpq native
+            interface for postgres. <br /> This is the
+            preferred backend as it allows &apos;SELECT FOR
+            UPDATE&apos;, which the ECPG backend cannot support due
+            to limitations in the postgres implementation of
+            cursors. The code is however not as well tested as
+            the ECPG interface.
+          
+      </li>
+      <li>
+        
+            MySQL - a bundle using the mysqlclient library for
+            *recent* MySQL. <br /> I don&apos;t use MySQL... but
+            the test program ran successfully with a vanilla
+            install of the MySQL packages for recent Debian
+            unstable.
+          
+      </li>
+      <li>
+        
+            Oracle - a bundle using embedded SQL for Oracle.
+            <br /> Completely untested... may even need some
+            work to compile... but this *is* based on code which
+            was working about a year ago. <br /> No support for
+            BLOBs yet.
+          
+      </li>
+    </ul>
+
+          <h1><a name="002000000000">
+        Software documentation for the SQLClient class
+      </a></h1>
+    <h2><a name="class$SQLClient">SQLClient</a> : <a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSObject.html#class$NSObject">NSObject</a></h2>
+    <blockquote>
+      <dl>
+        <dt><b>Declared in:</b></dt>
+        <dd>SQLClient.h</dd>
+      </dl>
+    </blockquote>
+    <p>
+      
+          
+    </p>
+    <p>
+
+            The SQLClient class encapsulates dynamic SQL access to
+            relational database systems. A shared instance
+            of the class is used for each database (as identified by
+            the name of the database), and the number of
+            simultanous database connections is managed
+            too.
+              </p>
+    <p>
+      
+          
+    </p>
+    <p>
+
+            SQLClient is an abstract base class... when you
+            create an instance of it, you are actually creating
+            an instance of a concrete subclass whose implementation
+            is loaded from a bundle.
+              </p>
+    <p>
+      
+        
+    </p>
+    <br/><hr width="50%" align="left" />
+    <h2>Instance Variables for SQLClient Class</h2>
+    <h3><a name="ivariable$SQLClient*client">client</a></h3>
+    @private NSString* <b>client</b>;<br />
+    <p>
+      
+            Identifier within backend
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*connected">connected</a></h3>
+    @private BOOL <b>connected</b>;<br />
+    <p>
+      
+            A flag indicating whether this instance is currently
+            connected to the backend database server. This
+            variable must <em>only</em> be set by the
+            <a rel="gsdoc" href="#method$SQLClient-backendConnect">
+              -backendConnect
+            </a>
+
+            or
+            <a rel="gsdoc" href="#method$SQLClient-backendDisconnect">
+              -backendDisconnect
+            </a>
+
+            methods.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*database">database</a></h3>
+    @private NSString* <b>database</b>;<br />
+    <p>
+      
+            The configured database name/host
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*debugging">debugging</a></h3>
+    @private unsigned int <b>debugging</b>;<br />
+    <p>
+      
+            The current debugging level
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*extra">extra</a></h3>
+    @private void* <b>extra</b>;<br />
+    <p>
+      
+            For subclass specific data
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*inTransaction">inTransaction</a></h3>
+    @private BOOL <b>inTransaction</b>;<br />
+    <p>
+      
+            A flag indicating whether this instance is currently
+            within a transaction. This variable must
+            <em>only</em> be set by the
+            <a rel="gsdoc" href="#method$SQLClient-begin">
+              -begin
+            </a>
+
+            , <a rel="gsdoc" href="#method$SQLClient-commit">-commit</a>
+ or
+            <a rel="gsdoc" href="#method$SQLClient-rollback">
+              -rollback
+            </a>
+
+            methods. <br /> Are we inside a transaction?
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*lastOperation">lastOperation</a></h3>
+    @private NSDate* <b>lastOperation</b>;<br />
+    <p>
+      
+            Timestamp of last operation. <br /> Maintained by
+            the
+            <a rel="gsdoc" href="#method$SQLClient-simpleExecute:">
+              -simpleExecute:
+            </a>
+
+            and
+            <a rel="gsdoc" href="#method$SQLClient-simpleQuery:">
+              -simpleQuery:
+            </a>
+
+            methods.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*lock">lock</a></h3>
+    @private NSRecursiveLock* <b>lock</b>;<br />
+    <p>
+      
+            Maintain thread-safety
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*name">name</a></h3>
+    @private NSString* <b>name</b>;<br />
+    <p>
+      
+            Unique identifier for instance
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*password">password</a></h3>
+    @private NSString* <b>password</b>;<br />
+    <p>
+      
+            The configured password
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="ivariable$SQLClient*user">user</a></h3>
+    @private NSString* <b>user</b>;<br />
+    <p>
+      
+            The configured user
+          
+    </p>
+    <hr width="25%" align="left" />
+    <br/><hr width="50%" align="left" /><br/>
+    <b>Method summary</b>
+    <ul>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Convenience)-queryRecord:,...">-queryRecord:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Convenience)-queryString:,...">-queryString:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Convenience)-singletons:">-singletons:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)+debugging">+debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)+setDebugging:">+setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-debug:,...">-debug:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-debugging">-debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Logging)-setDebugging:">-setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendConnect">-backendConnect</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendDisconnect">-backendDisconnect</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendExecute:">-backendExecute:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-backendQuery:">-backendQuery:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-copyEscapedBLOB:into:">-copyEscapedBLOB:into:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-insertBLOBs:intoStatement:length:withMarker:length:giving:">-insertBLOBs:intoStatement:length:withMarker:length:giving:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient(Subclass)-lengthOfEscapedBLOB:">-lengthOfEscapedBLOB:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+allClients">+allClients</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+clientWithConfiguration:name:">+clientWithConfiguration:name:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+existingClient:">+existingClient:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+maxConnections">+maxConnections</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+purgeConnections:">+purgeConnections:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+setMaxConnections:">+setMaxConnections:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-begin">-begin</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-clientName">-clientName</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-commit">-commit</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-connect">-connect</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-connected">-connected</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-database">-database</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-disconnect">-disconnect</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-execute:,...">-execute:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-execute:with:">-execute:with:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-initWithConfiguration:">-initWithConfiguration:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-initWithConfiguration:name:">-initWithConfiguration:name:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-isInTransaction">-isInTransaction</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-lastOperation">-lastOperation</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-name">-name</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-password">-password</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-query:,...">-query:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-query:with:">-query:with:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-quote:">-quote:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-quoteCString:">-quoteCString:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-quoteChar:">-quoteChar:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-quoteFloat:">-quoteFloat:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-quoteInteger:">-quoteInteger:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-rollback">-rollback</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setDatabase:">-setDatabase:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setName:">-setName:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setPassword:">-setPassword:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setUser:">-setUser:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-simpleExecute:">-simpleExecute:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-simpleQuery:">-simpleQuery:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-user">-user</a></li>
+    </ul>
+    <hr width="50%" align="left" />
+    <h3><a name="method$SQLClient+allClients">allClients&nbsp;</a></h3>
+    + (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSArray">NSArray</a>*) <b>allClients</b>;<br />
+    <p>
+      
+            Returns an array containing all the SQLClient
+            instances.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient+clientWithConfiguration:name:">clientWithConfiguration:&nbsp;name:&nbsp;</a></h3>
+    + (<a rel="gsdoc" href="#class$SQLClient">SQLClient</a>*) <b>clientWithConfiguration:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDictionary.html#class$NSDictionary">NSDictionary</a>*)config<b> name:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)reference;<br />
+    <p>
+      
+            Return an existing SQLClient instance (using
+            +existingClient:) if possible, or creates
+            one, initialises it using
+            <a rel="gsdoc" href="#method$SQLClient-initWithConfiguration:name:">
+              -initWithConfiguration:name:
+            </a>
+
+            , and returns the new instance (autoreleased). <br />
+            Returns <code>nil</code> on failure.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient+existingClient:">existingClient:&nbsp;</a></h3>
+    + (<a rel="gsdoc" href="#class$SQLClient">SQLClient</a>*) <b>existingClient:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)reference;<br />
+    <p>
+      
+            Return an existing SQLClient instance for the
+            specified name if one exists, otherwise returns
+            <code>nil</code>.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient+maxConnections">maxConnections&nbsp;</a></h3>
+    + (unsigned int) <b>maxConnections</b>;<br />
+    <p>
+      
+            Return the maximum number of simultaneous database
+            connections permitted (set by
+            <a rel="gsdoc" href="#method$SQLClient+setMaxConnections:">
+              +setMaxConnections:
+            </a>
+
+            and defaults to 8)
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient+purgeConnections:">purgeConnections:&nbsp;</a></h3>
+    + (void) <b>purgeConnections:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDate.html#class$NSDate">NSDate</a>*)since;<br />
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Use this method to reduce the number of database
+              connections currently active so that it is
+              less than the limit set by the
+              <a rel="gsdoc" href="#method$SQLClient+setMaxConnections:">
+                +setMaxConnections:
+              </a>
+
+              method. This mechanism is used internally by the
+              class to ensure that, when it is about to open a
+              new connection, the limit is not exceeded.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              If <var>since</var> is not <code>nil</code>, then any
+              connection which has not been used more
+              recently than that date is disconnected anyway.
+              <br /> You can (and probably should) use this
+              periodically to purge idle connections, but
+              you can also pass a date in the future to close all
+              connections.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient+setMaxConnections:">setMaxConnections:&nbsp;</a></h3>
+    + (void) <b>setMaxConnections:</b> (unsigned int)c;<br />
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Set the maximum number of simultaneous database
+              connections permitted (defaults to 8 and may
+              not be set less than 1).
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This value is used by the
+              <a rel="gsdoc" href="#method$SQLClient+purgeConnections:">
+                +purgeConnections:
+              </a>
+
+              method to determine how many connections should be
+              disconnected when it is called.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-begin">begin&nbsp;</a></h3>
+    - (void) <b>begin</b>;<br />
+    <p>
+      
+            Start a transaction for this database client. <br />
+            You <strong>must</strong> match this with either a
+            <a rel="gsdoc" href="#method$SQLClient-commit">
+              -commit
+            </a>
+
+            or a <a rel="gsdoc" href="#method$SQLClient-rollback">-rollback</a>
+.
+            <br />
+            
+    </p>
+    <p>
+
+              Normally, if you execute an SQL statement
+              without using this method first, the
+              <em>autocommit</em> feature is employed, and the
+              statement takes effect immediately. Use of this
+              method permits you to execute several statements
+              in sequence, and only have them take effect (as a
+              single operation) when you call the
+              <a rel="gsdoc" href="#method$SQLClient-commit">
+                -commit
+              </a>
+
+              method.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              NB. You must <strong>not</strong> execute an SQL
+              statement which would start a transaction
+              directly... use only this method.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-clientName">clientName&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>clientName</b>;<br />
+    <p>
+      
+            Return the client name for this instance. <br />
+            Normally this is useful only for
+            debugging/reporting purposes, but if
+            you are using multiple instances of this class in your
+            application, and you are using embedded SQL,
+            you will need to use this method to fetch the
+            client/connection name and store its
+            C-string representation in a variable
+            &apos;connectionName&apos; declared to the sql
+            preprocessor, so you can then have statements
+            of the form - &apos;exec sql at :connectionName...&apos;.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-commit">commit&nbsp;</a></h3>
+    - (void) <b>commit</b>;<br />
+    <p>
+      
+            Complete a transaction for this database client.
+            <br /> This <strong>must</strong> match an earlier
+            <a rel="gsdoc" href="#method$SQLClient-begin">
+              -begin
+            </a>
+
+            .
+            
+    </p>
+    <p>
+
+              NB. You must <strong>not</strong> execute an SQL
+              statement which would commit or rollback a
+              transaction directly... use only this method
+              or the
+              <a rel="gsdoc" href="#method$SQLClient-rollback">
+                -rollback
+              </a>
+
+              method.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-connect">connect&nbsp;</a></h3>
+    - (BOOL) <b>connect</b>;<br />
+    <p>
+      
+            If the <em>connected</em> instance variable is
+            <code>NO</code>, this method calls
+            <a rel="gsdoc" href="#method$SQLClient-backendConnect">
+              -backendConnect
+            </a>
+
+            to ensure that there is a connection to the database
+            server established. Returns the result. <br />
+            Performs any necessary locking for thread safety.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-connected">connected&nbsp;</a></h3>
+    - (BOOL) <b>connected</b>;<br />
+    <p>
+      
+            Return a flag to say whether a connection to the
+            database server is currently live. This is mostly
+            useful for debug/reporting, but is used internally
+            to keep track of active connections.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-database">database&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>database</b>;<br />
+    <p>
+      
+            Return the database name for this instance (or
+            <code>nil</code>).
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-disconnect">disconnect&nbsp;</a></h3>
+    - (void) <b>disconnect</b>;<br />
+    <p>
+      
+            If the <em>connected</em> instance variable is
+            <code>YES</code>, this method calls
+            <a rel="gsdoc" href="#method$SQLClient-backendDisconnect">
+              -backendDisconnect
+            </a>
+
+            to ensure that the connection to the database server is
+            dropped. <br /> Performs any necessary locking for
+            thread safety.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-execute:,...">execute:&nbsp;,...</a></h3>
+    - (void) <b>execute:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt<b>,...</b>;<br />
+    <p>
+      
+            Perform arbitrary operation
+            <em>which does not return any value.</em> <br /> This
+            arguments to this method are a <code>nil</code>
+            terminated list which are concatenated in the
+            manner of the *
+            <a rel="gsdoc" href="/usr/home/brains99/GNUstep/Local/Library/Documentation/Libraries/Server/BSSQL.html#method$BSSQL-prepare:args:">
+              -prepare:args:
+            </a>
+
+            method. <br /> Any string arguments are assumed to
+            have been quoted appropriately already, but non-string
+            arguments are automatically quoted using the
+            <a rel="gsdoc" href="#method$SQLClient-quote:">
+              -quote:
+            </a>
+
+            method.
+
+<pre>
+   [db execute: @&quot;UPDATE &quot;, table, @&quot; SET Name = &quot;,
+     myName, &quot; WHERE ID = &quot;, myId, nil];
+ </pre>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-execute:with:">execute:&nbsp;with:&nbsp;</a></h3>
+    - (void) <b>execute:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt<b> with:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDictionary.html#class$NSDictionary">NSDictionary</a>*)values;<br />
+    <p>
+      
+            Takes the statement and substitutes in
+            <var>values</var> from the dictionary where markup of
+            the format {key} is found. <br /> Passes the result to
+            the
+            <a rel="gsdoc" href="#method$SQLClient-execute:,...">
+              -execute:,...
+            </a>
+
+            method.
+
+<pre>
+   [db execute: @&quot;UPDATE {Table} SET Name = {Name} WHERE ID = {ID}&quot;
+          with: values];
+ </pre>
+      
+            Any non-string <var>values</var> in the dictionary will
+            be replaced by the results of the
+            <a rel="gsdoc" href="#method$SQLClient-quote:">
+              -quote:
+            </a>
+
+            method. <br /> The markup format may also be
+            {key?default} where <em>default</em> is a
+            string to be used if there is no value for the
+            <em>key</em> in the dictionary.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-initWithConfiguration:">initWithConfiguration:&nbsp;</a></h3>
+    - (id) <b>initWithConfiguration:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDictionary.html#class$NSDictionary">NSDictionary</a>*)config;<br />
+    <p>
+      
+            Calls
+            <a rel="gsdoc" href="#method$SQLClient-initWithConfiguration:name:">
+              -initWithConfiguration:name:
+            </a>
+
+            passing a <code>nil</code> reference name.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-initWithConfiguration:name:">initWithConfiguration:&nbsp;name:&nbsp;</a></h3>
+    - (id) <b>initWithConfiguration:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDictionary.html#class$NSDictionary">NSDictionary</a>*)config<b> name:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)reference;<br />
+    <p>
+      
+            Initialise using the supplied configuration, or
+            if that is <code>nil</code>, try to use values from
+            NSUserDefaults (and automatically update
+            when the defaults change). <br /> Uses the
+            <var>reference</var> name to determine configuration
+            information... and if a <code>nil</code> name
+            is supplied, defaults to the value of the SQLClientName
+            as a user default string or &apos;Database&apos; if no other name
+            is provided. <br /> If a SQLClient instance already
+            exists with the name used for this instance, the
+            receiver is deallocated and the existing instance
+            is retained and returned... there may only ever be one
+            instance for a particular <var>reference</var>
+            name. <br /> <br /> The <var>config</var> argument
+            (or the SQLClientReferences user default) is a
+            dictionary with names as keys and dictionaries
+            as its values. Configuration entries from the dictionary
+            corresponding to the database client are used
+            if possible, general entries are used otherwise. <br />
+            Database... is the name of the database to use, if
+            it is missing then &apos;Database&apos; may be used instead.
+            <br /> User... is the name of the database user to
+            use, if it is missing then &apos;User&apos; may be used instead.
+            <br /> Password... is the name of the database user
+            password, if it is missing then &apos;Password&apos; may be
+            used instead. <br /> ServerType... is the name of the
+            backend server to be used... by convention the name
+            of a bundle containing the interface to that backend. If
+            this is missing then &apos;Postgres&apos; is used. <br />
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-isInTransaction">isInTransaction&nbsp;</a></h3>
+    - (BOOL) <b>isInTransaction</b>;<br />
+    <p>
+      
+            Return the state of the flag indicating whether the
+            library thinks a transaction is in progress. This
+            flag is normally maintained by
+            <a rel="gsdoc" href="#method$SQLClient-begin">
+              -begin
+            </a>
+
+            , <a rel="gsdoc" href="#method$SQLClient-commit">-commit</a>
+, and
+            <a rel="gsdoc" href="#method$SQLClient-rollback">
+              -rollback
+            </a>
+
+            .
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-lastOperation">lastOperation&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDate.html#class$NSDate">NSDate</a>*) <b>lastOperation</b>;<br />
+    <p>
+      
+            Returns the date/time stamp of the last database
+            operation performed by the receiver, or
+            <code>nil</code> if no operation has ever been done
+            by it. <br /> Simply connecting to or disconnecting from
+            the databsse does not count as an operation.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-name">name&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>name</b>;<br />
+    <p>
+      
+            Return the database reference name for this instance
+            (or <code>nil</code>).
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-password">password&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>password</b>;<br />
+    <p>
+      
+            Return the database password for this instance (or
+            <code>nil</code>).
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-query:,...">query:&nbsp;,...</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSMutableArray">NSMutableArray</a>*) <b>query:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt<b>,...</b>;<br />
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Perform arbitrary query
+              <em>which returns values.</em>
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This method has at least one argument, the string
+              starting the statement to be executed (which
+              must have the prefix &apos;select &apos;).
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Additional arguments are a <code>nil</code>
+              terminated list which also be strings, and
+              these are appended to the statement. <br /> Any
+              string arguments are assumed to have been quoted
+              appropriately already, but non-string
+              arguments are automatically quoted using the
+              <a rel="gsdoc" href="#method$SQLClient-quote:">
+                -quote:
+              </a>
+
+              method.
+                </p>
+    <p>
+      
+
+<pre>
+   result = [db query: @&quot;SELECT Name FROM &quot;, table, nil];
+ </pre>
+      
+            
+    </p>
+    <p>
+Upon error, an exception is raised.    </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              The query returns an array of records (each of which
+              is represented by an SQLRecord object).
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Each SQLRecord object contains one or more fields,
+              in the order in which they occurred in the query.
+              Fields may also be retrieved by name.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+NULL field items are returned as NSNull objects.    </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Most other field items are returned as NSString
+              objects.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Date and timestamp field items are returned as
+              NSDate objects.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-query:with:">query:&nbsp;with:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSMutableArray">NSMutableArray</a>*) <b>query:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt<b> with:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSDictionary.html#class$NSDictionary">NSDictionary</a>*)values;<br />
+    <p>
+      
+            Takes the query statement and substitutes in
+            <var>values</var> from the dictionary where markup of
+            the format {key} is found. <br /> Passes the result to
+            the
+            <a rel="gsdoc" href="#method$SQLClient-query:,...">
+              -query:,...
+            </a>
+
+            method to execute.
+
+<pre>
+   result = [db query: @&quot;SELECT Name FROM {Table} WHERE ID = {ID}&quot;
+                 with: values];
+ </pre>
+      
+            Any non-string <var>values</var> in the dictionary will
+            be replaced by the results of the
+            <a rel="gsdoc" href="#method$SQLClient-quote:">
+              -quote:
+            </a>
+
+            method. <br /> The markup format may also be
+            {key?default} where <em>default</em> is a
+            string to be used if there is no value for the
+            <em>key</em> in the dictionary.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-quote:">quote:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>quote:</b> (id)obj;<br />
+    <p>
+      
+            Convert an object to a string suitable for use in
+            an SQL query. <br /> Normally the
+            <a rel="gsdoc" href="#method$SQLClient-execute:,...">
+              -execute:,...
+            </a>
+
+            , and
+            <a rel="gsdoc" href="#method$SQLClient-query:,...">
+              -query:,...
+            </a>
+
+            methods will call this method automatically for
+            everything apart from string objects. <br />
+            Strings have to be handled specially, because they
+            are used both for parts of the SQL command, and as
+            values (where they need to be quoted). So where you
+            need to pass a string value which needs quoting, you
+            must call this method explicitly. <br /> Subclasses
+            may override this method to provide appropriate quoting
+            for types of object which need database backend
+            specific quoting conventions. However, the defalt
+            implementation should be OK for most cases.
+            <br /> The base class implementation formats NSDate
+            objects as <br /> YYYY-MM-DD hh:mm:ss.mmm ?ZZZZ
+            <br /> NSData objects are not quoted... they must
+            not appear in queries, and where used for insert/update
+            operations, they need to be passed to the
+            <a rel="gsdoc" href="#method$SQLClient-backendExecute:">
+              -backendExecute:
+            </a>
+
+            method unchanged. <br /> For a <code>nil</code> or
+            NSNull object, we return NULL. <br /> For a number,
+            we simply convert directly to a string. <br /> For a
+            date, we convert to the text format used by the
+            database, and add leading and trailing quotes.
+            <br /> For a data object, we don&apos;t quote... the
+            other parts of the code need to know they have an
+            NSData object and pass it on unchanged to the
+            <a rel="gsdoc" href="#method$SQLClient-backendExecute:">
+              -backendExecute:
+            </a>
+
+            method. <br /> For any other type of data, we just
+            produce a quoted string representation.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-quoteCString:">quoteCString:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>quoteCString:</b> (const char*)s;<br />
+    <p>
+      
+            Convert a &apos;C&apos; string to a string suitable for use
+            in an SQL query.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-quoteChar:">quoteChar:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>quoteChar:</b> (char)c;<br />
+    <p>
+      
+            Convert a single character to a string suitable for
+            use in an SQL query.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-quoteFloat:">quoteFloat:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>quoteFloat:</b> (float)f;<br />
+    <p>
+      
+            Convert a float to a string suitable for use in an
+            SQL query.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-quoteInteger:">quoteInteger:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>quoteInteger:</b> (int)i;<br />
+    <p>
+      
+            Convert an integer to a string suitable for use in
+            an SQL query.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-rollback">rollback&nbsp;</a></h3>
+    - (void) <b>rollback</b>;<br />
+    <p>
+      
+            Revert a transaction for this database client.
+            <br /> This <strong>must</strong> match an earlier
+            <a rel="gsdoc" href="#method$SQLClient-begin">
+              -begin
+            </a>
+
+            .
+            
+    </p>
+    <p>
+
+              NB. You must <strong>not</strong> execute an SQL
+              statement which would commit or rollback a
+              transaction directly... use only this method
+              or the
+              <a rel="gsdoc" href="#method$SQLClient-rollback">
+                -rollback
+              </a>
+
+              method.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-setDatabase:">setDatabase:&nbsp;</a></h3>
+    - (void) <b>setDatabase:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)s;<br />
+    <p>
+      
+            Set the database host/name for this object. <br /> This
+            is called automatically to configure the connection...
+            you normally shouldn&apos;t need to call it yourself.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-setName:">setName:&nbsp;</a></h3>
+    - (void) <b>setName:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)s;<br />
+    <p>
+      
+            Set the database reference name for this object. This
+            is used to differentiate between multiple connections to
+            the database. <br /> This is called automatically to
+            configure the connection... you normally
+            shouldn&apos;t need to call it yourself. <br /> NB.
+            attempts to change the name of an instance to that
+            of an existing instance are ignored.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-setPassword:">setPassword:&nbsp;</a></h3>
+    - (void) <b>setPassword:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)s;<br />
+    <p>
+      
+            Set the database password for this object. <br /> This
+            is called automatically to configure the connection...
+            you normally shouldn&apos;t need to call it yourself.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-setUser:">setUser:&nbsp;</a></h3>
+    - (void) <b>setUser:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)s;<br />
+    <p>
+      
+            Set the database user for this object. <br /> This is
+            called automatically to configure the connection...
+            you normally shouldn&apos;t need to call it yourself.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-simpleExecute:">simpleExecute:&nbsp;</a></h3>
+    - (void) <b>simpleExecute:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSArray">NSArray</a>*)info;<br />
+    <p>
+      
+            Calls
+            <a rel="gsdoc" href="#method$SQLClient-backendExecute:">
+              -backendExecute:
+            </a>
+
+            in a safe manner. <br /> Handles locking. <br />
+            Maintains
+            <a rel="gsdoc" href="#method$SQLClient-lastOperation">
+              -lastOperation
+            </a>
+
+            date.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-simpleQuery:">simpleQuery:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSMutableArray">NSMutableArray</a>*) <b>simpleQuery:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt;<br />
+    <p>
+      
+            Calls
+            <a rel="gsdoc" href="#method$SQLClient-backendQuery:">
+              -backendQuery:
+            </a>
+
+            in a safe manner. <br /> Handles locking. <br />
+            Maintains
+            <a rel="gsdoc" href="#method$SQLClient-lastOperation">
+              -lastOperation
+            </a>
+
+            date.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient-user">user&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>user</b>;<br />
+    <p>
+      
+            Return the database user for this instance (or
+            <code>nil</code>).
+          
+    </p>
+    <hr width="25%" align="left" />
+
+          <h1><a name="003000000000">
+        Software documentation for the SQLRecord class
+      </a></h1>
+    <h2><a name="class$SQLRecord">SQLRecord</a> : <a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSArray">NSArray</a></h2>
+    <blockquote>
+      <dl>
+        <dt><b>Declared in:</b></dt>
+        <dd>SQLClient.h</dd>
+      </dl>
+    </blockquote>
+    <p>
+      
+          An enhanced array to represent a record returned from a
+          query. You should <em>NOT</em> try to create instances
+          of this class except via the
+          <a rel="gsdoc" href="#method$SQLRecord+newWithValues:keys:count:">
+            +newWithValues:keys:count:
+          </a>
+
+          method.
+        
+    </p>
+    <br/><hr width="50%" align="left" />
+    <h2>Instance Variables for SQLRecord Class</h2>
+    <h3><a name="ivariable$SQLRecord*count">count</a></h3>
+    @private unsigned int <b>count</b>;<br />
+    <p>
+      
+            <em>Description forthcoming.</em>
+          
+    </p>
+    <hr width="25%" align="left" />
+    <br/><hr width="50%" align="left" /><br/>
+    <b>Method summary</b>
+    <ul>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLRecord+newWithValues:keys:count:">+newWithValues:keys:count:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLRecord-allKeys">-allKeys</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLRecord-objectForKey:">-objectForKey:</a></li>
+    </ul>
+    <hr width="50%" align="left" />
+    <h3><a name="method$SQLRecord+newWithValues:keys:count:">newWithValues:&nbsp;keys:&nbsp;count:&nbsp;</a></h3>
+    + (id) <b>newWithValues:</b> (id*)v<b> keys:</b> (id*)k<b> count:</b> (unsigned int)c;<br />
+    <p>
+      
+            <em>Description forthcoming.</em>
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLRecord-allKeys">allKeys&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSArray">NSArray</a>*) <b>allKeys</b>;<br />
+    <p>
+      
+            Returns an array containing the names of all the
+            fields in the record, in the order in which they
+            occur in the record.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLRecord-objectForKey:">objectForKey:&nbsp;</a></h3>
+    - (id) <b>objectForKey:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)key;<br />
+    <p>
+      
+            Returns the first field in the record whose name
+            matches the specified <var>key</var>. Uses an exact
+            match in preference to a case-insensitive match.
+          
+    </p>
+    <hr width="25%" align="left" />
+
+          <h1><a name="004000000000">
+        Software documentation for the SQLClient(Convenience)
+        category
+      </a></h1>
+    <h2><a rel="gsdoc" href="#class$SQLClient">SQLClient</a>(<a name="category$SQLClient(Convenience)">Convenience</a>)</h2>
+    <blockquote>
+      <dl>
+        <dt><b>Declared in:</b></dt>
+        <dd>SQLClient.h</dd>
+      </dl>
+    </blockquote>
+    <p>
+      
+          This category contains convenience methods including
+          those for frequently performed database operations...
+          message logging etc.
+        
+    </p>
+    <b>Method summary</b>
+    <ul>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-queryRecord:,...">-queryRecord:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-queryString:,...">-queryString:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-singletons:">-singletons:</a></li>
+    </ul>
+    <hr width="50%" align="left" />
+    <h3><a name="method$SQLClient(Convenience)-queryRecord:,...">queryRecord:&nbsp;,...</a></h3>
+    - (<a rel="gsdoc" href="#class$SQLRecord">SQLRecord</a>*) <b>queryRecord:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt<b>,...</b>;<br />
+    <p>
+      
+            Executes a query (like the
+            <a rel="gsdoc" href="#method$SQLClient-query:,...">
+              -query:,...
+            </a>
+
+            method) and checks the result (raising an exception
+            if the query did not contain a single record) and
+            returns the resulting record.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Convenience)-queryString:,...">queryString:&nbsp;,...</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*) <b>queryString:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt<b>,...</b>;<br />
+    <p>
+      
+            Executes a query (like the
+            <a rel="gsdoc" href="#method$SQLClient-query:,...">
+              -query:,...
+            </a>
+
+            method) and checks the result. <br /> Raises an
+            exception if the query did not contain a single
+            record, or if the record did not contain a single
+            field. <br /> Returns the resulting field as a
+            <em>string</em>.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Convenience)-singletons:">singletons:&nbsp;</a></h3>
+    - (void) <b>singletons:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSMutableArray">NSMutableArray</a>*)records;<br />
+    <p>
+      
+            Convenience method to deal with the results of
+            a query where each record contains a single field... it
+            converts the array of <var>records</var> returned
+            by the query to an array containing the fields.
+          
+    </p>
+    <hr width="25%" align="left" />
+
+          <h1><a name="005000000000">
+        Software documentation for the SQLClient(Logging)
+        category
+      </a></h1>
+    <h2><a rel="gsdoc" href="#class$SQLClient">SQLClient</a>(<a name="category$SQLClient(Logging)">Logging</a>)</h2>
+    <blockquote>
+      <dl>
+        <dt><b>Declared in:</b></dt>
+        <dd>SQLClient.h</dd>
+      </dl>
+    </blockquote>
+    <p>
+      
+          This category porovides basic methods for logging debug
+          information.
+        
+    </p>
+    <b>Method summary</b>
+    <ul>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+debugging">+debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient+setDebugging:">+setDebugging:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-debug:,...">-debug:,...</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-debugging">-debugging</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-setDebugging:">-setDebugging:</a></li>
+    </ul>
+    <hr width="50%" align="left" />
+    <h3><a name="method$SQLClient(Logging)+debugging">debugging&nbsp;</a></h3>
+    + (unsigned int) <b>debugging</b>;<br />
+    <p>
+      
+            Return the class-wide debugging level, which is
+            inherited by all newly created minstances.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)+setDebugging:">setDebugging:&nbsp;</a></h3>
+    + (void) <b>setDebugging:</b> (unsigned int)level;<br />
+    <p>
+      
+            Set the debugging <var>level</var> to be inherited by
+            all new instances.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)-debug:,...">debug:&nbsp;,...</a></h3>
+    - (void) <b>debug:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)fmt<b>,...</b>;<br />
+    <p>
+      
+            The default implementation calls NSLogv to log a debug
+            message. <br /> Override this in a category to
+            provide more sophisticated logging.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)-debugging">debugging&nbsp;</a></h3>
+    - (unsigned int) <b>debugging</b>;<br />
+    <p>
+      
+            Return the current debugging level.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Logging)-setDebugging:">setDebugging:&nbsp;</a></h3>
+    - (void) <b>setDebugging:</b> (unsigned int)level;<br />
+    <p>
+      
+            Set the debugging <var>level</var> of this instance...
+            overrides the default <var>level</var> inherited
+            from the class.
+          
+    </p>
+    <hr width="25%" align="left" />
+
+          <h1><a name="006000000000">
+        Software documentation for the SQLClient(Subclass)
+        category
+      </a></h1>
+    <h2><a rel="gsdoc" href="#class$SQLClient">SQLClient</a>(<a name="category$SQLClient(Subclass)">Subclass</a>)</h2>
+    <blockquote>
+      <dl>
+        <dt><b>Declared in:</b></dt>
+        <dd>SQLClient.h</dd>
+      </dl>
+    </blockquote>
+    <p>
+      
+          This category contains the methods which a subclass
+          <em>must</em> override to provide a working instance,
+          and helper methods for the backend implementations.
+          <br /> Application programmers should <em>not</em>
+          call the backend methods directly. <br />
+          
+    </p>
+    <p>
+
+            When subclassing to produce a backend driver bundle,
+            please be aware that the subclass must <em>NOT</em>
+            introduce additional instance variables. Instead
+            the <em>extra</em> instance variable is provided for
+            use as a pointer to subclass specific data.
+              </p>
+    <p>
+      
+        
+    </p>
+    <b>Method summary</b>
+    <ul>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-backendConnect">-backendConnect</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-backendDisconnect">-backendDisconnect</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-backendExecute:">-backendExecute:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-backendQuery:">-backendQuery:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-copyEscapedBLOB:into:">-copyEscapedBLOB:into:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-insertBLOBs:intoStatement:length:withMarker:length:giving:">-insertBLOBs:intoStatement:length:withMarker:length:giving:</a></li>
+      <li><a rel="gsdoc" href="SQLClient.html#method$SQLClient-lengthOfEscapedBLOB:">-lengthOfEscapedBLOB:</a></li>
+    </ul>
+    <hr width="50%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-backendConnect">backendConnect&nbsp;</a></h3>
+    - (BOOL) <b>backendConnect</b>;<br />
+Subclasses <strong>should</strong> override this method.<br />
+    <p>
+      
+            Attempts to establish a connection to the database
+            server. <br /> Returns a flag to indicate whether
+            the connection has been established. <br /> If a
+            connection was already established, returns
+            <code>YES</code> and does nothing. <br /> You should
+            not need to use this method normally, as it is called
+            for you automatically when necessary. <br />
+            
+    </p>
+    <p>
+
+              Subclasses <strong>must</strong> implement
+              this method to establish a connection to the
+              database server process (and initialise the
+              <em>extra</em> instance variable if necessary),
+              setting the <em>connected</em> instance variable
+              to indicate the state of the object.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This method must call
+              <a rel="gsdoc" href="#method$SQLClient+purgeConnections:">
+                +purgeConnections:
+              </a>
+
+              to ensure that there is a free slot for the new
+              connection.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Application code must <em>not</em> call this
+              method directly, it is for internal use only. The
+              <a rel="gsdoc" href="#method$SQLClient-connect">
+                -connect
+              </a>
+
+              method calls this method if the <em>connected</em>
+              instance variable is <code>NO</code>.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-backendDisconnect">backendDisconnect&nbsp;</a></h3>
+    - (void) <b>backendDisconnect</b>;<br />
+Subclasses <strong>should</strong> override this method.<br />
+    <p>
+      
+            Disconnect from the database unless already
+            disconnected. <br />
+            
+    </p>
+    <p>
+
+              This method is called automatically when the
+              receiver is deallocated or reconfigured, and may
+              also be called automatically when there are too many
+              database connections active.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              If the receiver is an instance of a subclass which
+              uses the <em>extra</em> instance variable, it
+              <strong>must</strong> clear that variable in the
+              <a rel="gsdoc" href="#method$SQLClient-backendDisconnect">
+                -backendDisconnect
+              </a>
+
+              method, because a reconfiguration may cause the
+              class of the receiver to change.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This method must set the <em>connected</em> instance
+              variable to <code>NO</code>.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Application code must <em>not</em> call this
+              method directly, it is for internal use only. The
+              <a rel="gsdoc" href="#method$SQLClient-disconnect">
+                -disconnect
+              </a>
+
+              method calls this method if the <em>connected</em>
+              instance variable is <code>YES</code>.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-backendExecute:">backendExecute:&nbsp;</a></h3>
+    - (void) <b>backendExecute:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSArray">NSArray</a>*)info;<br />
+Subclasses <strong>should</strong> override this method.<br />
+    <p>
+      
+            Perform arbitrary operation
+            <em>which does not return any value.</em> <br /> This
+            method has a single argument, an array containing
+            the string representing the statement to be executed as
+            its first object, and an optional sequence of data
+            objects following it. <br />
+
+<pre>
+   [db backendExecute: [NSArray arrayWithObject:
+     @&quot;UPDATE MyTable SET Name = &apos;The name&apos; WHERE ID = 123&quot;]];
+ </pre>
+      
+            
+    </p>
+    <p>
+
+              The backend implementation is required to perform the
+              SQL statement using the supplied NSData objects at
+              the points in the statement marked by the
+              <code>&apos;&apos;&apos;</code> sequence. The marker saequences
+              are inserted into the statement at an earlier stage
+              by the
+              <a rel="gsdoc" href="#method$SQLClient-execute:,...">
+                -execute:,...
+              </a>
+
+              and
+              <a rel="gsdoc" href="#method$SQLClient-execute:with:">
+                -execute:with:
+              </a>
+
+              methods.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This method should lock the instance using the
+              <em>lock</em> instance variable for the duration of
+              the operation, and unlock it afterwards.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              NB. callers (other than the
+              <a rel="gsdoc" href="#method$SQLClient-begin">
+                -begin
+              </a>
+
+              , <a rel="gsdoc" href="#method$SQLClient-commit">-commit</a>
+, and
+              <a rel="gsdoc" href="#method$SQLClient-rollback">
+                -rollback
+              </a>
+
+              methods) should not pass any statement to this
+              method which would cause a transaction to begin or
+              end.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Application code must <em>not</em> call this
+              method directly, it is for internal use only.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-backendQuery:">backendQuery:&nbsp;</a></h3>
+    - (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSMutableArray">NSMutableArray</a>*) <b>backendQuery:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>*)stmt;<br />
+Subclasses <strong>should</strong> override this method.<br />
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Perform arbitrary query
+              <em>which returns values.</em>
+                </p>
+    <p>
+      
+
+<pre>
+   result = [db backendQuery: @&quot;SELECT Name FROM Table&quot;];
+ </pre>
+      
+            
+    </p>
+    <p>
+Upon error, an exception is raised.    </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              The query returns an array of records (each of which
+              is represented by an SQLRecord object).
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Each SQLRecord object contains one or more fields,
+              in the order in which they occurred in the query.
+              Fields may also be retrieved by name.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+NULL field items are returned as NSNull objects.    </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This method should lock the instance using the
+              <em>lock</em> instance variable for the duration of
+              the operation, and unlock it afterwards.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              Application code must <em>not</em> call this
+              method directly, it is for internal use only.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-copyEscapedBLOB:into:">copyEscapedBLOB:&nbsp;into:&nbsp;</a></h3>
+    - (unsigned) <b>copyEscapedBLOB:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSData.html#class$NSData">NSData</a>*)blob<b> into:</b> (void*)buf;<br />
+Subclasses <strong>should</strong> override this method.<br />
+    <p>
+      
+            This method is <em>only</em> for the use of the
+            <a rel="gsdoc" href="#method$SQLClient-insertBLOBs:intoStatement:length:withMarker:length:giving:">-insertBLOBs:intoStatement:length:withMarker:length:giving:</a>
+ method. <br /> Subclasses which need to insert binary data into a statement must implement this method to copy the escaped data into place and return the number of bytes actually copied.
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-insertBLOBs:intoStatement:length:withMarker:length:giving:">insertBLOBs:&nbsp;intoStatement:&nbsp;length:&nbsp;withMarker:&nbsp;length:&nbsp;giving:&nbsp;</a></h3>
+    - (const void*) <b>insertBLOBs:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSArray.html#class$NSArray">NSArray</a>*)blobs<b> intoStatement:</b> (const void*)statement<b> length:</b> (unsigned)sLength<b> withMarker:</b> (const void*)marker<b> length:</b> (unsigned)mLength<b> giving:</b> (unsigned*)result;<br />
+    <p>
+      
+            
+    </p>
+    <p>
+
+              This method is a convenience method provided for
+              subclasses which need to insert escaped binary
+              data into an SQL <var>statement</var> before sending
+              the <var>statement</var> to a backend server process.
+              This method makes use of the
+              <a rel="gsdoc" href="#method$SQLClient-copyEscapedBLOB:into:">
+                -copyEscapedBLOB:into:
+              </a>
+
+              and
+              <a rel="gsdoc" href="#method$SQLClient-lengthOfEscapedBLOB:">
+                -lengthOfEscapedBLOB:
+              </a>
+
+              methods, which <em>must</em> be implemented by
+              the subclass.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              The <var>blobs</var> array is an array containing the
+              original SQL <var>statement</var> string (unused
+              by this method) followed by the data items to be
+              inserted.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              The <var>statement</var> and <var>sLength</var>
+              arguments specify the datastream to be copied
+              and into which the BLOBs are to be inserted.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              The <var>marker</var> and <var>mLength</var>
+              arguments specify the sequence of
+              <var>marker</var> bytes in the <var>statement</var>
+              which indicate a position for insertion of a n
+              escaped BLOB.
+                </p>
+    <p>
+      
+            
+    </p>
+    <p>
+
+              The method returns either the original
+              <var>statement</var> or a copy containing the
+              escaped BLOBs. The length of the returned data is
+              stored in <var>result</var>.
+                </p>
+    <p>
+      
+          
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="method$SQLClient(Subclass)-lengthOfEscapedBLOB:">lengthOfEscapedBLOB:&nbsp;</a></h3>
+    - (unsigned) <b>lengthOfEscapedBLOB:</b> (<a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSData.html#class$NSData">NSData</a>*)blob;<br />
+Subclasses <strong>should</strong> override this method.<br />
+    <p>
+      
+            This method is <em>only</em> for the use of the
+            <a rel="gsdoc" href="#method$SQLClient-insertBLOBs:intoStatement:length:withMarker:length:giving:">-insertBLOBs:intoStatement:length:withMarker:length:giving:</a>
+ method. <br /> Subclasses which need to insert binary data into a statement must implement this method to return the length of the escaped bytestream which will be inserted.
+          
+    </p>
+    <hr width="25%" align="left" />
+
+          <h1><a name="007000000000">SQLClient variables</a></h1>
+    <p>
+    </p>
+    <h3><a name="variable$SQLConnectionException">SQLConnectionException</a></h3>
+    <a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>* SQLConnectionException;<br />
+    <p>
+      
+          Exception for when a connection to the server is
+          lost.
+        
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="variable$SQLEmptyException">SQLEmptyException</a></h3>
+    <a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>* SQLEmptyException;<br />
+    <p>
+      
+          Exception for when a query is supposed to return
+          data and doesn&apos;t.
+        
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="variable$SQLException">SQLException</a></h3>
+    <a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>* SQLException;<br />
+    <p>
+      
+          Exception raised when an error with the remote
+          database server occurs.
+        
+    </p>
+    <hr width="25%" align="left" />
+    <h3><a name="variable$SQLUniqueException">SQLUniqueException</a></h3>
+    <a rel="gsdoc" href="/usr/home/brains99/GNUstep/System/Library/Documentation/Developer/Base/Reference/NSString.html#class$NSString">NSString</a>* SQLUniqueException;<br />
+    <p>
+      
+          Exception for when an insert/update would break the
+          uniqueness of a field or index.
+        
+    </p>
+    <hr width="25%" align="left" />
+    <br />
+    </font>
+</body>
+</html>

@@ -1,0 +1,13 @@
+*obj
+ECPG.bundle
+ECPG.m
+MySQL.bundle
+Oracle.bundle
+Oracle.lis
+Oracle.m
+Postgres.bundle
+SQLClient
+config.h
+config.log
+config.make
+config.status
