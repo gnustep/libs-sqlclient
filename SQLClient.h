@@ -176,10 +176,34 @@
  */
 @interface SQLRecord : NSArray
 {
+@private
   unsigned int	count;
 }
-+ (id) newWithValues: (id*)v keys: (id*)k count: (unsigned int)c;
+
+/**
+ * Create a new SQLRecord containing the specified fields.<br />
+ * NB. The values and keys are <em>retained</em> by the record rather
+ * than being copied.<br />
+ * A nil value is represented by [NSNull null].<br />
+ * Keys must be unique string values (case insensitive comparison).
+ */
++ (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c;
+
+/**
+ * Returns an array containing the names of all the fields in the record.
+ */
 - (NSArray*) allKeys;
+
+/**
+ * Return the record as a mutable dictionary with the keys as the
+ * record field names standardised to be lowercase strings.
+ */
+- (NSMutableDictionary*) dictionary;
+
+/**
+ * Returns the value of the named field.<br />
+ * The field name is case insensitive.
+ */
 - (id) objectForKey: (NSString*)key;
 @end
 

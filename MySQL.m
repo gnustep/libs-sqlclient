@@ -299,7 +299,7 @@ static unsigned int trim(char *str)
 	  int	recordCount = mysql_num_rows(result);
 	  int	fieldCount = mysql_num_fields(result);
 	  MYSQL_FIELD	*fields = mysql_fetch_fields(result);
-	  id	keys[fieldCount];
+	  NSString	*keys[fieldCount];
 	  int	i;
 
 	  for (i = 0; i < fieldCount; i++)

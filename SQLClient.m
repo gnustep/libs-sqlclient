@@ -51,6 +51,8 @@ typedef	struct {
   @defs(SQLTransaction);
 } *TDefs;
 
+static NSNull	*null = nil;
+
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
 {
@@ -58,7 +60,15 @@ typedef	struct {
   return nil;
 }
 
-+ (id) newWithValues: (id*)v keys: (id*)k count: (unsigned int)c
++ (void) initialize
+{
+  if (null == nil)
+    {
+      null = [NSNull new];
+    }
+}
+
++ (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
 {
   id		*ptr;
   SQLRecord	*r;
@@ -69,16 +79,19 @@ typedef	struct {
   ptr = ((void*)&(r->count)) + sizeof(r->count);
   for (pos = 0; pos < c; pos++)
     {
-      ptr[pos] = RETAIN(v[pos]);
+      if (v[pos] == nil)
+	{
+	  ptr[pos] = RETAIN(null);
+	}
+      else
+	{
+	  ptr[pos] = RETAIN(v[pos]);
+	}
       ptr[pos + c] = RETAIN(k[pos]);
     }
   return r;
 }
 
-/**
- * Returns an array containing the names of all the fields in the
- * record, in the order in which they occur in the record.
- */
 - (NSArray*) allKeys
 {
   id		*ptr;
@@ -111,6 +124,21 @@ typedef	struct {
   NSDeallocateObject(self);
 }
 
+- (NSMutableDictionary*) dictionary
+{
+  NSMutableDictionary	*d;
+  unsigned		pos;
+  id			*ptr;
+
+  ptr = ((void*)&count) + sizeof(count);
+  d = [NSMutableDictionary dictionaryWithCapacity: count];
+  for (pos = 0; pos < count; pos++)
+    {
+      [d setObject: ptr[pos] forKey: [ptr[pos + count] lowercaseString]];
+    }
+  return d;
+}
+
 - (id) init
 {
   NSLog(@"Illegal attempt to -init an SQLRecord");
@@ -131,10 +159,6 @@ typedef	struct {
   return ptr[pos];
 }
 
-/**
- * Returns the first field in the record whose name matches the specified
- * key.  Uses an exact match in preference to a case-insensitive match.
- */
 - (id) objectForKey: (NSString*)key
 {
   id		*ptr;

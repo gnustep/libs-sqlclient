@@ -1,3 +1,8 @@
+Sun Aug 22 10:35:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.[hm]: Add ([SQLRecord-dictionary]) and tidy/comment the
+	class a bit better.
+
 Sat Aug 07 14:25:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.m: Add session timeouts to kill off idle sessions.

@@ -377,13 +377,13 @@ static unsigned int trim(char *str)
 	}
       if (PQresultStatus(result) == PGRES_TUPLES_OK)
 	{
-	  int	recordCount = PQntuples(result);
-	  int	fieldCount = PQnfields(result);
-	  id	keys[fieldCount];
-	  int	types[fieldCount];
-	  int	modifiers[fieldCount];
-	  int	formats[fieldCount];
-	  int	i;
+	  int		recordCount = PQntuples(result);
+	  int		fieldCount = PQnfields(result);
+	  NSString	*keys[fieldCount];
+	  int		types[fieldCount];
+	  int		modifiers[fieldCount];
+	  int		formats[fieldCount];
+	  int		i;
 
 	  for (i = 0; i < fieldCount; i++)
 	    {
