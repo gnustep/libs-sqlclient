@@ -1673,6 +1673,14 @@ static void	quoteString(NSMutableString *s)
   [self _addInfo: [_db _substitute: stmt with: values]];
 }
 
+- (void) append: (SQLTransaction*)other
+{
+  if (other != nil && other->_count > 0)
+    {
+      [self _addInfo: other->_info];
+    }
+}
+
 - (SQLClient*) db
 {
   return _db;

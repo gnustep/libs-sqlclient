@@ -915,6 +915,17 @@ extern NSTimeInterval	SQLClientTimeNow();
 - (void) add: (NSString*)stmt with: (NSDictionary*)values;
 
 /**
+ * Appends all the statements from the other transaction to the receiver.<br />
+ * This provides a convenient way of merging transactions which have been
+ * built by different code modules, in order to have them all executed
+ * together in a single operation (for efficiency etc).<br />
+ * This does not alter the other transaction, so if the execution of
+ * a group of merged transactions fails, it is then possible to attempt
+ * to commit the individual transactions separately.
+ */
+- (void) append: (SQLTransaction*)other;
+
+/**
  * Returns the database client with which this instance operates.<br />
  * This client is retained by the transaction.
  */
