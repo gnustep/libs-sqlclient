@@ -340,6 +340,12 @@
  */
 - (NSMutableDictionary*) handlers;
 
+/**
+ * Return the WebServer instance that the receiver is actiang as a
+ * delegate for.
+ */
+- (WebServer*) http;
+
 /** <init />
  * Initialises the receiver as the delegate of http and configures
  * the WebServer based upon the settings found in the user defaults

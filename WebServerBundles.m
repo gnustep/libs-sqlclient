@@ -53,6 +53,11 @@
   return _handlers;
 }
 
+- (WebServer*) http
+{
+  return _http;
+}
+
 - (id) init
 {
   return [self initAsDelegateOf: nil];
