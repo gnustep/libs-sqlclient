@@ -4,6 +4,8 @@ include $(GNUSTEP_MAKEFILES)/common.make
 
 PACKAGE_NAME = SQLClient
 PACKAGE_VERSION = 1.1.0
+CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
+CVS_TAG_NAME = SQLClient
 
 TEST_TOOL_NAME=
 
