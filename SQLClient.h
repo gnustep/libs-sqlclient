@@ -134,7 +134,8 @@
     <p>
       Bug reports, patches, and contributions (eg a backend bundle for a
       new database) should be entered on the GNUstep project page
-      &lt;http://savannah.gnu.org/support/?group-gnustep&gt;
+      &lt;http://savannah.gnu.org/projects/gnustep&gt; and the bug
+      reporting page &lt;http://savannah.gnu.org/bugs/?group=gnustep&gt;
     </p>
   </section>
 </chapter>
