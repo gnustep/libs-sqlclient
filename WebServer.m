@@ -807,18 +807,37 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
   session = (WebServerSession*)NSMapGet(_sessions, (void*)hdl);
   NSAssert(session != nil, NSInternalInconsistencyException);
+  parser = [session parser];
 
   d = [dict objectForKey: NSFileHandleNotificationDataItem];
 
   if ([d length] == 0)
     {
+      if (parser == nil)
+	{
+	  NSMutableData	*buffer = [session buffer];
+
+	  if ([buffer length] == 0)
+	    {
+	      [self _alert: @"%@ read end-of-file in empty request", session];
+	    }
+	  else
+	    {
+	      [self _alert: @"%@ read end-of-file in partial request - %@",
+		session, buffer];
+	    }
+	}
+      else
+	{
+	  [self _alert: @"%@ read end-of-file in incomplete request - %@",
+	    session, [parser mimeDocument]];
+	}
       [self _alert: @"%@ read end-of-file in request", session];
       [self _endSession: session];
       return;
     }
   // NSLog(@"Data read on %@ ... %@", session, d);
 
-  parser = [session parser];
   if (parser == nil)
     {
       unsigned char	*bytes;

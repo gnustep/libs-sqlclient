@@ -1,3 +1,8 @@
+Thy Jul 15 09:40:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: ([_didRead:]) more informative logging upon reading
+	an unexpected end-of-file
+
 Wed Jul 14 12:07:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* configure.ac: Check for PQfformat in libpq, if it is not there
