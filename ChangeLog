@@ -1,3 +1,7 @@
+Sat Aug 07 14:25:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: Add session timeouts to kill off idle sessions.
+
 Tue Jul 27 17:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
         * configure.ac: Give more help when postgres is not found.

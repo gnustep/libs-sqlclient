@@ -28,21 +28,27 @@
 
 @interface	WebServerSession : NSObject
 {
-  NSString	*address;
-  NSFileHandle	*handle;
-  GSMimeParser	*parser;
-  NSMutableData	*buffer;
-  unsigned	byteCount;
+  NSString		*address;
+  NSFileHandle		*handle;
+  GSMimeParser		*parser;
+  NSMutableData		*buffer;
+  unsigned		byteCount;
+  NSTimeInterval	ticked;
+  BOOL			processing;
 }
 - (NSString*) address;
 - (NSMutableData*) buffer;
 - (NSFileHandle*) handle;
 - (unsigned) moreBytes: (unsigned)count;
 - (GSMimeParser*) parser;
+- (BOOL) processing;
 - (void) setAddress: (NSString*)aString;
 - (void) setBuffer: (NSMutableData*)aBuffer;
 - (void) setHandle: (NSFileHandle*)aHandle;
 - (void) setParser: (GSMimeParser*)aParser;
+- (void) setProcessing: (BOOL)aFlag;
+- (void) setTicked: (NSTimeInterval)when;
+- (NSTimeInterval) ticked;
 @end
 
 @implementation	WebServerSession
@@ -88,6 +94,11 @@
   return parser;
 }
 
+- (BOOL) processing
+{
+  return processing;
+}
+
 - (void) setAddress: (NSString*)aString
 {
   ASSIGN(address, aString);
@@ -107,6 +118,21 @@
 {
   ASSIGN(parser, aParser);
 }
+
+- (void) setProcessing: (BOOL)aFlag
+{
+  processing = aFlag;
+}
+
+- (void) setTicked: (NSTimeInterval)when
+{
+  ticked = when;
+}
+
+- (NSTimeInterval) ticked
+{
+  return ticked;
+}
 @end
 
 @interface	WebServer (Private)
@@ -116,12 +142,18 @@
 - (void) _didWrite: (NSNotification*)notification;
 - (void) _endSession: (WebServerSession*)session;
 - (void) _process: (WebServerSession*)session;
+- (void) _ticker: (NSTimer*)timer;
 @end
 
 @implementation	WebServer
 
 - (void) dealloc
 {
+  if (_ticker != nil)
+    {
+      [_ticker invalidate];
+      _ticker = nil;
+    }
   [self setPort: nil secure: nil];
   DESTROY(_nc);
   DESTROY(_root);
@@ -300,12 +332,18 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 - (id) init
 {
   _nc = RETAIN([NSNotificationCenter defaultCenter]);
+  _sessionTimeout = 30.0;
   _maxSess = 32;
   _maxBodySize = 8*1024;
   _maxRequestSize = 4*1024*1024;
   _substitutionLimit = 4;
   _sessions = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
     NSObjectMapValueCallBacks, 0);
+  _ticker = [NSTimer scheduledTimerWithTimeInterval: 0.8
+					     target: self
+					   selector: @selector(_timeout:)
+					   userInfo: 0
+					    repeats: YES];
   return self;
 }
 
@@ -597,6 +635,11 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   ASSIGN(_root, aPath);
 }
 
+- (void) setSessionTimeout: (NSTimeInterval)aDelay
+{
+  _sessionTimeout = aDelay;
+}
+
 - (void) setSubstitutionLimit: (unsigned)depth
 {
   _substitutionLimit = depth;
@@ -837,6 +880,9 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
       return;
     }
   // NSLog(@"Data read on %@ ... %@", session, d);
+
+  // Mark session as having had I/O ... not idle.
+  [session setTicked: _ticked];
 
   if (parser == nil)
     {
@@ -1082,7 +1128,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
 - (void) _process: (WebServerSession*)session
 {
-  GSMimeDocument	*request = [[session parser] mimeDocument];
+  GSMimeDocument	*request;
   GSMimeDocument	*response;
   BOOL			responded = NO;
   NSMutableData		*raw;
@@ -1094,6 +1140,8 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   NSEnumerator		*enumerator;
   GSMimeHeader		*hdr;
 
+  AUTORELEASE(RETAIN(session));
+  request = [[session parser] mimeDocument];
   response = AUTORELEASE([GSMimeDocument new]);
   [response setContent: [NSData data] type: @"text/plain" name: nil];
   [request setHeader: @"x-remote-address"
@@ -1103,12 +1151,18 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   if (_verbose == YES) NSLog(@"Request %@ - %@", session, request);
   NS_DURING
     {
+      [session setProcessing: YES];
+      [session setTicked: _ticked];
       responded = [_delegate processRequest: request
 				   response: response
 					for: self];
+      _ticked = [NSDate timeIntervalSinceReferenceDate];
+      [session setTicked: _ticked];
+      [session setProcessing: NO];
     }
   NS_HANDLER
     {
+      [session setProcessing: NO];
       [self _alert: @"Exception %@, processing %@", localException, request];
       [response setHeader: @"http"
 		    value: @"HTTP/1.0 500 Internal Server Error"
@@ -1189,6 +1243,42 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     }
   if (_verbose == YES) NSLog(@"Response %@ - %@", session, out);
   [[session handle] writeInBackgroundAndNotify: out];
+}
+
+- (void) _ticker: (NSTimer*)timer
+{
+  unsigned		count;
+
+  _ticked = [NSDate timeIntervalSinceReferenceDate];
+
+  count = NSCountMapTable(_sessions);
+  if (count > 0)
+    {
+      NSMapEnumerator	enumerator;
+      WebServerSession	*session;
+      NSFileHandle	*handle;
+      NSMutableArray	*array;
+
+      array = [NSMutableArray arrayWithCapacity: count];
+      enumerator = NSEnumerateMapTable(_sessions);
+      while (NSNextMapEnumeratorPair(&enumerator,
+	(void **)(&handle), (void**)(&session)))
+	{
+	  if (_ticked - [session ticked] > _sessionTimeout
+	      && [session processing] == NO)
+	    {
+	      [array addObject: session];
+	    }
+	}
+      NSEndMapTableEnumeration(&enumerator);
+      while ([array count] > 0)
+	{
+	  session = [array objectAtIndex: 0];
+	  [self _alert: @"Session timed out - %@", session];
+	  [self _endSession: session];
+	  [array removeObjectAtIndex: 0];
+	}
+    }
 }
 @end
 

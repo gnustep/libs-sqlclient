@@ -131,6 +131,9 @@
   NSMapTable		*_sessions;
   unsigned		_handled;
   NSString		*_root;
+  NSTimer		*_ticker;
+  NSTimeInterval	_sessionTimeout;
+  NSTimeInterval	_ticked;
 }
 
 /**         
@@ -292,6 +295,12 @@
 - (void) setRoot: (NSString*)aPath;
 
 /**
+ * Sets the time after which an idle session should be shut down.<br />
+ * Default is 30.0
+ */
+- (void) setSessionTimeout: (NSTimeInterval)aDelay;
+
+/**
  * Sets a flag to determine whether verbose logging is to be performed.<br />
  * If this is YES then all incming requests and their responses will
  * be logged using the NSLog function.  This is useful for debugging
@@ -320,6 +329,7 @@
 		  using: (NSDictionary*)map
 		   into: (NSMutableString*)result
 		  depth: (unsigned)depth;
+
 @end
 
 /**
