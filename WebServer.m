@@ -906,7 +906,6 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	  [self _alert: @"%@ read end-of-file in incomplete request - %@",
 	    session, [parser mimeDocument]];
 	}
-      [self _alert: @"%@ read end-of-file in request", session];
       [self _endSession: session];
       return;
     }
@@ -1146,6 +1145,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     }
   else
     {
+      if (_verbose == YES) NSLog(@"%@ reset", session);
       [session reset];
       [hdl readInBackgroundAndNotify];	// Want another request.
     }
