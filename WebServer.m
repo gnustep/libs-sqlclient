@@ -813,6 +813,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	  [session setAddress: a];
 	  [session setHandle: hdl];
 	  [session setBuffer: [NSMutableData dataWithCapacity: 1024]];
+	  [session setTicked: _ticked];
 	  NSMapInsert(_sessions, (void*)hdl, (void*)session);
 	  RELEASE(session);
 	  [_nc addObserver: self
