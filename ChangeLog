@@ -1,3 +1,8 @@
+Sat Oct  9 14:29:35 2004  Nicola Pero  <n.pero@mi.flashnet.it>
+
+	* SQLClient.m ([SQLClient -simpleExecute:]): Fixed logging
+	durations and statements in transactions.
+
 Thu Oct 08 10:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.[hm]: Add ([-quotef:,...]) to perform efficient quoting

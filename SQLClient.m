@@ -213,8 +213,8 @@ NSString	*SQLUniqueException = @"SQLUniqueException";
 
 @implementation	SQLClient (Logging)
 
-static unsigned int	classDebugging = 0;
-static NSTimeInterval	classDuration = -1;
+static unsigned int	classDebugging = 9;
+static NSTimeInterval	classDuration = 0;
 
 + (unsigned int) debugging
 {
@@ -964,9 +964,20 @@ static void	quoteString(NSMutableString *s)
 - (void) simpleExecute: (NSArray*)info
 {
   NSString	*statement;
+  BOOL isCommit = NO;
+  BOOL isRollback = NO;
 
   [lock lock];
   statement = [info objectAtIndex: 0];
+  if ([statement isEqualToString: commitString])
+    {
+      isCommit = YES;
+    }
+  if ([statement isEqualToString: rollbackString])
+    {
+      isRollback = YES;
+    }
+
   NS_DURING
     {
       NSTimeInterval	start = 0.0;
@@ -985,10 +996,10 @@ static void	quoteString(NSMutableString *s)
 	  d = _lastOperation - start;
 	  if (d >= _duration)
 	    {
-	      if (statement == commitString || statement == rollbackString)
+	      if (isCommit || isRollback)
 		{
 		  NSEnumerator	*e = [_statements objectEnumerator];
-		  if (statement == commitString)
+		  if (isCommit)
 		    {
 		      [self debug:
 			@"Duration %g for transaction commit ...", d];
@@ -1018,16 +1029,14 @@ static void	quoteString(NSMutableString *s)
 		}
 	    }
 	}
-      if (_inTransaction == NO
-	|| statement == commitString || statement == rollbackString)
+      if (_inTransaction == NO || isCommit || isRollback)
 	{
 	  [_statements removeAllObjects];
 	}
     }
   NS_HANDLER
     {
-      if (_inTransaction == NO
-	|| statement == commitString || statement == rollbackString)
+      if (_inTransaction == NO || isCommit || isRollback)
 	{
 	  [_statements removeAllObjects];
 	}
