@@ -56,6 +56,7 @@
 #include	<Foundation/NSFileHandle.h>
 #include	<Foundation/NSNotification.h>
 #include	<Foundation/NSArray.h>
+#include	<Foundation/NSTimer.h>
 #include	<GNUstepBase/GSMime.h>
 
 @class	WebServer;
