@@ -362,7 +362,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   _substitutionLimit = 4;
   _sessions = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks,
     NSObjectMapValueCallBacks, 0);
-  _perHost = [NSMutableSet new];
+  _perHost = [NSCountedSet new];
   _ticker = [NSTimer scheduledTimerWithTimeInterval: 0.8
 					     target: self
 					   selector: @selector(_timeout:)
