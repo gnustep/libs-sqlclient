@@ -20,16 +20,16 @@ testECPG_LIB_DIRS += -L./obj
 
 LIBRARY_NAME=SQLClient
 
-SQLClient_OBJC_FILES = SQLClient.m
+SQLClient_OBJC_FILES = SQLClient.m WebServer.m WebServerBundles.m
 
-SQLClient_HEADER_FILES = SQLClient.h 
+SQLClient_HEADER_FILES = SQLClient.h  WebServer.h
 
 
 SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
 
 
 DOCUMENT_NAME=SQLClient
-SQLClient_AGSDOC_FILES = SQLClient.h
+SQLClient_AGSDOC_FILES = SQLClient.h WebServer.h
 
 
 BUNDLE_NAME=

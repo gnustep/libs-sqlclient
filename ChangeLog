@@ -1,3 +1,14 @@
+Mon Jun 28 12:55:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.h: New file.
+	* WebServer.m: New file.
+	* WebServerBundles.m: New file.
+	* SQLClient.h: Mention WebServer.
+	* GNUmakefile: Build WebServer classes.
+	Added framework to make it easy to use SQLClient to produce
+	standalone http/https applications, such as accepting POST'ed
+	records for addition to a database.
+
 Fri May 07 09:15:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	Add methods to log duration of any statements over a certain

@@ -33,6 +33,11 @@
       statements.
     </p>
     <p>
+      The library also provides a framework for making such simple database
+      applications readily available as web applications using the
+      [WebServer] class.
+    </p>
+    <p>
       The major features of the SQLClient library are -
     </p>
     <list>
@@ -61,6 +66,10 @@
       <item>
         Thread safe operation ... The base class supports locking such that
 	a single instance can be shared between multiple threads.
+      </item>
+      <item>
+        Support for standalone web applications ... eg to allow data to be
+	added to the database by people posting web forms to the application.
       </item>
     </list>
   </section>
