@@ -1,3 +1,9 @@
+Sat Feb 19 04:20:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Makefile: Build two versions of each bundle with different library
+	linkage for systems where dybnamic linker symbol visibility differs.
+	* SQLClient.m: Try alternative bundle versions.
+
 Mon Jan 07 15:20:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Makefile: Bump version.

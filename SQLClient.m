@@ -1251,24 +1251,31 @@ static void	quoteString(NSMutableString *s)
 	  path = [path stringByAppendingPathComponent: s];
 	  path = [path stringByAppendingPathExtension: @"bundle"];
 	  bundle = [NSBundle bundleWithPath: path];
-	  if (bundle != nil)
+	  if (bundle != nil && (c = [bundle principalClass]) != nil)
+	    {
+	      break;	// Found it.
+	    }
+	  /* Try alternative version with more libraries linked in.
+	   * In some systems and situations the dynamic linker needs
+	   * to haved the SQLClient, gnustep-base, and objc libraries
+	   * explicityly linked into the bundle, but in others it
+	   * requires them to not be linked. To handle that, we create
+	   * two versions of each bundle, the seond version has _libs
+	   * appended to the bundle name, and has the extra libraries linked.
+	   */
+	  path = [path stringByDeletingPathExtension];
+	  path = [path stringByAppendingString: @"_libs"];
+	  path = [path stringByAppendingPathExtension: @"bundle"];
+	  bundle = [NSBundle bundleWithPath: path];
+	  if (bundle != nil && (c = [bundle principalClass]) != nil)
 	    {
 	      break;	// Found it.
 	    }
 	}
-      if (bundle == nil)
+      if (c == nil)
 	{
 	  [self debug: @"unable to load bundle for '%@' server type", s];
 	  return;
-	}
-      else
-	{
-	  c = [bundle principalClass];
-	  if (c == nil)
-	    {
-	      [self debug: @"No database class to support server type '%@'", s];
-	      return;
-	    }
 	}
     }
   if (c != [self class])
