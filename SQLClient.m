@@ -47,6 +47,10 @@
 
 #include	"SQLClient.h"
 
+typedef	struct {
+  @defs(SQLTransaction);
+} *TDefs;
+
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
 {
@@ -1497,5 +1501,112 @@ static unsigned int	maxConnections = 8;
     }
 }
 
+- (SQLTransaction*) transaction
+{
+  TDefs	transaction;
+
+  transaction = (TDefs)NSAllocateObject([SQLTransaction class], 0,
+    NSDefaultMallocZone());
+ 
+  transaction->_db = RETAIN(self);
+  transaction->_info = [NSMutableArray new];
+  return AUTORELEASE((SQLTransaction*)transaction);
+}
+@end
+
+@implementation	SQLTransaction
+- (void) dealloc
+{
+  DESTROY(_db);
+  DESTROY(_info);
+  [super dealloc];
+}
+
+- (void) _addInfo: (NSArray*)info
+{
+  if (_count == 0)
+    {
+      NSMutableString	*ms = [[info objectAtIndex: 0] mutableCopy];
+
+      [_info addObjectsFromArray: info];
+      [_info replaceObjectAtIndex: 0 withObject: ms];
+      RELEASE(ms);
+    }
+  else
+    {
+      NSMutableString	*ms = [_info objectAtIndex: 0];
+      unsigned		c = [info count];
+      unsigned		i = 1;
+
+      [ms appendString: @";"];
+      [ms appendString: [info objectAtIndex: 0]];
+      while (i < c)
+	{
+	  [_info addObject: [info objectAtIndex: i++]];
+	}
+    }
+  _count++;
+}
+
+- (void) add: (NSString*)stmt,...
+{
+  va_list       ap;
+
+  va_start (ap, stmt);
+  [self _addInfo: [_db _prepare: stmt args: ap]];
+  va_end (ap);
+}
+
+- (void) add: (NSString*)stmt with: (NSDictionary*)values
+{
+  [self _addInfo: [_db _substitute: stmt with: values]];
+}
+
+- (void) execute
+{
+  if (_count > 0)
+    {
+      BOOL	transaction = NO;
+
+      NS_DURING
+	{
+	  if (_count > 1)
+	    {
+	      [_db begin];
+	      transaction = YES;
+	    }
+	  [_db simpleExecute: _info];
+	  if (transaction == YES)
+	    {
+	      transaction = NO;
+	      [_db commit];
+	    }
+	}
+      NS_HANDLER
+	{
+	  if (transaction == YES)
+	    {
+	      NS_DURING
+		{
+		  [_db rollback];
+		}
+	      NS_HANDLER
+		{
+		  NSLog(@"Exception rolling back transaction: %@",
+		    localException);
+		}
+	      NS_ENDHANDLER
+	    }
+	  [localException raise];
+	}
+      NS_ENDHANDLER
+    }
+}
+
+- (void) reset
+{
+  [_info removeAllObjects];
+  _count = 0;
+}
 @end
 

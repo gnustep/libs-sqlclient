@@ -167,6 +167,7 @@
 @class	NSDate;
 @class	NSRecursiveLock;
 @class	NSString;
+@class	SQLTransaction;
 
 /**
  * An enhanced array to represent a record returned from a query.
@@ -351,7 +352,7 @@ extern NSString	*SQLUniqueException;
 /**
  * Perform arbitrary operation <em>which does not return any value.</em><br />
  * This arguments to this method are a nil terminated list which are
- * concatenated in the manner of the * -prepare:args: method.<br />
+ * concatenated in the manner of the -query:,... method.<br />
  * Any string arguments are assumed to have been quoted appropriately
  * already, but non-string arguments are automatically quoted using the
  * -quote: method.
@@ -772,6 +773,12 @@ extern NSString	*SQLUniqueException;
  * returned by the query to an array containing the fields.
  */
 - (void) singletons: (NSMutableArray*)records;
+
+/**
+ * Creates and returns an autoreleased SQLTransaction instance  which will
+ * use the receiver as the database connection to perform transactions.
+ */
+- (SQLTransaction*) transaction;
 @end
 
 
@@ -833,6 +840,55 @@ extern NSString	*SQLUniqueException;
  * this logging.  A value of zero logs all statements.
  */
 - (void) setDurationLogging: (NSTimeInterval)threshold;
+@end
+
+
+/**
+ * The SQLTransaction transaction class provides a convenient mechanism
+ * for grouping together a series of SQL statements to be executed as a
+ * single transaction.  It avoids the need for handling begin/commit,
+ * and shouldbe as efficient as reasonably possible.<br />
+ * You obtain an instance by calling [SQLClient-transaction], add SQL
+ * statements to it using the -add:,... and/or -add:with: methods, and
+ * then use the -execute method to perform all the statements as a
+ * single operation.<br />
+ * Any exception is caught and re-raised in the -execute method after any
+ * tidying up to leave the database in a consistent state.
+ */
+@interface	SQLTransaction : NSObject
+{
+  SQLClient		*_db;
+  NSMutableArray	*_info;
+  unsigned		_count;
+}
+/**
+ * Adds an SQL statement to the transaction.  This is similar to
+ * [SQLClient-execute:,...] but does not cause any database operation
+ * until -execute is called, so it will not raise a database exception.
+ */
+- (void) add: (NSString*)stmt,...;
+
+/**
+ * Adds an SQL statement to the transaction.  This is similar to
+ * [SQLClient-execute:with:] but does not cause any database operation
+ * until -execute is called, so it will not raise a database exception.
+ */
+- (void) add: (NSString*)stmt with: (NSDictionary*)values;
+
+/**
+ * Performs any statements added to the transaction as a single operation.
+ * If any problem occurs, an NSException is raised, but the database connection
+ * is left in a consistent state and a partially completed operation is
+ * rolled back.
+ */
+- (void) execute;
+
+/**
+ * Resets the transaction, removing all previously added statements.
+ * This allows the transaction object to be re-used for multiple
+ * transactions.
+ */
+- (void) reset;
 @end
 
 #endif
