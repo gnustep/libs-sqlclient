@@ -1562,6 +1562,11 @@ static unsigned int	maxConnections = 8;
   [self _addInfo: [_db _substitute: stmt with: values]];
 }
 
+- (SQLClient*) db
+{
+  return _db;
+}
+
 - (void) execute
 {
   if (_count > 0)

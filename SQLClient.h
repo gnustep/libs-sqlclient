@@ -853,7 +853,10 @@ extern NSString	*SQLUniqueException;
  * then use the -execute method to perform all the statements as a
  * single operation.<br />
  * Any exception is caught and re-raised in the -execute method after any
- * tidying up to leave the database in a consistent state.
+ * tidying up to leave the database in a consistent state.<br />
+ * NB. This class is not in itsself thread-safe, though the underlying
+ * database operations should be.   If you have multiple threads, you
+ * should create multiple SQLTransaction instances, at least one per thread.
  */
 @interface	SQLTransaction : NSObject
 {
@@ -874,6 +877,12 @@ extern NSString	*SQLUniqueException;
  * until -execute is called, so it will not raise a database exception.
  */
 - (void) add: (NSString*)stmt with: (NSDictionary*)values;
+
+/**
+ * Returns the database client with which this instance operates.<br />
+ * This client is retained by the transaction.
+ */
+- (SQLClient*) db;
 
 /**
  * Performs any statements added to the transaction as a single operation.
