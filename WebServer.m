@@ -25,6 +25,7 @@
 
 #include <Foundation/Foundation.h>
 #include "WebServer.h"
+#include "SQLClient.h"
 
 @interface	WebServerSession : NSObject
 {
@@ -175,6 +176,134 @@
 @end
 
 @implementation	WebServer
+
+- (BOOL) accessRequest: (GSMimeDocument*)request
+	      response: (GSMimeDocument*)response
+{
+  NSUserDefaults	*defs = [NSUserDefaults standardUserDefaults];
+  NSDictionary		*conf = [defs dictionaryForKey: @"WebServerAccess"];
+  NSString		*path = [[request headerNamed: @"x-http-path"] value];
+  NSDictionary		*access = nil;
+  NSString		*stored;
+  NSString		*username;
+  NSString		*password;
+
+  while (access == nil)
+    {
+      access = [conf objectForKey: path];
+      if ([access isKindOfClass: [NSDictionary class]] == NO)
+	{
+	  NSRange	r;
+
+	  r = [path rangeOfString: @"/" options: NSBackwardsSearch];
+	  if (r.length > 0)
+	    {
+	      path = [path substringToIndex: r.location];
+	    }
+	  else
+	    {
+	      return YES;	// No access dictionary - permit access
+	    }
+	}
+    }
+
+  username = [[request headerNamed: @"x-http-username"] value];
+  password = [[request headerNamed: @"x-http-password"] value];
+  if ([access objectForKey: @"Users"] != nil)
+    {
+      stored = [[access objectForKey: @"Users"] objectForKey: username];
+    }
+  else if ([access objectForKey: @"UserDB"] != nil)
+    {
+      static Class	c = nil;
+      static BOOL	beenHere = NO;
+
+      /*
+       * We get the SQLClient class from thee runtime, so we don't have to
+       * link the library directly ... which means that this class caan be
+       * used without it as long as database accesss is not needed.
+       */
+      if (beenHere == NO)
+	{
+	  beenHere = YES;
+	  c = NSClassFromString(@"SQLClient");
+	  if (c == nil)
+	    {
+	      [self _alert: @"SQLClient library has not been linked"];
+	    }
+	}
+
+      NS_DURING
+	{
+	  NSDictionary	*info = [access objectForKey: @"UserDB"];
+	  NSString	*name = [info objectForKey: @"Name"];
+	  SQLClient	*sql;
+
+	  /*
+	   * try to re-use an existing client if possible.
+	   */
+	  sql = [c existingClient: name];
+	  if (sql == nil)
+	    {
+	      sql = [c alloc];
+	      sql = [c initWithConfiguration: nil name: name];
+	    }
+	  stored = [sql queryString: @"SELECT ",
+	    [info objectForKey: @"Password"],
+	    @" FROM ",
+	    [info objectForKey: @"Table"],
+	    @" WHERE ",
+	    [info objectForKey: @"Username"],
+	    @" = ",
+	    [sql quote: username],
+	    nil];
+	}
+      NS_HANDLER
+	{
+	  [self _alert: @"Read from database failed - %@", localException];
+	  stored = nil;
+	}
+      NS_ENDHANDLER
+    }
+
+
+  if (username == nil || password == nil || [password isEqual: stored] == NO)
+    {
+      NSString	*realm = [access objectForKey: @"Realm"];
+      NSString	*auth;
+
+      auth = [NSString stringWithFormat: @"Basic realm=\"%@\"", realm];
+
+      /*
+       * Return status code 401 (Aunauthorised)
+       */
+      [response setHeader: @"http"
+		    value: @"HTTP/1.1 401 Unauthorised"
+	       parameters: nil];
+      [response setHeader: @"WWW-authenticate"
+		    value: auth
+	       parameters: nil];
+
+      [response setContent:
+@"<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n"
+@"<html><head><title>401 Authorization Required</title></head><body>\n"
+@"<h1>Authorization Required</h1>\n"
+@"<p>This server could not verify that you "
+@"are authorized to access the resource "
+@"requested.  Either you supplied the wrong "
+@"credentials (e.g., bad password), or your "
+@"browser doesn't understand how to supply "
+@"the credentials required.</p>\n"
+@"</body></html>\n"
+	type: @"text/html"];
+
+      return NO;
+    }
+  else
+    {
+      return YES;	// OK to access
+    }
+}
 
 - (void) dealloc
 {
@@ -1312,7 +1441,6 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 {
   GSMimeDocument	*request;
   GSMimeDocument	*response;
-  BOOL			responded = NO;
   NSString		*str;
   NSString		*con;
   NSMutableData		*raw;
@@ -1390,9 +1518,12 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     {
       [session setProcessing: YES];
       [session setTicked: _ticked];
-      responded = [_delegate processRequest: request
-				   response: response
-					for: self];
+      if ([self accessRequest: request response: response] == YES)
+	{
+	  [_delegate processRequest: request
+			   response: response
+				for: self];
+	}
       _ticked = [NSDate timeIntervalSinceReferenceDate];
       [session setTicked: _ticked];
       [session setProcessing: NO];

@@ -177,6 +177,7 @@
 
 @class	NSData;
 @class	NSDate;
+@class	NSMutableSet;
 @class	NSRecursiveLock;
 @class	NSString;
 @class	SQLTransaction;
@@ -264,11 +265,12 @@ extern NSTimeInterval	SQLClientTimeNow();
   NSMutableArray	*_statements;	/** Uncommitted statements */
   /**
    * Timestamp of last operation.<br />
-   * Maintained by the -simpleExecute: and -simpleQuery: methods.
+   * Maintained by -simpleExecute: -simpleQuery: -cache:simpleQuery:
    */
   NSTimeInterval	_lastOperation;	
   NSTimeInterval	_duration;
   unsigned int		_debugging;	/** The current debugging level */
+  NSMutableSet		*_cache;
 }
 
 /**
@@ -905,6 +907,58 @@ extern NSTimeInterval	SQLClientTimeNow();
 - (void) setDurationLogging: (NSTimeInterval)threshold;
 @end
 
+
+/**
+ * This category porovides methods for caching the results of queries
+ * in order to reduce the number of client-server trips and the database
+ * load produced by an application which needs update its information
+ * from the database frequently.
+ */
+@interface      SQLClient (Caching)
+
+/**
+ * If the result of the query is already cached and is still valid,
+ * return it. Otherwise, perform the query and cache the result
+ * giving it the specified lifetime in seconds.<br />
+ * If seconds is negative, the query is performed irrespective of
+ * whether it is already cached, and its absolute value is used to
+ * set the lifetime of the results.<br />
+ * If seconds is zero, the cache for this query is emptied.
+ */
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt,...;
+
+/**
+ * If the result of the query is already cached and is still valid,
+ * return it. Otherwise, perform the query and cache the result
+ * giving it the specified lifetime in seconds.<br />
+ * If seconds is negative, the query is performed irrespective of
+ * whether it is already cached, and its absolute value is used to
+ * set the lifetime of the results.<br />
+ * If seconds is zero, the cache for this query is emptied.
+ */
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt
+		     with: (NSDictionary*)values;
+
+/**
+ * If the result of the query is already cached and is still valid,
+ * return it. Otherwise, perform the query and cache the result
+ * giving it the specified lifetime in seconds.<br />
+ * If seconds is negative, the query is performed irrespective of
+ * whether it is already cached, and its absolute value is used to
+ * set the lifetime of the results.<br />
+ * If seconds is zero, the cache for this query is emptied.<br />
+ * Handles locking.<br />
+ * Maintains -lastOperation date.
+ */
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+
+/**
+ * Purge any expired items from the cache.
+ */
+- (void) cachePurge;
+@end
 
 /**
  * The SQLTransaction transaction class provides a convenient mechanism

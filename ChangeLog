@@ -1,3 +1,12 @@
+2005-03-02 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.[hm]: Add support for basic http authentication either
+	via username/password pairs in property list or in database table.
+	* SQLClient.[hm]: Add methods to query database with local caching
+	of results, for use on systems needing high performance, where
+	database query (and/or database client-server comms) overheads are
+	important.
+
 2005-02-25  Adam Fedor  <fedor@gnu.org>
 
 	* Version 1.1.0:

@@ -54,6 +54,7 @@
       <item>Parsing of form encoded data in a POST request</item>
       <item>Substitution into template pages on output</item>
       <item>SSL support</item>
+      <item>HTTP Basic authentication</item>
       <item>Limit access by IP address</item>
       <item>Limit total number of simultaneous connections</item>
       <item>Limit number of simultaneous connectionsform one address</item>
@@ -200,6 +201,52 @@
   NSTimeInterval	_ticked;
   NSCountedSet		*_perHost;
 }
+
+/**
+ * This method is called for each incoming request, and checks that the
+ * requested resource is accessible (basic user/password access control).<br />
+ * The method returns YES if access is granted, or returns NO and sets the
+ * appropriate response values if access is refused.<br />
+ * If access is refused by this method, the delegate is not informed of the
+ * request at all ... so this forms an initial access control mechanism,
+ * but if it is passed, the delegate is still free to implement its own
+ * additional access control within the
+ * [(WebServerDelegate)-processRequest:response:for:] method.<br />
+ * The access control is managed by the <code>WebServerAccess</code>
+ * user default, which is a dictionary whose keys are paths, and whose
+ * values are dictionaries specifying the access control for those paths.
+ * Access control is done on the basis of the longest matching path.<br />
+ * Each access control dictionary contains an authentication realm string
+ * (keyed on <em>Realm</em>) and a dictionary containing username/password
+ * pairs (keyed on <em>Users</em>) or a dictionary containing information
+ * to perform a database lookup of username and password
+ * (keyed on <em>UserDB</em>).<br />
+ * eg.
+ * <example>
+ * WebServerAccess = {
+ *   "" = {
+ *     Realm = "general";
+ *     Users = {
+ *       Fred = 1942;
+ *     };
+ *   };
+ *   "/private" = {
+ *     Realm = "private";
+ *     UserDB = {
+ *       // System will contact database using SQLClient and lookup password
+ *       // The SQLClient library must be linked in and used by the tool
+ *       // using WebServer ... it is not linked in by the WebServer library.
+ *       Name = databasename;
+ *       Table = tablename;
+ *       UsernameField = fielname1;
+ *       PasswordField = fielname2;
+ *     };
+ *   };
+ * };
+ * </example>
+ */
+- (BOOL) accessRequest: (GSMimeDocument*)request
+	      response: (GSMimeDocument*)response;
 
 /**         
  * Decode an application/x-www-form-urlencoded form and store its

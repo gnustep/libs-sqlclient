@@ -42,6 +42,7 @@
 #include	<Foundation/NSNull.h>
 #include	<Foundation/NSDebug.h>
 #include	<Foundation/NSPathUtilities.h>
+#include	<Foundation/NSSet.h>
 
 #include	<GNUstepBase/GSLock.h>
 
@@ -558,6 +559,7 @@ static unsigned int	maxConnections = 8;
   DESTROY(_user);
   DESTROY(_name);
   DESTROY(_statements);
+  DESTROY(_cache);
   [super dealloc];
 }
 
@@ -1629,6 +1631,164 @@ static void	quoteString(NSMutableString *s)
   transaction->_db = RETAIN(self);
   transaction->_info = [NSMutableArray new];
   return AUTORELEASE((SQLTransaction*)transaction);
+}
+@end
+
+
+
+@interface	SQLClientCacheInfo : NSObject
+{
+@public
+  NSString		*query;
+  NSMutableArray	*result;
+  NSTimeInterval	expires;
+}
+@end
+
+@implementation	SQLClientCacheInfo
+- (void) dealloc
+{
+  DESTROY(query);
+  DESTROY(result);
+  [super dealloc];
+}
+- (unsigned) hash
+{
+  return [query hash];
+}
+- (BOOL) isEqual: (SQLClientCacheInfo*)other
+{
+  return [query isEqual: other->query];
+}
+@end
+
+@implementation SQLClient (Caching)
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt,...
+{
+  va_list		ap;
+
+  va_start (ap, stmt);
+  stmt = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
+
+  return [self cache: seconds simpleQuery: stmt];
+}
+
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt
+		     with: (NSDictionary*)values
+{
+  stmt = [[self _substitute: stmt with: values] objectAtIndex: 0];
+  return [self cache: seconds simpleQuery: stmt];
+}
+
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt
+{
+  NSMutableArray	*result = nil;
+
+  [lock lock];
+  NS_DURING
+    {
+      NSTimeInterval		start;
+      SQLClientCacheInfo	*item;
+      SQLClientCacheInfo	*old;
+
+      item = AUTORELEASE([SQLClientCacheInfo new]);
+      item->query = [stmt copy];
+      old = [_cache member: item];
+      start = SQLClientTimeNow();
+      if (seconds > 0 && old != nil && old->expires > start)
+	{
+	  // Cached item still valid ... just use it.
+	  result = old->result;
+	}
+      else
+	{
+	  result = [self backendQuery: stmt];
+	  _lastOperation = SQLClientTimeNow();
+	  if (_duration >= 0)
+	    {
+	      NSTimeInterval	d;
+
+	      d = _lastOperation - start;
+	      if (d >= _duration)
+		{
+		  [self debug: @"Duration %g for query %@", d, stmt];
+		}
+	    }
+	  if (seconds < 0)
+	    {
+	      seconds = -seconds;
+	    }
+	  if (old != nil)
+	    {
+	      if (seconds == 0)
+		{
+		  // We hve been tod to remove the existing cached item.
+		  [_cache removeObject: old];
+		}
+	      else
+		{
+		  // We read a new value ... store it in cache
+		  ASSIGN(old->result, result);
+		  old->expires = _lastOperation + seconds;
+		}
+	    }
+	  else
+	    {
+	      /*
+	       * Unless removing from cache (seconds == 0) we must
+	       * add the new item to the cache with the appropriate
+	       * expiry.
+	       */
+	      if (seconds > 0)
+		{
+		  ASSIGN(item->result, result);
+		  item->expires = _lastOperation + seconds;
+		  if (_cache == nil)
+		    {
+		      _cache = [NSMutableSet new];
+		    }
+		  [_cache addObject: item];
+		}
+	    }
+	}
+      /*
+       * Return an autoreleased copy ... not the original cached data.
+       */
+      result = [NSMutableArray arrayWithArray: result];
+    }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
+  return result;
+}
+
+- (void) cachePurge
+{
+  NSEnumerator	*e;
+
+  [lock lock];
+  e = [_cache objectEnumerator];
+  if (e != nil)
+    {
+      NSTimeInterval		start = SQLClientTimeNow();
+      SQLClientCacheInfo	*item;
+
+      while ((item = [e nextObject]) != nil)
+	{
+	  if (item->expires < start)
+	    {
+	      [_cache removeObject: item];
+	    }
+	}
+    }
+  [lock unlock];
 }
 @end
 
