@@ -826,11 +826,25 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
       if ((h = [NSHost hostWithAddress: a]) == nil)
 	{
-	  [self _alert: @"Unknown host (%@) on new connection.", a];
+	  /*
+	   * Don't log this in quiet mode as it could just be a
+	   * test connection that we are ignoring.
+	   */
+	  if ([_quiet containsObject: a] == NO)
+	    {
+	      [self _alert: @"Unknown host (%@) on new connection.", a];
+	    }
 	}
       else if (_hosts != nil && [_hosts containsObject: a] == NO)
 	{
-	  [self _alert: @"Invalid host (%@) on new connection.", a];
+	  /*
+	   * Don't log this in quiet mode as it could just be a
+	   * test connection that we are ignoring.
+	   */
+	  if ([_quiet containsObject: a] == NO)
+	    {
+	      [self _alert: @"Invalid host (%@) on new connection.", a];
+	    }
 	}
       else if (_maxPerHost > 0 && [_perHost countForObject: a] >= _maxPerHost)
 	{
@@ -838,7 +852,14 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	}
       else if (_sslConfig != nil && [hdl sslAccept] == NO)
 	{
-	  [self _alert: @"SSL accept fail on new connection (%@).", a];
+	  /*
+	   * Don't log this in quiet mode as it could just be a
+	   * test connection that we are ignoring.
+	   */
+	  if ([_quiet containsObject: a] == NO)
+	    {
+	      [self _alert: @"SSL accept fail on new connection (%@).", a];
+	    }
 	}
       else
 	{
