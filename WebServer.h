@@ -141,6 +141,7 @@
   NSFileHandle		*_listener;
   NSMapTable		*_sessions;
   unsigned		_handled;
+  unsigned		_requests;
   NSString		*_root;
   NSTimer		*_ticker;
   NSTimeInterval	_sessionTimeout;

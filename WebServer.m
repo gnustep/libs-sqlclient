@@ -346,9 +346,9 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 - (NSString*) description
 {
   return [NSString stringWithFormat:
-    @"%@ on %@, %u of %u sessions active, %u requests, listening: %@",
+    @"%@ on %@, %u of %u sessions active, %u total, %u requests, listening: %@",
     [super description], _port, NSCountMapTable(_sessions),
-    _maxSessions, _handled, _accepting == YES ? @"yes" : @"no"];
+    _maxSessions, _handled, _requests, _accepting == YES ? @"yes" : @"no"];
 }
 
 - (id) init
@@ -1187,6 +1187,8 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   unsigned int		contentLength;
   NSEnumerator		*enumerator;
   GSMimeHeader		*hdr;
+
+  _requests++;
 
   AUTORELEASE(RETAIN(session));
   request = [[session parser] mimeDocument];
