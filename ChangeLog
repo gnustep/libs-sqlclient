@@ -1,3 +1,8 @@
+Tue Jul 27 17:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * configure.ac: Give more help when postgres is not found.
+	* configure: regenerate
+		
 Mon Jul 26 09:50:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Add -transaction method and SQLTransaction class

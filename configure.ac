@@ -130,21 +130,23 @@ if test "$POSTGRES" = "yes"; then
   if test "$ac_cv_lib_pq_PQfformat" != "yes"; then
       POSTGRES=
       AC_CHECK_LIB(pq,PQclear)
+      echo "******************************************************"
       if test "$ac_cv_lib_pq_PQclear" != "yes"; then
-	echo "******************************************************"
 	echo "Unable to locate postgres pq library (is it installed)"
-	echo "******************************************************"
       else
-	echo "******************************************************"
 	echo "Located postgres pq library, but it is too old to use!"
-	echo "******************************************************"
       fi
+      echo "Perhaps you can try 'configure --with-postgres=dir=path'"
+      echo "to point to the postgres version you wish to use."
+      echo "******************************************************"
   fi
   AC_CHECK_LIB(ecpg,ECPGconnect)
   if test "$ac_cv_lib_ecpg_ECPGconnect" != "yes"; then
       ECPG=
       echo "********************************************************"
       echo "Unable to locate postgres ecpg library (is it installed)"
+      echo "Perhaps you can try 'configure --with-postgres=dir=path'"
+      echo "to point to the postgres version you wish to use."
       echo "********************************************************"
   fi
 fi
