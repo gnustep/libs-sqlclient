@@ -189,16 +189,34 @@
 - (NSData*) parameter: (NSString*)name from: (NSDictionary*)params;
 
 /**
- * Calls -parameter:at:from: and if the result is non-nil converts the
- * data to a string using UTF8 encoding.
+ * Calls -parameterString:at:from:charset: with a nil charset so that
+ * UTF-8 encoding is used for string conversion.
  */
 - (NSString*) parameterString: (NSString*)name
 			   at: (unsigned)index
 			 from: (NSDictionary*)params;
 /**
- * Calls -parameterString:at:from: with an index of zero.
+ * Calls -parameter:at:from: and, if the result is non-nil
+ * converts the data to a string using the specified mime
+ * characterset, (if charset is nil, UTF-8 is used).
  */
-- (NSString*) parameterString: (NSString*)name from: (NSDictionary*)params;
+- (NSString*) parameterString: (NSString*)name
+			   at: (unsigned)index
+			 from: (NSDictionary*)params
+		      charset: (NSString*)charset;
+/**
+ * Calls -parameterString:at:from:charset: with an index of zero and
+ * a nil value for charset (which causes data to be treated as UTF-8).
+ */
+- (NSString*) parameterString: (NSString*)name
+			 from: (NSDictionary*)params;
+
+/**
+ * Calls -parameterString:at:from:charset: with an index of zero.
+ */
+- (NSString*) parameterString: (NSString*)name
+			 from: (NSDictionary*)params
+		      charset: (NSString*)charset;
 
 /**
  * Loads a template file from disk and places it in aResponse as content

@@ -458,19 +458,45 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 			   at: (unsigned)index
 			 from: (NSDictionary*)params
 {
+  return [self parameterString: name at: index from: params charset: nil];
+}
+
+- (NSString*) parameterString: (NSString*)name
+			   at: (unsigned)index
+			 from: (NSDictionary*)params
+		      charset: (NSString*)charset
+{
   NSData	*d = [self parameter: name at: index from: params];
   NSString	*s = nil;
 
   if (d != nil)
     {
-      s = [[NSString alloc] initWithData: d encoding: NSUTF8StringEncoding];
+      s = [NSString alloc];
+      if (charset == nil || [charset length] == 0)
+	{
+	  s = [s initWithData: d encoding: NSUTF8StringEncoding];
+	}
+      else
+	{
+	  NSStringEncoding	enc;
+
+	  enc = [GSMimeDocument encodingFromCharset: charset];
+	  s = [s initWithData: d encoding: enc];
+	}
     }
   return AUTORELEASE(s);
 }
 
 - (NSString*) parameterString: (NSString*)name from: (NSDictionary*)params
 {
-  return [self parameterString: name at: 0 from: params];
+  return [self parameterString: name at: 0 from: params charset: nil];
+}
+
+- (NSString*) parameterString: (NSString*)name
+			 from: (NSDictionary*)params
+		      charset: (NSString*)charset
+{
+  return [self parameterString: name at: 0 from: params charset: charset];
 }
 
 - (void) setDelegate: (id)anObject
@@ -940,6 +966,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
 	  parser = [GSMimeParser new];
 	  [parser setIsHttp];
+	  [parser setDefaultCharset: @"utf-8"];
 
 	  doc = [parser mimeDocument];
 

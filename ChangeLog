@@ -1,3 +1,8 @@
+Thu Jul 02 17:40:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: Add control over character encoding used to
+	interpret form data.
+
 Thu Jul 02 13:25:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.m: Fix error response when an exception occurs.
