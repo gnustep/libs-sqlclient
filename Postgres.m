@@ -267,7 +267,7 @@ connectQuote(NSString *str)
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
 	  [self backendDisconnect];
-	  [NSException raise: SQLException format: @"%@", str];
+	  [NSException raise: SQLException format: @"%@ %@", str, stmt];
 	}
       if (PQresultStatus(result) != PGRES_COMMAND_OK)
 	{

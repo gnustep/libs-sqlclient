@@ -823,27 +823,23 @@ static unsigned int	maxConnections = 8;
 - (void) rollback
 {
   [lock lock];
-  if (_inTransaction == NO)
-    {
-      [lock unlock];
-      [NSException raise: NSInternalInconsistencyException
-		  format: @"rollback used outside transaction"];
-    }
-  NS_DURING
-    {
-      [self simpleExecute: rollbackStatement];
-      _inTransaction = NO;
-      [lock unlock];		// Locked at start of -rollback
-      [lock unlock];		// Locked by -begin
-    }
-  NS_HANDLER
+  if (_inTransaction == YES)
     {
       _inTransaction = NO;
-      [lock unlock];		// Locked at start of -rollback
-      [lock unlock];		// Locked by -begin
-      [localException raise];
+      NS_DURING
+	{
+	  [self simpleExecute: rollbackStatement];
+	  [lock unlock];		// Locked at start of -rollback
+	  [lock unlock];		// Locked by -begin
+	}
+      NS_HANDLER
+	{
+	  [lock unlock];		// Locked at start of -rollback
+	  [lock unlock];		// Locked by -begin
+	  [localException raise];
+	}
+      NS_ENDHANDLER
     }
-  NS_ENDHANDLER
 }
 
 - (void) setDatabase: (NSString*)s
@@ -922,7 +918,7 @@ static unsigned int	maxConnections = 8;
 {
   NSString	*statement;
 
-  [lock lock];
+ [lock lock];
   statement = [info objectAtIndex: 0];
   NS_DURING
     {
@@ -1632,25 +1628,21 @@ static unsigned int	maxConnections = 8;
 {
   if (_count > 0)
     {
-      BOOL	transaction = NO;
-
       NS_DURING
 	{
 	  if (_count > 1)
 	    {
 	      [_db begin];
-	      transaction = YES;
 	    }
 	  [_db simpleExecute: _info];
-	  if (transaction == YES)
+	  if ([_db isInTransaction] == YES)
 	    {
-	      transaction = NO;
 	      [_db commit];
 	    }
 	}
       NS_HANDLER
 	{
-	  if (transaction == YES)
+	  if ([_db isInTransaction] == YES)
 	    {
 	      NS_DURING
 		{

@@ -554,7 +554,7 @@ extern NSString	*SQLUniqueException;
 
 /**
  * Revert a transaction for this database client.<br />
- * This <strong>must</strong> match an earlier -begin.
+ * If there is no transaction in progress, this method does nothing.<br />
  * <p>NB. You must <strong>not</strong> execute an SQL statement
  * which would commit or rollback a transaction directly ... use
  * only this method or the -rollback method.

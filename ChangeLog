@@ -1,3 +1,10 @@
+Wed Oct 06 06:15:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.[hm]: Make the rollback opoeration a safe no-op if
+	there is no transaction in progress.
+	* Postgres.m: Improve exception text by reporting the offending
+	SQL statement(s).
+
 Fri Sep 17 16:55:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.[hm]: When reporting the duration of a commit or
