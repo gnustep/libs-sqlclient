@@ -325,7 +325,12 @@ static unsigned int trim(char *str)
 		    {
 		      int	size = lengths[j];
 
-NSLog(@"%@ type:%d size: %d val:%*.*s\n", keys[j], fields[j].type, size, size, size, p);
+		      if ([self debugging] > 1)
+			{
+			  [self debug: @"%@ type:%d size: %d val:%*.*s\n",
+			    keys[j], fields[j].type, size, size, size, p];
+			}
+
 		      switch (fields[j].type)
 			{
 			  case FIELD_TYPE_TIMESTAMP:

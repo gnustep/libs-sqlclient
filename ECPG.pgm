@@ -583,7 +583,12 @@ static unsigned int trim(char *str)
 			    trim(aString);
 			    v = [NSString stringWithUTF8String: aString];
 			    free(aString);
-NSLog(@"Unknown data type (%d) for '%s' ... '%@'", type, fieldName, v);
+			    if ([self debugging] > 0)
+			      { 
+				[self debug:
+				  @"Unknown data type (%d) for '%s' ... '%@'",
+				  type, fieldName, v];
+			      }
 			    break;
 			}
 		    }

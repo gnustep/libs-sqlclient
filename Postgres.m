@@ -409,7 +409,11 @@ static unsigned int trim(char *str)
 		      char	*p = PQgetvalue(result, i, j);
 		      int	size = PQgetlength(result, i, j);
 
-//NSLog(@"%@ type:%d mod:%d size: %d\n", keys[j], types[j], modifiers[j], size);
+		      if ([self debugging] > 1)
+			{ 
+			  [self debug: @"%@ type:%d mod:%d size: %d\n",
+			    keys[j], types[j], modifiers[j], size];
+			}
 		      if (formats[j] == 0)	// Text
 			{
 			  switch (types[j])
