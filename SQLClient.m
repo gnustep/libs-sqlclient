@@ -176,15 +176,26 @@ NSString	*SQLUniqueException = @"SQLUniqueException";
 @implementation	SQLClient (Logging)
 
 static unsigned int	classDebugging = 0;
+static NSTimeInterval	classDuration = -1;
 
 + (unsigned int) debugging
 {
   return classDebugging;
 }
 
++ (NSTimeInterval) durationLogging
+{
+  return classDuration;
+}
+
 + (void) setDebugging: (unsigned int)level
 {
   classDebugging = level;
+}
+
++ (void) setDurationLogging: (NSTimeInterval)threshold
+{
+  classDuration = threshold;
 }
 
 - (void) debug: (NSString*)fmt, ...
@@ -198,12 +209,22 @@ static unsigned int	classDebugging = 0;
 
 - (unsigned int) debugging
 {
-  return debugging;
+  return _debugging;
+}
+
+- (NSTimeInterval) durationLogging
+{
+  return _duration;
 }
 
 - (void) setDebugging: (unsigned int)level
 {
-  debugging = level;
+  _debugging = level;
+}
+
+- (void) setDurationLogging: (NSTimeInterval)threshold
+{
+  _duration = threshold;
 }
 
 @end
@@ -377,17 +398,17 @@ static unsigned int	maxConnections = 8;
 - (void) begin
 {
   [lock lock];
-  if (inTransaction == NO)
+  if (_inTransaction == NO)
     {
-      inTransaction = YES;
+      _inTransaction = YES;
       NS_DURING
 	{
-	  [self backendExecute: beginStatement];
+	  [self simpleExecute: beginStatement];
 	}
       NS_HANDLER
 	{
 	  [lock unlock];
-	  inTransaction = NO;
+	  _inTransaction = NO;
 	  [localException raise];
 	}
       NS_ENDHANDLER
@@ -402,13 +423,13 @@ static unsigned int	maxConnections = 8;
 
 - (NSString*) clientName
 {
-  return client;
+  return _client;
 }
 
 - (void) commit
 {
   [lock lock];
-  if (inTransaction == NO)
+  if (_inTransaction == NO)
     {
       [lock unlock];
       [NSException raise: NSInternalInconsistencyException
@@ -416,14 +437,14 @@ static unsigned int	maxConnections = 8;
     }
   NS_DURING
     {
-      [self backendExecute: commitStatement];
-      inTransaction = NO;
+      [self simpleExecute: commitStatement];
+      _inTransaction = NO;
       [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -commit
     }
   NS_HANDLER
     {
-      inTransaction = NO;
+      _inTransaction = NO;
       [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -commit
       [localException raise];
@@ -461,7 +482,7 @@ static unsigned int	maxConnections = 8;
 
 - (NSString*) database
 {
-  return database;
+  return _database;
 }
 
 - (void) dealloc
@@ -470,20 +491,20 @@ static unsigned int	maxConnections = 8;
 
   nc = [NSNotificationCenter defaultCenter];
   [nc removeObserver: self];
-  if (name != nil)
+  if (_name != nil)
     {
       [cacheLock lock];
-      NSMapRemove(cache, (void*)name);
+      NSMapRemove(cache, (void*)_name);
       [cacheLock unlock];
     }
   [self disconnect];
   DESTROY(lock);
-  DESTROY(client);
-  DESTROY(database);
-  DESTROY(password);
-  DESTROY(user);
-  DESTROY(name);
-  DESTROY(lastOperation);
+  DESTROY(_client);
+  DESTROY(_database);
+  DESTROY(_password);
+  DESTROY(_user);
+  DESTROY(_name);
+  DESTROY(_lastOperation);
   [super dealloc];
 }
 
@@ -491,14 +512,14 @@ static unsigned int	maxConnections = 8;
 {
   NSMutableString	*s = AUTORELEASE([NSMutableString new]);
 
-  [s appendFormat: @"Database      - %@\n", client];
-  [s appendFormat: @"  Name        - %@\n", name];
-  [s appendFormat: @"  DBase       - %@\n", database];
-  [s appendFormat: @"  DB User     - %@\n", user];
+  [s appendFormat: @"Database      - %@\n", [self clientName]];
+  [s appendFormat: @"  Name        - %@\n", [self name]];
+  [s appendFormat: @"  DBase       - %@\n", [self database]];
+  [s appendFormat: @"  DB User     - %@\n", [self user]];
   [s appendFormat: @"  Password    - %@\n",
-    password == nil ? @"unknown" : @"known"];
+    [self password] == nil ? @"unknown" : @"known"];
   [s appendFormat: @"  Connected   - %@\n", connected ? @"yes" : @"no"];
-  [s appendFormat: @"  Transaction - %@\n\n", inTransaction ? @"yes" : @"no"];
+  [s appendFormat: @"  Transaction - %@\n\n", _inTransaction ? @"yes" : @"no"];
   return s;
 }
 
@@ -575,6 +596,7 @@ static unsigned int	maxConnections = 8;
     {
       lock = [GSLazyRecursiveLock new];	// Ensure thread-safety.
       [self setDebugging: [[self class] debugging]];
+      [self setDurationLogging: [[self class] durationLogging]];
       [self setName: reference];	// Set name and store in cache.
 
       if (config == nil)
@@ -614,22 +636,22 @@ static unsigned int	maxConnections = 8;
 
 - (BOOL) isInTransaction
 {
-  return inTransaction;
+  return _inTransaction;
 }
 
 - (NSDate*) lastOperation
 {
-  return lastOperation;
+  return _lastOperation;
 }
 
 - (NSString*) name
 {
-  return name;
+  return _name;
 }
 
 - (NSString*) password
 {
-  return password;
+  return _password;
 }
 
 - (NSMutableArray*) query: (NSString*)stmt, ...
@@ -764,7 +786,7 @@ static unsigned int	maxConnections = 8;
 - (void) rollback
 {
   [lock lock];
-  if (inTransaction == NO)
+  if (_inTransaction == NO)
     {
       [lock unlock];
       [NSException raise: NSInternalInconsistencyException
@@ -772,14 +794,14 @@ static unsigned int	maxConnections = 8;
     }
   NS_DURING
     {
-      [self backendExecute: rollbackStatement];
-      inTransaction = NO;
+      [self simpleExecute: rollbackStatement];
+      _inTransaction = NO;
       [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -rollback
     }
   NS_HANDLER
     {
-      inTransaction = NO;
+      _inTransaction = NO;
       [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -rollback
       [localException raise];
@@ -789,22 +811,22 @@ static unsigned int	maxConnections = 8;
 
 - (void) setDatabase: (NSString*)s
 {
-  if ([s isEqual: database] == NO)
+  if ([s isEqual: _database] == NO)
     {
       if (connected == YES)
 	{
 	  [self disconnect];
 	}
-      ASSIGNCOPY(database, s);
+      ASSIGNCOPY(_database, s);
     }
 }
 
 - (void) setName: (NSString*)s
 {
-  if ([s isEqual: name] == NO)
+  if ([s isEqual: _name] == NO)
     {
       [lock lock];
-      if ([s isEqual: name] == YES)
+      if ([s isEqual: _name] == YES)
 	{
 	  [lock unlock];
 	  return;
@@ -825,10 +847,10 @@ static unsigned int	maxConnections = 8;
 	  [self disconnect];
 	}
       RETAIN(self);
-      NSMapRemove(cache, (void*)name);
-      ASSIGNCOPY(name, s);
-      ASSIGN(client, [[NSProcessInfo processInfo] globallyUniqueString]);
-      NSMapInsert(cache, (void*)name, (void*)self);
+      NSMapRemove(cache, (void*)_name);
+      ASSIGNCOPY(_name, s);
+      ASSIGN(_client, [[NSProcessInfo processInfo] globallyUniqueString]);
+      NSMapInsert(cache, (void*)_name, (void*)self);
       [cacheLock unlock];
       [lock unlock];
       RELEASE(self);
@@ -837,25 +859,25 @@ static unsigned int	maxConnections = 8;
 
 - (void) setPassword: (NSString*)s
 {
-  if ([s isEqual: password] == NO)
+  if ([s isEqual: _password] == NO)
     {
       if (connected == YES)
 	{
 	  [self disconnect];
 	}
-      ASSIGNCOPY(password, s);
+      ASSIGNCOPY(_password, s);
     }
 }
 
 - (void) setUser: (NSString*)s
 {
-  if ([s isEqual: client] == NO)
+  if ([s isEqual: _client] == NO)
     {
       if (connected == YES)
 	{
 	  [self disconnect];
 	}
-      ASSIGNCOPY(user, s);
+      ASSIGNCOPY(_user, s);
     }
 }
 
@@ -864,9 +886,37 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
+      NSDate	*start = nil;
+
+      if (_duration >= 0)
+	{
+	  start = [NSDate date];
+	}
       [self backendExecute: info];
-      RELEASE(lastOperation);
-      lastOperation = [NSDate new];
+      RELEASE(_lastOperation);
+      _lastOperation = [NSDate new];
+      if (_duration >= 0)
+	{
+	  NSTimeInterval	d;
+
+	  d = [_lastOperation timeIntervalSinceDate: start];
+	  if (d >= _duration)
+	    {
+	      /*
+	       * For higher debug levels, we log data objects as well
+	       * as the query string, otherwise we omit them.
+	       */
+	      if ([self debugging] > 1)
+		{
+		  [self debug: @"Duration %g for statement %@", d, info];
+		}
+	      else
+		{
+		  [self debug: @"Duration %g for statement %@",
+		    d, [info objectAtIndex: 0]];
+		}
+	    }
+	}
     }
   NS_HANDLER
     {
@@ -884,9 +934,25 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
+      NSDate	*start = nil;
+
+      if (_duration >= 0)
+	{
+	  start = [NSDate date];
+	}
       result = [self backendQuery: stmt];
-      RELEASE(lastOperation);
-      lastOperation = [NSDate new];
+      RELEASE(_lastOperation);
+      _lastOperation = [NSDate new];
+      if (_duration >= 0)
+	{
+	  NSTimeInterval	d;
+
+	  d = [_lastOperation timeIntervalSinceDate: start];
+	  if (d >= _duration)
+	    {
+	      [self debug: @"Duration %g for query %@", d, stmt];
+	    }
+	}
     }
   NS_HANDLER
     {
@@ -900,7 +966,7 @@ static unsigned int	maxConnections = 8;
 
 - (NSString*) user
 {
-  return user;
+  return _user;
 }
 
 @end
@@ -1034,10 +1100,10 @@ static unsigned int	maxConnections = 8;
       [self debug: @"Unable to find SQLClientReferences config dictionary"];
       d = nil;
     }
-  d = [d objectForKey: name];
+  d = [d objectForKey: _name];
   if ([d isKindOfClass: [NSDictionary class]] == NO)
     {
-      [self debug: @"Unable to find config for client '%@'", name];
+      [self debug: @"Unable to find config for client '%@'", _name];
       d = nil;
     }
 

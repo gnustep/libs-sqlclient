@@ -61,6 +61,7 @@ main()
   data = [NSData dataWithBytes: dbuf length: i];
 
   db = [SQLClient clientWithConfiguration: nil name: @"test"];
+  [db setDurationLogging: 0];
 
   NS_DURING
   [db execute: @"drop table xxx", nil];

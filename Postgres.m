@@ -90,11 +90,11 @@ connectQuote(NSString *str)
   if (connection == 0)
     {
       connected = YES;
-      if (database != nil)
+      if ([self database] != nil)
 	{
 	  NSString		*host = nil;
 	  NSString		*port = nil;
-	  NSString		*dbase = database;
+	  NSString		*dbase = [self database];
 	  NSString		*str;
 	  NSRange		r;
 	  NSMutableString	*m;
@@ -138,13 +138,13 @@ connectQuote(NSString *str)
 	      [m appendString: @" port="];
 	      [m appendString: str];
 	    }
-	  str = connectQuote(user);
+	  str = connectQuote([self user]);
 	  if (str != nil)
 	    {
 	      [m appendString: @" user="];
 	      [m appendString: str];
 	    }
-	  str = connectQuote(password);
+	  str = connectQuote([self password]);
 	  if (str != nil)
 	    {
 	      [m appendString: @" password="];
@@ -188,26 +188,26 @@ connectQuote(NSString *str)
     {
       NS_DURING
 	{
-	  if (inTransaction == YES)
+	  if ([self isInTransaction] == YES)
 	    {
 	      [self rollback];
 	    }
 
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Disconnecting client %@", client];
+	      [self debug: @"Disconnecting client %@", [self clientName]];
 	    }
 	  PQfinish(connection);
 	  extra = 0;
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Disconnected client %@", client];
+	      [self debug: @"Disconnected client %@", [self clientName]];
 	    }
 	}
       NS_HANDLER
 	{
 	  [self debug: @"Error disconnecting from database (%@): %@",
-	    client, localException];
+	    [self clientName], localException];
 	}
       NS_ENDHANDLER
       connected = NO;

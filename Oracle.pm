@@ -119,7 +119,9 @@ void SQLClientOracleErrorHandler()
 {
   if (connected == NO)
     {
-      if (database != nil  &&  user != nil  &&  password != nil)
+      if ([self database] != nil
+	&& [self user] != nil
+	&& [self password] != nil)
 	{
 	  Class		c = NSClassFromString(@"CmdClient");
 
@@ -135,16 +137,16 @@ void SQLClientOracleErrorHandler()
 	      EXEC SQL END DECLARE SECTION;
 
 	      /* Database is the Oracle Net identifier for the database.  */
-	      database_c = [database UTF8String];
+	      database_c = [[self database] UTF8String];
 
 	      /* User and password are used to connect to the database.  */
-	      user_c = [user UTF8String];
-	      password_c = [password UTF8String];
+	      user_c = [[self user] UTF8String];
+	      password_c = [[self password] UTF8String];
 
 	      /* Client is only used to give this connection a name
 	       * and distinguish it from other connections.
 	       */
-	      client_c = [client UTF8String];
+	      client_c = [[self clientName] UTF8String];
 	      
 	      if (c != 0)
 		{
@@ -187,14 +189,14 @@ void SQLClientOracleErrorHandler()
 	  const char	*client_c;
 	  EXEC SQL END DECLARE SECTION;
 
-	  if (inTransaction == YES)
+	  if ([self isInTransaction] == YES)
 	    {
 	      [self rollback];
 	    }
 
-	  client_c = [client UTF8String];
+	  client_c = [[self clientName] UTF8String];
 	  
-	  [self debug: @"(Oracle) Disconnecting client %@", client];
+	  [self debug: @"(Oracle) Disconnecting client %@", [self clientName]];
 	  
 	  /* To disconnect from the database, we issuse a COMMIT
 	   * statement with the RELEASE option.  The RELEASE option
@@ -202,12 +204,12 @@ void SQLClientOracleErrorHandler()
 	   */
 	  EXEC SQL AT :client_c COMMIT WORK RELEASE;
 
-	  [self debug: @"(Oracle) Disconnected client %@", client];
+	  [self debug: @"(Oracle) Disconnected client %@", [self clientName]];
 	}
       NS_HANDLER
 	{
 	  [self error: @"(Oracle) Error disconnecting from database (%@): %@",
-	    client, localException];
+	    [self clientName], localException];
 	}
       NS_ENDHANDLER
       connected = NO;
@@ -246,7 +248,7 @@ void SQLClientOracleErrorHandler()
 
   NS_DURING
     {
-      if (inTransaction == NO)
+      if ([self isInTransaction] == NO)
 	{
 	  manuallyAutoCommit = YES;
 	}
@@ -349,7 +351,7 @@ static unsigned int trim(char *str)
   CREATE_AUTORELEASE_POOL(arp);
   NSMutableArray	*records;
   BOOL			isOpen = NO;
-  BOOL			wasInTransaction = inTransaction;
+  BOOL			wasInTransaction = [self isInTransaction];
   BOOL                  allocatedDescriptor = NO;
 
   length = [stmt length];
@@ -381,10 +383,10 @@ static unsigned int trim(char *str)
       allocatedDescriptor = YES;
 
       EXEC SQL AT :handle PREPARE myQuery from :query;
-      if (inTransaction == NO)
+      if ([self isInTransaction] == NO)
 	{
 	  /* EXEC SQL AT :handle BEGIN; */
-	  inTransaction = YES;
+	  _inTransaction = YES;
 	}
       EXEC SQL AT :handle DECLARE myCursor CURSOR FOR myQuery;
       EXEC SQL AT :handle OPEN myCursor;
@@ -605,10 +607,10 @@ static unsigned int trim(char *str)
       
       isOpen = NO;
       EXEC SQL AT :handle CLOSE myCursor;
-      if (wasInTransaction == NO && inTransaction == YES)
+      if (wasInTransaction == NO && [self isInTransaction] == YES)
 	{
 	  EXEC SQL AT :handle COMMIT;
-	  inTransaction = NO;
+	  _inTransaction = NO;
 	}
       EXEC SQL DEALLOCATE DESCRIPTOR 'myDesc';
       allocatedDescriptor = NO;
@@ -626,19 +628,19 @@ static unsigned int trim(char *str)
 	    {
 	      EXEC SQL AT :handle CLOSE myCursor;
 	    }
-	  if (wasInTransaction == NO && inTransaction == YES)
+	  if (wasInTransaction == NO && [self isInTransaction] == YES)
 	    {
 	      EXEC SQL AT :handle ROLLBACK;
-	      inTransaction = NO;
+	      _inTransaction = NO;
 	    }
 	}
       NS_HANDLER
 	{
 	  NSString	*e = [localException name];
 
-	  if (wasInTransaction == NO && inTransaction == YES)
+	  if (wasInTransaction == NO && [self isInTransaction] == YES)
 	    {
-	      inTransaction = NO;
+	      _inTransaction = NO;
 	    }
 	  if ([e isEqual: SQLConnectionException] == YES) 
 	    {
@@ -664,7 +666,7 @@ static unsigned int trim(char *str)
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  inTransaction = NO;
+	  _inTransaction = NO;
 	  [self backendDisconnect];
 	}
 

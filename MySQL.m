@@ -71,11 +71,13 @@ static NSNull	*null = nil;
 {
   if (connected == NO)
     {
-      if (database != nil  &&  user != nil  &&  password != nil)
+      if ([self database] != nil
+	&& [self user] != nil
+	&& [self password] != nil)
 	{
 	  NSString		*host = nil;
 	  NSString		*port = nil;
-	  NSString		*dbase = database;
+	  NSString		*dbase = [self database];
 	  NSRange		r;
 
 	  [[self class] purgeConnections: nil];
@@ -95,13 +97,13 @@ static NSNull	*null = nil;
 
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Connect to '%@' as %@", database, [self name]];
+	      [self debug: @"Connect to '%@' as %@", [self database], [self name]];
 	    }
 	  extra = mysql_init(0);
 	  if (mysql_real_connect(connection,
 	    [host UTF8String],
-	    [user UTF8String],
-	    [password UTF8String],
+	    [[self user] UTF8String],
+	    [[self password] UTF8String],
 	    [dbase UTF8String],
 	    [port intValue],
 	    NULL,
@@ -109,7 +111,7 @@ static NSNull	*null = nil;
 	    ) == 0)
 	    {
 	      [self debug: @"Error connecting to '%@' (%@) - %s",
-		[self name], database, mysql_error(connection)];
+		[self name], [self database], mysql_error(connection)];
 	      mysql_close(connection);
 	      extra = 0;
 	    }
@@ -117,7 +119,7 @@ static NSNull	*null = nil;
 	  else if (mysql_query(connection, "SET CHARACTER SET utf8") != 0)
 	    {
 	      [self debug: @"Error setting utf8 support for '%@' (%@) - %s",
-		[self name], database, mysql_error(connection)];
+		[self name], [self database], mysql_error(connection)];
 	      mysql_close(connection);
 	      extra = 0;
 	    }
@@ -148,26 +150,26 @@ static NSNull	*null = nil;
     {
       NS_DURING
 	{
-	  if (inTransaction == YES)
+	  if ([self isInTransaction] == YES)
 	    {
 	      [self rollback];
 	    }
 
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Disconnecting client %@", client];
+	      [self debug: @"Disconnecting client %@", [self clientName]];
 	    }
           mysql_close(connection);
           extra = 0;
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Disconnected client %@", client];
+	      [self debug: @"Disconnected client %@", [self clientName]];
 	    }
 	}
       NS_HANDLER
 	{
 	  [self debug: @"Error disconnecting from database (%@): %@",
-	    client, localException];
+	    [self clientName], localException];
 	}
       NS_ENDHANDLER
       connected = NO;

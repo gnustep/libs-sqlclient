@@ -142,7 +142,9 @@ static NSDate	*future = nil;
 {
   if (connected == NO)
     {
-      if (database != nil  &&  user != nil  &&  password != nil)
+      if ([self database] != nil
+	&& [self user] != nil
+	&& [self password] != nil)
 	{
 	  Class		c = NSClassFromString(@"CmdClient");
 
@@ -157,10 +159,10 @@ static NSDate	*future = nil;
 	      const char *client_c;
 	      EXEC SQL END DECLARE SECTION;
 
-	      database_c = [database UTF8String];
-	      user_c = [user UTF8String];
-	      password_c = [password UTF8String];
-	      client_c = [client UTF8String];
+	      database_c = [[self database] UTF8String];
+	      user_c = [[self user] UTF8String];
+	      password_c = [[self password] UTF8String];
+	      client_c = [[self clientName] UTF8String];
 	      
 	      if (c != 0)
 		{
@@ -216,27 +218,27 @@ static NSDate	*future = nil;
 	  const char	*client_c;
 	  EXEC SQL END DECLARE SECTION;
 
-	  if (inTransaction == YES)
+	  if ([self isInTransaction] == YES)
 	    {
 	      [self rollback];
 	    }
 
-	  client_c = [client UTF8String];
+	  client_c = [[self clientName] UTF8String];
 	  
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Disconnecting client %@", client];
+	      [self debug: @"Disconnecting client %@", [self clientName]];
 	    }
 	  EXEC SQL DISCONNECT :client_c;  
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Disconnected client %@", client];
+	      [self debug: @"Disconnected client %@", [self clientName]];
 	    }
 	}
       NS_HANDLER
 	{
 	  [self debug: @"Error disconnecting from database (%@): %@",
-	    client, localException];
+	    [self clientName], localException];
 	}
       NS_ENDHANDLER
       connected = NO;
@@ -407,7 +409,7 @@ static unsigned int trim(char *str)
     {
       EXEC SQL ALLOCATE DESCRIPTOR myDesc;
       EXEC SQL PREPARE myQuery from :query;
-      if (inTransaction == NO)
+      if ([self isInTransaction] == NO)
 	{
 	  EXEC SQL AT :handle BEGIN;
 	  localTransaction = YES;

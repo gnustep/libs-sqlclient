@@ -1,3 +1,9 @@
+Fri May 07 09:15:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	Add methods to log duration of any statements over a certain
+	limit.
+	Tidy instance variables ... prefix mprivate ones with underscore.
+
 Thu Apr 29 15:20:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Fix URLs in documentation as suggested by Adam.

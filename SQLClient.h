@@ -186,6 +186,8 @@ extern NSString	*SQLUniqueException;
  */
 @interface	SQLClient : NSObject
 {
+  void			*extra;		/** For subclass specific data */
+  NSRecursiveLock	*lock;		/** Maintain thread-safety */
   /**
    * A flag indicating whether this instance is currently connected to
    * the backend database server.  This variable must <em>only</em> be
@@ -197,20 +199,19 @@ extern NSString	*SQLUniqueException;
    * transaction. This variable must <em>only</em> be
    * set by the -begin, -commit or -rollback methods.
    */
-  BOOL			inTransaction;	/** Are we inside a transaction? */
-  NSString		*name;		/** Unique identifier for instance */
-  NSString		*client;	/** Identifier within backend */
-  NSString		*database;	/** The configured database name/host */
-  NSString		*password;	/** The configured password */
-  NSString		*user;		/** The configured user */
+  BOOL			_inTransaction;	/** Are we inside a transaction? */
+  NSString		*_name;		/** Unique identifier for instance */
+  NSString		*_client;	/** Identifier within backend */
+  NSString		*_database;	/** The configured database name/host */
+  NSString		*_password;	/** The configured password */
+  NSString		*_user;		/** The configured user */
   /**
    * Timestamp of last operation.<br />
    * Maintained by the -simpleExecute: and -simpleQuery: methods.
    */
-  NSDate		*lastOperation;	
-  NSRecursiveLock	*lock;		/** Maintain thread-safety */
-  unsigned int		debugging;	/** The current debugging level */
-  void			*extra;		/** For subclass specific data */
+  NSDate		*_lastOperation;	
+  NSTimeInterval	_duration;
+  unsigned int		_debugging;	/** The current debugging level */
 }
 
 /**
@@ -766,14 +767,25 @@ extern NSString	*SQLUniqueException;
 @interface      SQLClient (Logging)
 /**
  * Return the class-wide debugging level, which is inherited by all
- * newly created minstances.
+ * newly created instances.
  */
 + (unsigned int) debugging;
+
+/**
+ * Return the class-wide duration logging threshold, which is inherited by all
+ * newly created instances.
+ */
++ (NSTimeInterval) durationLogging;
 
 /**
  * Set the debugging level to be inherited by all new instances.
  */
 + (void) setDebugging: (unsigned int)level;
+
+/**
+ * Set the duration logging threshold to be inherited by all new instances.
+ */
++ (void) setDurationLogging: (NSTimeInterval)threshold;
 
 /**
  * The default implementation calls NSLogv to log a debug message.<br />
@@ -787,10 +799,25 @@ extern NSString	*SQLUniqueException;
 - (unsigned int) debugging;
 
 /**
+ * Returns the threshold above which queries and statements taking a long
+ * time to execute are logged.  A negative value (default) indicates that
+ * this logging is disabled.  A value of zero means that all statements
+ * are logged.
+ */
+- (NSTimeInterval) durationLogging;
+
+/**
  * Set the debugging level of this instance ... overrides the default
  * level inherited from the class.
  */
 - (void) setDebugging: (unsigned int)level;
+
+/**
+ * Set a threshold above which queries and statements taking a long
+ * time to execute are logged.  A negative value (default) disables
+ * this logging.  A value of zero logs all statements.
+ */
+- (void) setDurationLogging: (NSTimeInterval)threshold;
 @end
 
 #endif
