@@ -1,3 +1,10 @@
+Fri Nov 19 14:40:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: parse basic authentication infor and set it in extra
+	headers in request.
+	* WebServerBundles.m: support handling of paths longer than the
+	ones set for each bundle.
+
 Tue Nov 11 14:48:05 2004  Nicola Pero  <n.pero@mi.flashnet.it>
 
 	* GNUmakefile (BUNDLE_INSTALL_DIR): install bundles in

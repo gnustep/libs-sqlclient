@@ -91,6 +91,12 @@
  *   <desc>The IP address of the host that the request came from.</desc>
  *   <term>x-remote-port</term>
  *   <desc>The port of the host that the request came from.</desc>
+ *   <term>x-http-username</term>
+ *   <desc>The username from the 'authorization' header if the request
+ *     supplied http basic authentication.</desc>
+ *   <term>x-http-password</term>
+ *   <desc>The password from the 'authorization' header if the request
+ *     supplied http basic authentication.</desc>
  * </deflist>
  * On completion, the method must modify response to contain the data
  * and headers to be sent out.<br />
@@ -387,7 +393,15 @@
  * supplied in the request.  The WebServerBundles intance is responsible
  * for loading the bundles (based on information in the WebServerBundles
  * dictionary in the user defaults system) and for forwarding requests
- * to the appropriate bundles for processing.
+ * to the appropriate bundles for processing.<br />
+ * If a request comes in which is not an exact match for the path of any
+ * handler, the request path is repeatedly shortened by chopping off the
+ * last path component until a matching handler is found.<br />
+ * The paths in the dictionary must <em>not</em> end with a slash...
+ * an empty string will match all requests which do not match a handler
+ * with a longer path.
+ * <example>
+ * </example>
  */
 @interface	WebServerBundles : NSObject <WebServerDelegate>
 {
@@ -408,11 +422,26 @@
  *     HTTPS server rather than an HTTP server.
  *     See [WebServer-setPort:secure:] for details.
  *   </item>
+ *   <item>
+ *     WebServerBundles is a dictionary keyed on path strings, whose
+ *     values are dictionaries, each containing per-handler configuration
+ *     information and the name of the bundle containing the code to handle
+ *     requests sent to the path.  NB. the bundle name listed should
+ *     omit the <code>.bundle</code> extension.
+ *   </item>
  * </list>
  * Returns YES on success, NO on failure (if the port of the WebServer
  * cannot be set).
  */
 - (BOOL) defaultsUpdate: (NSNotification *)aNotification;
+
+/**
+ * Returns the handler to be used for the specified path, or nil if there
+ * is no handler available.<br />
+ * If the info argument is non-null, it is used to return additional
+ * information, either the path actually matched, or an error string.
+ */
+- (id) handlerForPath: (NSString*)path info: (NSString**)info;
 
 /**
  * Return dictionary of all handlers by name (path in request which maps
@@ -421,7 +450,7 @@
 - (NSMutableDictionary*) handlers;
 
 /**
- * Return the WebServer instance that the receiver is actiang as a
+ * Return the WebServer instance that the receiver is acting as a
  * delegate for.
  */
 - (WebServer*) http;
@@ -442,11 +471,21 @@
  * information listing the bundle containing the handler to be used.<br />
  * The configuration information is a dictionary containing the name
  * of the bundle (keyed on 'Name'), and this is used to locate the
- * bundle in the applications resources.
+ * bundle in the applications resources.<br />
+ * Before a request is passed on to a handler, two extra headers are set
+ * in it ... <code>x-http-path-base</code> and <code>x-http-path-info</code>
+ * being the actual path matched for the handler, and the remainder of the
+ * path after that base part.
  */
 - (BOOL) processRequest: (GSMimeDocument*)request
                response: (GSMimeDocument*)response
 		    for: (WebServer*)http;
+
+/**
+ * Registers an object as the handler for a particular path.<br />
+ * Registering a nil handler destroys any existing handler for the path.
+ */
+- (void) registerHandler: (id)handler forPath: (NSString*)path;
 
 /**
  * Just write to stderr using NSLog.

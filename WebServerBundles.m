@@ -48,6 +48,82 @@
   return [_http setPort: port secure: secure];
 }
 
+- (id) handlerForPath: (NSString*)path info: (NSString**)info
+{
+  NSString		*error = nil;
+  NSMutableDictionary	*handlers;
+  id			handler;
+
+  if (info != 0)
+    {
+      *info = path;
+    }
+  handlers = [self handlers];
+  handler = [handlers objectForKey: path];
+  if (handler == nil)
+    {
+      NSUserDefaults	*defs;
+      NSDictionary	*conf;
+      NSDictionary	*byPath;
+
+      defs = [NSUserDefaults standardUserDefaults];
+      conf = [defs dictionaryForKey: @"WebServerBundles"];
+      byPath = [conf objectForKey: path];
+      if ([byPath isKindOfClass: [NSDictionary class]] == NO)
+	{
+	  NSRange	r;
+
+	  r = [path rangeOfString: @"/" options: NSBackwardsSearch];
+	  if (r.length > 0)
+	    {
+	      path = [path substringToIndex: r.location];
+	      handler = [self handlerForPath: path info: info];
+	    }
+	  else
+	    {
+	      error = [NSString stringWithFormat:
+		@"Unable to find handler in Bundles config for '%@'", path];
+	    }
+	}
+      else
+	{
+	  NSString	*name;
+
+	  name = [byPath objectForKey: @"Name"];
+
+	  if ([name length] == 0)
+	    {
+	      error = [NSString stringWithFormat:
+		@"Unable to find Name in Bundles config for '%@'", path];
+	    }
+	  else
+	    {
+	      NSBundle	*mb = [NSBundle mainBundle];
+	      NSString	*p = [mb pathForResource: name ofType: @"bundle"];
+	      NSBundle	*b = [NSBundle bundleWithPath: p];
+	      Class	c = [b principalClass];
+
+	      if (c == 0)
+		{
+		  error = [NSString stringWithFormat:
+		    @"Unable to find class in '%@' for '%@'", p, path];
+		}
+	      else
+		{
+		  handler = [c new];
+		  [self registerHandler: handler forPath: path];
+		  RELEASE(handler);
+		}
+	    }
+	}
+    }
+  if (handler == nil && info != 0)
+    {
+      *info = error;
+    }
+  return handler;
+}
+
 - (NSMutableDictionary*) handlers
 {
   if (_handlers == nil)
@@ -109,66 +185,20 @@
 	       response: (GSMimeDocument*)response
 		    for: (WebServer*)http
 {
-  NSString		*error;
   NSString		*path;
-  NSMutableDictionary	*handlers;
+  NSString		*info;
   id			handler;
 
   path = [[request headerNamed: @"x-http-path"] value];
-  handlers = [self handlers];
-  handler = [handlers objectForKey: path];
-  if (handler == nil)
-    {
-      NSUserDefaults	*defs;
-      NSDictionary	*conf;
-      NSDictionary	*byPath;
-
-      defs = [NSUserDefaults standardUserDefaults];
-      conf = [defs dictionaryForKey: @"WebServerBundles"];
-      byPath = [conf objectForKey: path];
-      if ([byPath isKindOfClass: [NSDictionary class]] == NO)
-	{
-	  error = [NSString stringWithFormat:
-	    @"Unable to find Bundles config for '%@'", path];
-	  [self webAlert: error for: http];
-	}
-      else
-	{
-	  NSString	*name;
-
-	  name = [byPath objectForKey: @"Name"];
-
-	  if ([name length] == 0)
-	    {
-	      error = [NSString stringWithFormat:
-		@"Unable to find Name in Bundles config for '%@'", path];
-	      [self webAlert: error for: http];
-	    }
-	  else
-	    {
-	      NSBundle	*mb = [NSBundle mainBundle];
-	      NSString	*p = [mb pathForResource: name ofType: @"bundle"];
-	      NSBundle	*b = [NSBundle bundleWithPath: p];
-	      Class	c = [b principalClass];
-
-	      if (c == 0)
-		{
-		  error = [NSString stringWithFormat:
-		    @"Unable to find class in '%@' for '%@'", p, path];
-		  [self webAlert: error for: http];
-		}
-	      else
-		{
-		  handler = [c new];
-		  [handlers setObject: handler forKey: path];
-		  RELEASE(handler);
-		}
-	    }
-	}
-    }
+  handler = [self handlerForPath: path info: &info];
   if (handler == nil)
     {
       NSString	*error = @"bad path";
+
+      /*
+       * Log the error message.
+       */
+      [self webAlert: info for: (WebServer*)http];
 
       /*
        * Return status code 400 (Bad Request) with the informative error
@@ -179,9 +209,34 @@
     }
   else
     {
+      NSString	*extra = [path substringFromIndex: [info length]];
+
+      /*
+       * Provide extra information about the exact path used to match
+       * the handler, and any remaining path information beyond it.
+       */
+      [request setHeader: @"x-http-path-base"
+		   value: info
+	      parameters: nil];
+      [request setHeader: @"x-http-path-info"
+		   value: extra
+	      parameters: nil];
+
       return [handler processRequest: request
 			    response: response
 				 for: http];
+    }
+}
+
+- (void) registerHandler: (id)handler forPath: (NSString*)path
+{
+  if (handler == nil)
+    {
+      [[self handlers] removeObjectForKey: path];
+    }
+  else
+    {
+      [[self handlers] setObject: handler forKey: path];
     }
 }
 

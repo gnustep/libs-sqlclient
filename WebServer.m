@@ -1235,6 +1235,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   GSMimeDocument	*request;
   GSMimeDocument	*response;
   BOOL			responded = NO;
+  NSString		*str;
   NSString		*con;
   NSMutableData		*raw;
   NSMutableData		*out;
@@ -1273,6 +1274,28 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   [request setHeader: @"x-remote-port"
 	       value: [[session handle] socketService]
 	  parameters: nil];
+
+  str = [[request headerNamed: @"authorization"] value];
+  if ([str length] > 6 && [[str substringToIndex: 6] caseInsensitiveCompare:
+    @"Basic "] == NSOrderedSame)
+    {
+      str = [[str substringFromIndex: 6] stringByTrimmingSpaces];
+      str = [GSMimeDocument decodeBase64String: str];
+      if ([str length] > 0)
+	{
+	  NSRange	r = [str rangeOfString: @":"];
+
+	  if (r.length > 0)
+	    {
+	      [request setHeader: @"x-http-username"
+			   value: [str substringToIndex: r.location]
+		      parameters: nil];
+	      [request setHeader: @"x-http-password"
+			   value: [str substringFromIndex: NSMaxRange(r)]
+		      parameters: nil];
+	    }
+	}
+    }
 
   response = AUTORELEASE([GSMimeDocument new]);
   [response setContent: [NSData data] type: @"text/plain" name: nil];
