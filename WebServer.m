@@ -571,7 +571,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
       update = YES;
     }
   if ((secure == nil && _sslConfig != nil)
-    || [secure isEqual: _sslConfig] == NO)
+    || (secure != nil && [secure isEqual: _sslConfig] == NO))
     {
       update = YES;
     }
