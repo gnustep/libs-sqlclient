@@ -141,7 +141,10 @@
  *   <desc>An array of host IP addresses to refrain from logging ...
  *   this is useful if (for instance) you have a monitoring process which
  *   sends requests to the server to be sure it's alive, and don't want
- *   to log all the connections from this monitor.
+ *   to log all the connections from this monitor.<br />
+ *   Not only do we refrain from logging anything but exceptional events
+ *   about these hosts, connections and requests by these hosts are not
+ *   counted in statistics we generate.
  *   </desc>
  * </deflist>
  */

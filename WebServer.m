@@ -1174,9 +1174,13 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 {
   NSFileHandle	*hdl = [session handle];
 
-  if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+  if ([_quiet containsObject: [session address]] == NO)
     {
-      NSLog(@"%@ disconnect", session);
+      if (_verbose == YES)
+	{
+	  NSLog(@"%@ disconnect", session);
+	}
+      _handled++;
     }
   [_nc removeObserver: self
 		 name: NSFileHandleReadCompletionNotification
@@ -1192,7 +1196,6 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
       [_listener acceptConnectionInBackgroundAndNotify];
       _accepting = YES;
     }
-  _handled++;
 }
 
 - (void) _process: (WebServerSession*)session
@@ -1209,8 +1212,6 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   unsigned int		contentLength;
   NSEnumerator		*enumerator;
   GSMimeHeader		*hdr;
-
-  _requests++;
 
   AUTORELEASE(RETAIN(session));
   request = [[session parser] mimeDocument];
@@ -1244,9 +1245,13 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   response = AUTORELEASE([GSMimeDocument new]);
   [response setContent: [NSData data] type: @"text/plain" name: nil];
 
-  if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+  if ([_quiet containsObject: [session address]] == NO)
     {
-      NSLog(@"Request %@ - %@", session, request);
+      _requests++;
+      if (_verbose == YES)
+	{
+	  NSLog(@"Request %@ - %@", session, request);
+	}
     }
   NS_DURING
     {
