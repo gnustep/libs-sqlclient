@@ -1,3 +1,8 @@
+Wed Jul 14 12:07:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* configure.ac: Check for PQfformat in libpq, if it is not there
+	but the library is there, warn that it is too old.
+
 Thu Jul 02 17:40:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.m: Add control over character encoding used to

@@ -126,12 +126,19 @@ if test "$POSTGRES" = "yes"; then
     fi
   fi
  
-  AC_CHECK_LIB(pq,PQclear)
-  if test "$ac_cv_lib_pq_PQclear" != "yes"; then
+  AC_CHECK_LIB(pq,PQfformat)
+  if test "$ac_cv_lib_pq_PQfformat" != "yes"; then
       POSTGRES=
-      echo "******************************************************"
-      echo "Unable to locate postgres pq library (is it installed)"
-      echo "******************************************************"
+      AC_CHECK_LIB(pq,PQclear)
+      if test "$ac_cv_lib_pq_PQclear" != "yes"; then
+	echo "******************************************************"
+	echo "Unable to locate postgres pq library (is it installed)"
+	echo "******************************************************"
+      else
+	echo "******************************************************"
+	echo "Located postgres pq library, but it is too old to use!"
+	echo "******************************************************"
+      fi
   fi
   AC_CHECK_LIB(ecpg,ECPGconnect)
   if test "$ac_cv_lib_ecpg_ECPGconnect" != "yes"; then
