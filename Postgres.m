@@ -546,7 +546,7 @@ static unsigned int trim(char *str)
 {
   unsigned int	sLen = [blob length];
   unsigned char	*src = (unsigned char*)[blob bytes];
-  unsigned int	length = 2;
+  unsigned int	length = sLen + 2;
   unsigned int	i;
 
   for (i = 0; i < sLen; i++)
@@ -555,17 +555,13 @@ static unsigned int trim(char *str)
 
       if (c < 32 || c > 126)
 	{
-	  length += 5;
+	  length += 4;
 	}
       else if (c == '\\')
 	{
-	  length += 4;
+	  length += 3;
 	}
       else if (c == '\'')
-	{
-	  length += 2;
-	}
-      else
 	{
 	  length += 1;
 	}
