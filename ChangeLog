@@ -1,3 +1,8 @@
+Tue Nov 11 14:48:05 2004  Nicola Pero  <n.pero@mi.flashnet.it>
+
+	* GNUmakefile (BUNDLE_INSTALL_DIR): install bundles in
+	GNUSTEP_INSTALLATION_DIR, not GNUSTEP_LOCAL_ROOT.
+
 Tue Nov 09 10:20:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.hm: add ([-append:]) method to merge transactions.
