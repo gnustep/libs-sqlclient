@@ -835,12 +835,16 @@ extern NSTimeInterval	SQLClientTimeNow();
 + (NSTimeInterval) durationLogging;
 
 /**
- * Set the debugging level to be inherited by all new instances.
+ * Set the debugging level to be inherited by all new instances.<br />
+ * See [SQLClient(Logging)-setDebugging:]
+ * for controlling an individual instance of the class.
  */
 + (void) setDebugging: (unsigned int)level;
 
 /**
- * Set the duration logging threshold to be inherited by all new instances.
+ * Set the duration logging threshold to be inherited by new instances.<br />
+ * See [SQLClient(Logging)-setDurationLogging:]
+ * for controlling an individual instance of the class.
  */
 + (void) setDurationLogging: (NSTimeInterval)threshold;
 
@@ -851,7 +855,10 @@ extern NSTimeInterval	SQLClientTimeNow();
 - (void) debug: (NSString*)fmt, ...;
 
 /**
- * Return the current debugging level.
+ * Return the current debugging level.<br />
+ * A level of zero (default) means that no debug output is produced,
+ * except for that concerned with logging the database transactions
+ * taking over a certain amount of time (see the -setDurationLogging: method).
  */
 - (unsigned int) debugging;
 
