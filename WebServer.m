@@ -901,7 +901,15 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
 	  if ([buffer length] == 0)
 	    {
-	      [self _alert: @"%@ read end-of-file in empty request", session];
+	      /*
+	       * Don't log this in quiet mode as it could just be a
+	       * test connection that we are ignoring.
+	       */
+	      if ([_quiet containsObject: [session address]] == NO)
+		{
+		  [self _alert: @"%@ read end-of-file in empty request",
+		    session];
+		}
 	    }
 	  else
 	    {
