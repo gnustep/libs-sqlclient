@@ -1,0 +1,16 @@
+To build this library you must have a basic GNUstep environment set up ...
+
+The gnustep-make package must have been built and installed.
+The gnustep-base package must have been built and installed.
+
+You must hace sourced the GNUstep.sh script (from gnustep-make) to set
+up environment variables needed for building this.
+
+If this environment is in place, all you should need to do is run 'make'
+to configure and build the library, 'make install' to install it.
+
+Then you can run the test programs.
+
+Your most likely problems are that the configure script may not detect the
+database libraries you want ... 
+

@@ -1,0 +1,13 @@
+/* config.h.in.  Generated from configure.in by autoheader.  */
+
+/* Define to 1 if you have the </usr/include/pgsql/ecpglib.h> header file. */
+#undef HAVE__USR_INCLUDE_PGSQL_ECPGLIB_H
+
+/* Define to 1 if you have the </usr/include/postgresql/ecpglib.h> header
+   file. */
+#undef HAVE__USR_INCLUDE_POSTGRESQL_ECPGLIB_H
+
+/* Define to 1 if you have the </usr/local/include/pgsql/ecpglib.h> header
+   file. */
+#undef HAVE__USR_LOCAL_INCLUDE_PGSQL_ECPGLIB_H
+
