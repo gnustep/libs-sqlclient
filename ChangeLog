@@ -1,3 +1,7 @@
+Tue Nov 09 10:20:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.hm: add ([-append:]) method to merge transactions.
+
 Thu Oct 28 08:45:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.m: Don't generate alert about connection with empty
