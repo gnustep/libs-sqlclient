@@ -483,9 +483,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
 - (NSString*) description
 {
-  return [NSString stringWithFormat:
-    @"%@ on %@, %u of %u sessions active, %u ended, %u requests, listening: %@",
-    [super description], _port, NSCountMapTable(_sessions),
+  return [NSString stringWithFormat: @"%@ on %@(%@), %u of %u sessions active,"
+    @" %u ended, %u requests, listening: %@",
+    [super description], _port, ([self isSecure] ? @"https" : @"http"),
+    NSCountMapTable(_sessions),
     _maxSessions, _handled, _requests, _accepting == YES ? @"yes" : @"no"];
 }
 
