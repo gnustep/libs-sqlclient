@@ -3,6 +3,7 @@ include $(GNUSTEP_MAKEFILES)/common.make
 -include config.make
 
 PACKAGE_NAME = SQLClient
+PACKAGE_VERSION = 1.1.0
 
 TEST_TOOL_NAME=
 

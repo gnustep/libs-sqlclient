@@ -56,9 +56,9 @@ Current backend bundles are -
 
 Where can you get it? How can you install it?
 
-The SQLClient library is currently only available via CVS from the GNUstep CVS repository.
-See <https://savannah.gnu.org/cvs/?group=gnustep>
-You need to check out gnustep/dev-libs/SQLClient
+The SQLClient library is currently available at
+<ftp://ftp.gnustep.org/pub/gnustep/libs>
+or via CVS from the GNUstep CVS repository (See <https://savannah.gnu.org/cvs/?group=gnustep>. Check out gnustep/dev-libs/SQLClient).
 
 To build this library you must have a basic GNUstep environment set up...
 
