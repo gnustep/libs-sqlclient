@@ -244,6 +244,7 @@ extern NSString	*SQLUniqueException;
   NSString		*_database;	/** The configured database name/host */
   NSString		*_password;	/** The configured password */
   NSString		*_user;		/** The configured user */
+  NSMutableArray	*_statements;	/** Uncommitted statements */
   /**
    * Timestamp of last operation.<br />
    * Maintained by the -simpleExecute: and -simpleQuery: methods.

@@ -1,3 +1,8 @@
+Fri Sep 17 16:55:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.[hm]: When reporting the duration of a commit or
+	rollback, report text of all the statements in the transaction.
+
 Fri Aug 28 09:30:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.[hm]: Add support for limiting maximum number of incoming

@@ -177,6 +177,7 @@ main()
 
       [db setDurationLogging: 0];
 
+      [db begin];
       [db execute: @"create table xxx ( "
 	@"k char(40), "
 	@"char1 char(1), "
@@ -212,6 +213,7 @@ main()
 	[NSData dataWithBytes: "" length: 0],
 	@")",
 	nil];
+      [db commit];
 
       records = [db query: @"select * from xxx", nil];
       [db execute: @"drop table xxx", nil];

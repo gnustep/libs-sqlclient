@@ -262,8 +262,11 @@ static NSTimeInterval	classDuration = -1;
  */
 static NSMapTable	*cache = 0;
 static NSRecursiveLock	*cacheLock = nil;
+static NSString		*beginString = @"begin";
 static NSArray		*beginStatement = nil;
+static NSString		*commitString = @"commit";
 static NSArray		*commitStatement = nil;
+static NSString		*rollbackString = @"rollback";
 static NSArray		*rollbackStatement = nil;
 
 
@@ -346,9 +349,9 @@ static unsigned int	maxConnections = 8;
       cache = NSCreateMapTable(NSObjectMapKeyCallBacks,
         NSNonRetainedObjectMapValueCallBacks, 0);
       cacheLock = [GSLazyRecursiveLock new];
-      beginStatement = RETAIN([NSArray arrayWithObject: @"begin"]);
-      commitStatement = RETAIN([NSArray arrayWithObject: @"commit"]);
-      rollbackStatement = RETAIN([NSArray arrayWithObject: @"rollback"]);
+      beginStatement = RETAIN([NSArray arrayWithObject: beginString]);
+      commitStatement = RETAIN([NSArray arrayWithObject: commitString]);
+      rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
     }
 }
 
@@ -474,14 +477,14 @@ static unsigned int	maxConnections = 8;
     {
       [self simpleExecute: commitStatement];
       _inTransaction = NO;
-      [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -commit
+      [lock unlock];		// Locked by -begin
     }
   NS_HANDLER
     {
       _inTransaction = NO;
-      [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -commit
+      [lock unlock];		// Locked by -begin
       [localException raise];
     }
   NS_ENDHANDLER
@@ -540,6 +543,7 @@ static unsigned int	maxConnections = 8;
   DESTROY(_user);
   DESTROY(_name);
   DESTROY(_lastOperation);
+  DESTROY(_statements);
   [super dealloc];
 }
 
@@ -638,6 +642,7 @@ static unsigned int	maxConnections = 8;
       [self setDebugging: [[self class] debugging]];
       [self setDurationLogging: [[self class] durationLogging]];
       [self setName: reference];	// Set name and store in cache.
+      _statements = [NSMutableArray new];
 
       if ([conf isKindOfClass: [NSUserDefaults class]] == YES)
 	{
@@ -828,14 +833,14 @@ static unsigned int	maxConnections = 8;
     {
       [self simpleExecute: rollbackStatement];
       _inTransaction = NO;
-      [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -rollback
+      [lock unlock];		// Locked by -begin
     }
   NS_HANDLER
     {
       _inTransaction = NO;
-      [lock unlock];		// Locked by -begin
       [lock unlock];		// Locked at start of -rollback
+      [lock unlock];		// Locked by -begin
       [localException raise];
     }
   NS_ENDHANDLER
@@ -915,7 +920,10 @@ static unsigned int	maxConnections = 8;
 
 - (void) simpleExecute: (NSArray*)info
 {
+  NSString	*statement;
+
   [lock lock];
+  statement = [info objectAtIndex: 0];
   NS_DURING
     {
       NSDate	*start = nil;
@@ -927,6 +935,7 @@ static unsigned int	maxConnections = 8;
       [self backendExecute: info];
       RELEASE(_lastOperation);
       _lastOperation = [NSDate new];
+      [_statements addObject: statement];
       if (_duration >= 0)
 	{
 	  NSTimeInterval	d;
@@ -934,24 +943,52 @@ static unsigned int	maxConnections = 8;
 	  d = [_lastOperation timeIntervalSinceDate: start];
 	  if (d >= _duration)
 	    {
-	      /*
-	       * For higher debug levels, we log data objects as well
-	       * as the query string, otherwise we omit them.
-	       */
-	      if ([self debugging] > 1)
+	      if (statement == commitString || statement == rollbackString)
 		{
+		  NSEnumerator	*e = [_statements objectEnumerator];
+		  if (statement == commitString)
+		    {
+		      [self debug:
+			@"Duration %g for transaction commit ...", d];
+		    }
+		  else 
+		    {
+		      [self debug:
+			@"Duration %g for transaction rollback ...", d];
+		    }
+		  while ((statement = [e nextObject]) != nil)
+		    {
+		      [self debug: @"  %@;", statement];
+		    }
+		}
+	      else if ([self debugging] > 1)
+		{
+		  /*
+		   * For higher debug levels, we log data objects as well
+		   * as the query string, otherwise we omit them.
+		   */
 		  [self debug: @"Duration %g for statement %@", d, info];
 		}
 	      else
 		{
 		  [self debug: @"Duration %g for statement %@",
-		    d, [info objectAtIndex: 0]];
+		    d, statement];
 		}
 	    }
+	}
+      if (_inTransaction == NO
+	|| statement == commitString || statement == rollbackString)
+	{
+	  [_statements removeAllObjects];
 	}
     }
   NS_HANDLER
     {
+      if (_inTransaction == NO
+	|| statement == commitString || statement == rollbackString)
+	{
+	  [_statements removeAllObjects];
+	}
       [lock unlock];
       [localException raise];
     }
