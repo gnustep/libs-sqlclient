@@ -1076,6 +1076,22 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     {
       if ([parser isComplete] == YES)
 	{
+	  /*
+	   * Provide more information about the connection.
+	   */
+	  [doc setHeader: @"x-local-address"
+		   value: [hdl socketLocalAddress]
+	      parameters: nil];
+	  [doc setHeader: @"x-local-port"
+		   value: [hdl socketLocalService]
+	      parameters: nil];
+	  [doc setHeader: @"x-remote-address"
+		   value: [hdl socketAddress]
+	      parameters: nil];
+	  [doc setHeader: @"x-remote-port"
+		   value: [hdl socketService]
+	      parameters: nil];
+
 	  [self _process: session];
 	}
       else
@@ -1145,9 +1161,6 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   request = [[session parser] mimeDocument];
   response = AUTORELEASE([GSMimeDocument new]);
   [response setContent: [NSData data] type: @"text/plain" name: nil];
-  [request setHeader: @"x-remote-address"
-	       value: [session address]
-	  parameters: nil];
 
   if (_verbose == YES) NSLog(@"Request %@ - %@", session, request);
   NS_DURING

@@ -82,8 +82,14 @@
  *     if there was no query.</desc>
  *   <term>x-http-version</term>
  *   <desc>The version from the HTTP request.</desc>
+ *   <term>x-local-address</term>
+ *   <desc>The IP address of the local host receiving the request.</desc>
+ *   <term>x-local-port</term>
+ *   <desc>The port of the local host receiving the request.</desc>
  *   <term>x-remote-address</term>
  *   <desc>The IP address of the host that the request came from.</desc>
+ *   <term>x-remote-port</term>
+ *   <desc>The port of the host that the request came from.</desc>
  * </deflist>
  * On completion, the method must modify response to contain the data
  * and headers to be sent out.<br />
