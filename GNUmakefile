@@ -29,7 +29,7 @@ ifneq ($(ECPG),)
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
 ECPG_LIB_DIRS = -L./obj
-ECPG_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lecpg
+ECPG_BUNDLE_LIBS += -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
 TEST_TOOL_NAME += testECPG
 testECPG_OBJC_FILES = testECPG.m
@@ -41,19 +41,19 @@ ifneq ($(POSTGRES),)
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
 Postgres_LIB_DIRS = -L./obj
-Postgres_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lpq
+Postgres_BUNDLE_LIBS += -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
 TEST_TOOL_NAME += testPostgres
 testPostgres_OBJC_FILES = testPostgres.m
 testPostgres_LIB_DIRS += -L./obj
-testPostgres_TOOL_LIBS += -lSQLClient -lpq
+testPostgres_TOOL_LIBS += -lSQLClient
 endif
 
 ifneq ($(MYSQL),)
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
 MySQL_LIB_DIRS = -L./obj
-MySQL_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lmysqlclient
+MySQL_BUNDLE_LIBS += -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
 TEST_TOOL_NAME += testMySQL
 testMySQL_OBJC_FILES = testMySQL.m
@@ -67,7 +67,6 @@ Oracle_OBJC_FILES = Oracle.m
 Oracle_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./obj \
 			$(shell cat $(ORACLE_HOME)/lib/ldflags)
 Oracle_BUNDLE_LIBS += -lclntsh \
-		      -lSQLClient -lgnustep-base -lobjc \
                       $(shell cat $(ORACLE_HOME)/lib/sysliblist) \
                       -ldl -lm
 Oracle_PRINCIPAL_CLASS = SQLClientOracle
