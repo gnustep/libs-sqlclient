@@ -1,3 +1,9 @@
+Wed Oct 06 13:10:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.[hm]: Allow a database transaction to already have been
+	begun when [SQLTransactiuon-execute] is called, so we can have
+	queries in the same database transaction as a list of statements.
+
 Wed Oct 06 06:15:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.[hm]: Make the rollback opoeration a safe no-op if

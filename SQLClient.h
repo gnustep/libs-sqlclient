@@ -872,7 +872,7 @@ extern NSString	*SQLUniqueException;
  * The SQLTransaction transaction class provides a convenient mechanism
  * for grouping together a series of SQL statements to be executed as a
  * single transaction.  It avoids the need for handling begin/commit,
- * and shouldbe as efficient as reasonably possible.<br />
+ * and should be as efficient as reasonably possible.<br />
  * You obtain an instance by calling [SQLClient-transaction], add SQL
  * statements to it using the -add:,... and/or -add:with: methods, and
  * then use the -execute method to perform all the statements as a
@@ -889,6 +889,7 @@ extern NSString	*SQLUniqueException;
   NSMutableArray	*_info;
   unsigned		_count;
 }
+
 /**
  * Adds an SQL statement to the transaction.  This is similar to
  * [SQLClient-execute:,...] but does not cause any database operation
@@ -910,10 +911,21 @@ extern NSString	*SQLUniqueException;
 - (SQLClient*) db;
 
 /**
- * Performs any statements added to the transaction as a single operation.
+ * <p>Performs any statements added to the transaction as a single operation.
  * If any problem occurs, an NSException is raised, but the database connection
  * is left in a consistent state and a partially completed operation is
  * rolled back.
+ * </p>
+ * <p>NB. If the database is not already in a transaction, this implicitly
+ * calls the -begin method to start the transaction before executing the
+ * statements.<br />
+ * The method always commits the transaction, even if the transaction was
+ * begun earlier rather than in -execute.<br />
+ * This behavior allows you to call [SQLClient-begin], then run one or more
+ * queries, build up a transaction based upon the query results, and then
+ * -execute that transaction, causing the entire process to be commited as
+ * a single transaction .
+ * </p>
  */
 - (void) execute;
 

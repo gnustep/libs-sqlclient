@@ -1630,7 +1630,7 @@ static unsigned int	maxConnections = 8;
     {
       NS_DURING
 	{
-	  if (_count > 1)
+	  if (_count > 1 && [_db isInTransaction] == NO)
 	    {
 	      [_db begin];
 	    }
