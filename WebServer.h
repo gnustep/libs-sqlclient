@@ -115,13 +115,35 @@
 @end
 
 /**
- * You create an instance of the WebServer class in order to handle
- * incoming http or https requests on a single port.<br />
- * Before use, it must be configured using the -setPort:secure: method
- * to specify the port and if/how ssl is to be used.<br />
- * You must also set a delegate to handle incoming requests,
+ * <p>You create an instance of the WebServer class in order to handle
+ * incoming http or https requests on a single port.
+ * </p>
+ * <p>Before use, it must be configured using the -setPort:secure: method
+ * to specify the port and if/how ssl is to be used.
+ * </p>
+ * <p>You must also set a delegate to handle incoming requests,
  * and may specify a maximum number of simultaneous connections
  * which may be in progress etc.
+ * </p>
+ * <p>In addition to the options which may be set directly in the class,
+ * you can provide some configuration via the standard NSDefaults class.
+ * This information is set at initialisation of an instance and the
+ * class recognises the following defaults keys -
+ * </p>
+ * <deflist>
+ *   <term>WebServerHosts</term>
+ *   <desc>An array of host IP addresses to list the mhosts permitted to
+ *   send requests to the server.  If defined, requests from other hosts
+ *   will be rejected.  It's better to use firewalling to control this
+ *   sort of thing.
+ *   </desc>
+ *   <term>WebServerQuiet</term>
+ *   <desc>An array of host IP addresses to refrain from logging ...
+ *   this is useful if (for instance) you have a monitoring process which
+ *   sends requests to the server to be sure it's alive, and don't want
+ *   to log all the connections from this monitor.
+ *   </desc>
+ * </deflist>
  */
 @interface	WebServer : NSObject
 {
@@ -131,6 +153,7 @@
   BOOL			_accepting;
   BOOL			_verbose;
   NSDictionary		*_sslConfig;
+  NSArray		*_quiet;
   NSArray		*_hosts;
   unsigned int		_substitutionLimit;
   unsigned int		_maxBodySize;

@@ -178,6 +178,7 @@
   [self setPort: nil secure: nil];
   DESTROY(_nc);
   DESTROY(_root);
+  DESTROY(_quiet);
   DESTROY(_hosts);
   DESTROY(_perHost);
   if (_sessions != 0)
@@ -353,6 +354,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 
 - (id) init
 {
+  NSUserDefaults	*defs = [NSUserDefaults standardUserDefaults];
+
+  _hosts = RETAIN([defs arrayForKey: @"WebServerHosts"]);
+  _quiet = RETAIN([defs arrayForKey: @"WebServerQuiet"]);
   _nc = RETAIN([NSNotificationCenter defaultCenter]);
   _sessionTimeout = 30.0;
   _maxPerHost = 8;
@@ -823,7 +828,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 	{
 	  [self _alert: @"Unknown host (%@) on new connection.", a];
 	}
-      else if (_hosts != nil && [_hosts containsObject: h] == NO)
+      else if (_hosts != nil && [_hosts containsObject: a] == NO)
 	{
 	  [self _alert: @"Invalid host (%@) on new connection.", a];
 	}
@@ -855,7 +860,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 		      name: GSFileHandleWriteCompletionNotification
 		    object: hdl];
 	  [hdl readInBackgroundAndNotify];
-	  if (_verbose == YES) NSLog(@"%@ connect", session);
+	  if (_verbose == YES && [_quiet containsObject: a] == NO)
+	    {
+	      NSLog(@"%@ connect", session);
+	    }
 	}
     }
   if (_accepting == NO
@@ -1145,7 +1153,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     }
   else
     {
-      if (_verbose == YES) NSLog(@"%@ reset", session);
+      if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+	{
+	  NSLog(@"%@ reset", session);
+	}
       [session reset];
       [hdl readInBackgroundAndNotify];	// Want another request.
     }
@@ -1155,7 +1166,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 {
   NSFileHandle	*hdl = [session handle];
 
-  if (_verbose == YES) NSLog(@"%@ disconnect", session);
+  if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+    {
+      NSLog(@"%@ disconnect", session);
+    }
   [_nc removeObserver: self
 		 name: NSFileHandleReadCompletionNotification
 	       object: hdl];
@@ -1222,7 +1236,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   response = AUTORELEASE([GSMimeDocument new]);
   [response setContent: [NSData data] type: @"text/plain" name: nil];
 
-  if (_verbose == YES) NSLog(@"Request %@ - %@", session, request);
+  if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+    {
+      NSLog(@"Request %@ - %@", session, request);
+    }
   NS_DURING
     {
       [session setProcessing: YES];
@@ -1324,7 +1341,10 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
     {
       [out appendBytes: "\r\n" length: 2];	// Terminate headers
     }
-  if (_verbose == YES) NSLog(@"Response %@ - %@", session, out);
+  if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+    {
+      NSLog(@"Response %@ - %@", session, out);
+    }
   [[session handle] writeInBackgroundAndNotify: out];
 }
 
