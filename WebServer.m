@@ -323,7 +323,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 		   using: (NSDictionary*)map
 {
   CREATE_AUTORELEASE_POOL(arp);
-  NSString	*path = (_root == nil) ? @"" : _root;
+  NSString	*path = (_root == nil) ? @"" : (NSString*)_root;
   NSString	*str;
   NSFileManager	*mgr;
   BOOL		result;

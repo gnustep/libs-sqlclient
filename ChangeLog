@@ -1,3 +1,9 @@
+Wed Jun 30 05:40:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* GNUmakefile: Use ./obj as location for library to link,
+	for initial case where we link the bundles before installing
+	the library.
+
 Tue Jun 29 18:10:00 2004  Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fix code for retrieving reference name ... look in
