@@ -142,7 +142,7 @@
 - (void) _didWrite: (NSNotification*)notification;
 - (void) _endSession: (WebServerSession*)session;
 - (void) _process: (WebServerSession*)session;
-- (void) _ticker: (NSTimer*)timer;
+- (void) _timeout: (NSTimer*)timer;
 @end
 
 @implementation	WebServer
@@ -1245,7 +1245,7 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   [[session handle] writeInBackgroundAndNotify: out];
 }
 
-- (void) _ticker: (NSTimer*)timer
+- (void) _timeout: (NSTimer*)timer
 {
   unsigned		count;
 
