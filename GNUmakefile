@@ -41,7 +41,7 @@ ifneq ($(ECPG),)
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
 ECPG_LDFLAGS = -L./obj
-ECPG_BUNDLE_LIBS += -lSQLClient -lecpg
+ECPG_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
 endif
 
@@ -49,7 +49,7 @@ ifneq ($(POSTGRES),)
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
 Postgres_LDFLAGS = -L./obj
-Postgres_BUNDLE_LIBS += -lSQLClient -lpq
+Postgres_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
 endif
 
@@ -57,7 +57,7 @@ ifneq ($(MYSQL),)
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
 MySQL_LDFLAGS = -L./obj
-MySQL_BUNDLE_LIBS += -lSQLClient -lmysqlclient
+MySQL_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
 endif
 
@@ -67,7 +67,7 @@ Oracle_OBJC_FILES = Oracle.m
 Oracle_LDFLAGS = -L$(ORACLE_HOME)/lib -L./obj \
 			$(shell cat $(ORACLE_HOME)/lib/ldflags)
 Oracle_BUNDLE_LIBS += -lclntsh \
-		      -lSQLClient \
+		      -lSQLClient -lgnustep-base -lobjc \
                       $(shell cat $(ORACLE_HOME)/lib/sysliblist) \
                       -ldl -lm
 Oracle_PRINCIPAL_CLASS = SQLClientOracle
