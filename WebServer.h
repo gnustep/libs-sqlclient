@@ -52,13 +52,11 @@
 
 #include	<Foundation/NSObject.h>
 #include	<Foundation/NSMapTable.h>
+#include	<Foundation/NSDictionary.h>
 #include	<Foundation/NSFileHandle.h>
+#include	<Foundation/NSNotification.h>
+#include	<Foundation/NSArray.h>
 #include	<GNUstepBase/GSMime.h>
-
-@class	NSString;
-@class	NSArray;
-@class	NSDictionary;
-@class	NSNotificationCenter;
 
 @class	WebServer;
 
