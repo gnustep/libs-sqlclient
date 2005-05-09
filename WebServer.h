@@ -266,6 +266,20 @@
 - (unsigned) decodeURLEncodedForm: (NSData*)data
 			     into: (NSMutableDictionary*)dict;
 
+/**         
+ * Encode an application/x-www-form-urlencoded form and store its
+ * representation in the supplied data object.<br />
+ * The dictionary contains the form, with keys as data objects or strings,
+ * and values as arrays of values to be placed in the data.
+ * Each value in the array may be a data object or a string.<br />
+ * As a special case, a value may be a data object or a string rather
+ * than an array ... this is treated like an array of one value.<br />
+ * All non data keys and values are convertd to data using utf-8 encoding.<br />
+ * This method returns the number of values actually encoded.
+ */         
+- (unsigned) encodeURLEncodedForm: (NSDictionary*)dict
+			     into: (NSMutableData*)data;
+
 /**
  * Returns YES if the server is for HTTPS (encrypted connections),
  * NO otherwise.

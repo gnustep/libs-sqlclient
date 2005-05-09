@@ -1,3 +1,8 @@
+2005-05-09 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.[hm]: Add method to encode a form from a dictionary
+	into a data object ... convenience for where form data is needed.
+
 2005-03-02 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.[hm]: Add support for basic http authentication either

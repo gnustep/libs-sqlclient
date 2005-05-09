@@ -481,6 +481,130 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
   return fields;
 }
 
+static NSMutableData*
+escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
+{
+  unsigned char	*dst = (unsigned char*)[d mutableBytes];
+  unsigned int	spos = 0;
+  unsigned int	dpos = [d length];
+
+  [d setLength: dpos + 3 * length];
+  while (spos < length)
+    {
+      unsigned char	c = bytes[spos++];
+      unsigned int	hi;
+      unsigned int	lo;
+
+      switch (c)
+	{
+	  case ',':
+	  case ';':
+	  case '"':
+	  case '\'':
+	  case '&':
+	  case '=':
+	  case '(':
+	  case ')':
+	  case '<':
+	  case '>':
+	  case '?':
+	  case '#':
+	  case '{':
+	  case '}':
+	  case '%':
+	  case ' ':
+	  case '+':
+	    dst[dpos++] = '%';
+	    hi = (c & 0xf0) >> 4;
+	    dst[dpos++] = (hi > 9) ? 'A' + hi - 10 : '0' + hi;
+	    lo = (c & 0x0f);
+	    dst[dpos++] = (lo > 9) ? 'A' + lo - 10 : '0' + lo;
+	    break;
+
+	  default:
+	    if (c < ' ' || c > 127)
+	      {
+		dst[dpos++] = '%';
+		hi = (c & 0xf0) >> 4;
+		dst[dpos++] = (hi > 9) ? 'A' + hi - 10 : '0' + hi;
+		lo = (c & 0x0f);
+		dst[dpos++] = (lo > 9) ? 'A' + lo - 10 : '0' + lo;
+	      }
+	    else
+	      {
+		dst[dpos++] = c;
+	      }
+	    break;
+	}
+    }
+  [d setLength: dpos];
+  return d;
+}
+
+- (unsigned) encodeURLEncodedForm: (NSDictionary*)dict
+			     into: (NSMutableData*)data
+{
+  CREATE_AUTORELEASE_POOL(arp);
+  NSEnumerator		*keyEnumerator;
+  id			key;
+  unsigned		valueCount = 0;
+  NSMutableData		*md = [NSMutableData dataWithCapacity: 100];
+
+  keyEnumerator = [dict keyEnumerator];
+  while ((key = [keyEnumerator nextObject]) != nil)
+    {
+      id		values = [dict objectForKey: key];
+      NSData		*keyData;
+      NSEnumerator	*valueEnumerator;
+      id		value;
+
+      if ([key isKindOfClass: [NSData class]] == YES)
+	{
+	  keyData = key;
+	}
+      else
+	{
+	  key = [key description];
+	  keyData = [key dataUsingEncoding: NSUTF8StringEncoding];
+	}
+      [md setLength: 0];
+      escapeData([keyData bytes], [keyData length], md);
+      keyData = md;
+
+      if ([values isKindOfClass: [NSArray class]] == NO)
+        {
+	  values = [NSArray arrayWithObject: values];
+	}
+
+      valueEnumerator = [values objectEnumerator];
+
+      while ((value = [valueEnumerator nextObject]) != nil)
+	{
+	  NSData	*valueData;
+
+	  if ([data length] > 0)
+	    {
+	      [data appendBytes: "&" length: 1];
+	    }
+	  [data appendData: keyData];
+	  [data appendBytes: "=" length: 1];
+	  if ([value isKindOfClass: [NSData class]] == YES)
+	    {
+	      valueData = value;
+	    }
+	  else
+	    {
+	      value = [value description];
+	      valueData = [value dataUsingEncoding: NSUTF8StringEncoding];
+	    }
+	  escapeData([valueData bytes], [valueData length], data);
+	  valueCount++;
+	}
+    }
+  RELEASE(arp);
+  return valueCount;
+}
+
 - (NSString*) description
 {
   return [NSString stringWithFormat: @"%@ on %@(%@), %u of %u sessions active,"
