@@ -484,11 +484,12 @@ unescapeData(const unsigned char* bytes, unsigned length, unsigned char *buf)
 static NSMutableData*
 escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 {
-  unsigned char	*dst = (unsigned char*)[d mutableBytes];
+  unsigned char	*dst;
   unsigned int	spos = 0;
   unsigned int	dpos = [d length];
 
   [d setLength: dpos + 3 * length];
+  dst = (unsigned char*)[d mutableBytes];
   while (spos < length)
     {
       unsigned char	c = bytes[spos++];
