@@ -1800,6 +1800,12 @@ static void	quoteString(NSMutableString *s)
   [super dealloc];
 }
 
+- (NSString*) description
+{
+  return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
+    [super description], (_count == 0 ? @"" : [_info objectAtIndex: 0]), _db];
+}
+
 - (void) _addInfo: (NSArray*)info
 {
   if (_count == 0)
