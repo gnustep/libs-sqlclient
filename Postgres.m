@@ -206,6 +206,7 @@ connectQuote(NSString *str)
 	}
       NS_HANDLER
 	{
+	  extra = 0;
 	  [self debug: @"Error disconnecting from database (%@): %@",
 	    [self clientName], localException];
 	}

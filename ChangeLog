@@ -1,3 +1,9 @@
+2005-05-25 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Clear connection if an exception occurs while
+	disconnecting ... otherwise a failed disconnect can prevent
+	any new connection from being established.
+
 2005-05-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* WebServer.[hm]: Add method to encode a form from a dictionary
