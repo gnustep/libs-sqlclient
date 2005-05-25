@@ -30,6 +30,7 @@
 #include	<Foundation/NSData.h>
 #include	<Foundation/NSDate.h>
 #include	<Foundation/NSCalendarDate.h>
+#include	<Foundation/NSCharacterSet.h>
 #include	<Foundation/NSException.h>
 #include	<Foundation/NSProcessInfo.h>
 #include	<Foundation/NSNotification.h>
@@ -741,18 +742,49 @@ static unsigned int	maxConnections = 8;
 
 static void	quoteString(NSMutableString *s)
 {
-  NSRange	r;
+  static NSCharacterSet	*special = nil;
+  NSRange		r;
+  unsigned		l;
 
-  /* Escape the string.  */
-  r = [s rangeOfString: @"\\"];
-  if (r.length != 0)
+  if (special == nil)
     {
-      [s replaceString: @"\\" withString: @"\\\\"];
+      /*
+       * NB. length of C string is 3, so we include a nul character as a
+       * special.
+       */
+      special = [NSCharacterSet characterSetWithCharactersInString:
+	[NSString stringWithCString: "\\'" length: 3]];
+      RETAIN(special);
     }
-  r = [s rangeOfString: @"'"];
-  if (r.length != 0)
+
+  /*
+   * Step through string removing nul characters (illegal in postgres)
+   * and escaping other characters as required.
+   */
+  l = [s length];
+  r = NSMakeRange(0, l);
+  r = [s rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
+  while (r.length > 0)
     {
-      [s replaceString: @"'" withString: @"\\'"];
+      unichar	c = [s characterAtIndex: r.location];
+
+      if (c == 0)
+	{
+	  r.length = 1;
+	  [s replaceCharactersInRange: r withString: nil];
+	  l--;
+	}
+      else
+	{
+	  r.length = 0;
+	  [s replaceCharactersInRange: r withString: @"\\"];
+	  l++;
+	  r.location += 2;
+	} 
+      r = NSMakeRange(r.location, l - r.location);
+      r = [s rangeOfCharacterFromSet: special
+			     options: NSLiteralSearch
+			       range: r];
     }
 
   /* Add quoting around it.  */

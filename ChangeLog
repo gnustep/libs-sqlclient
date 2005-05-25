@@ -3,6 +3,8 @@
 	* Postgres.m: Clear connection if an exception occurs while
 	disconnecting ... otherwise a failed disconnect can prevent
 	any new connection from being established.
+	Improve quoting of strings to be a bit more efficient and to
+	remove nul characters.
 
 2005-05-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
