@@ -213,6 +213,18 @@ main()
 	[NSData dataWithBytes: "" length: 0],
 	@")",
 	nil];
+      [db execute: @"insert into xxx "
+	@"(k, char1, boolval, intval, when1, when2, b) "
+	@"values ("
+	@"'hello', ",
+	[db quote: [[NSString stringWithCString: "\"\\U2A11\""] propertyList]],
+	@",TRUE, "
+	@"1, ",
+	[NSDate date], @", ",
+	[NSDate date], @", ",
+	[NSData dataWithBytes: "" length: 0],
+	@")",
+	nil];
       [db commit];
 
       records = [db query: @"select * from xxx", nil];

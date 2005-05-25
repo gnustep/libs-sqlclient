@@ -135,7 +135,7 @@
 	The gnustep-base package must have been built and installed.
       </item>
       <item>
-	You must hace sourced the GNUstep.sh script (from gnustep-make) to set
+	You must have sourced the GNUstep.sh script (from gnustep-make) to set
 	up environment variables needed for building this.
       </item>
       <item>
