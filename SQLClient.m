@@ -1275,7 +1275,7 @@ static void	quoteString(NSMutableString *s)
       unsigned	count;
 
       paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
-	NSLocalDomainMask, NO);
+	NSLocalDomainMask, YES);
       count = [paths count];
       while (count-- > 0)
 	{

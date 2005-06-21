@@ -1,3 +1,7 @@
+2005-06-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Expand tilde in paths searched for backend bundles.
+
 2005-05-25 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: Clear connection if an exception occurs while
