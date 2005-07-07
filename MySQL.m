@@ -305,7 +305,7 @@ static unsigned int trim(char *str)
 
 	  for (i = 0; i < fieldCount; i++)
 	    {
-	      keys[i] = [NSString stringWithUTF8String: fields[i].name];
+	      keys[i] = [NSString stringWithUTF8String: (char*)fields[i].name];
 	    }
 
 	  records = [[NSMutableArray alloc] initWithCapacity: recordCount];
@@ -320,7 +320,7 @@ static unsigned int trim(char *str)
 	      for (j = 0; j < fieldCount; j++)
 		{
 		  id		v = null;
-		  unsigned char	*p = row[j];
+		  unsigned char	*p = (unsigned char*)row[j];
 
 		  if (p != 0)
 		    {
@@ -405,8 +405,8 @@ static unsigned int trim(char *str)
 			    break;
 
 			  default:
-			    trim(p);
-			    v = [NSString stringWithUTF8String: p];
+			    trim((char*)p);
+			    v = [NSString stringWithUTF8String: (char*)p];
 			    break;
 			}
 		    }

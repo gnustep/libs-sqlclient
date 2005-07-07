@@ -211,7 +211,9 @@
   password = [[request headerNamed: @"x-http-password"] value];
   if ([access objectForKey: @"Users"] != nil)
     {
-      stored = [[access objectForKey: @"Users"] objectForKey: username];
+      NSDictionary	*users = [access objectForKey: @"Users"];
+
+      stored = [users objectForKey: username];
     }
   else if ([access objectForKey: @"UserDB"] != nil)
     {
@@ -246,7 +248,7 @@
 	  if (sql == nil)
 	    {
 	      sql = [c alloc];
-	      sql = [c initWithConfiguration: nil name: name];
+	      sql = [sql initWithConfiguration: nil name: name];
 	    }
 	  stored = [sql queryString: @"SELECT ",
 	    [info objectForKey: @"Password"],
@@ -1160,9 +1162,30 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     {
       if (_sslConfig != nil)
 	{
-	  [hdl sslSetCertificate: [_sslConfig objectForKey: @"CertificateFile"]
-		      privateKey: [_sslConfig objectForKey: @"KeyFile"]
-		       PEMpasswd: [_sslConfig objectForKey: @"Password"]];
+	  NSString	*address = [hdl socketLocalAddress];
+	  NSDictionary	*primary = [_sslConfig objectForKey: address];
+	  NSString	*certificateFile;
+	  NSString	*keyFile;
+	  NSString	*password;
+
+	  certificateFile = [primary objectForKey: @"CertificateFile"];
+	  if (certificateFile == nil)
+	    {
+	      certificateFile = [_sslConfig objectForKey: @"CertificateFile"];
+	    }
+	  keyFile = [primary objectForKey: @"KeyFile"];
+	  if (keyFile == nil)
+	    {
+	      keyFile = [_sslConfig objectForKey: @"KeyFile"];
+	    }
+	  password = [primary objectForKey: @"Password"];
+	  if (password == nil)
+	    {
+	      password = [_sslConfig objectForKey: @"Password"];
+	    }
+	  [hdl sslSetCertificate: certificateFile
+		      privateKey: keyFile
+		       PEMpasswd: password];
 	}
 
       if ((h = [NSHost hostWithAddress: a]) == nil)
@@ -1363,10 +1386,10 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 	    {
 	      bytes[back] = '\0';
 	      end = back + 1;
-	      if (strncmp(bytes + end, "HTTP/", 5) == 0)
+	      if (strncmp((char*)bytes + end, "HTTP/", 5) == 0)
 		{
 		  end += 5;
-		  version = [NSString stringWithUTF8String: bytes + end];
+		  version = [NSString stringWithUTF8String: (char*)bytes + end];
 		}
 	    }
 	  if ([version floatValue] < 1.1)
@@ -1396,7 +1419,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 	      end++;
 	    }
 	  bytes[end++] = '\0';
-	  method = [NSString stringWithUTF8String: bytes + start];
+	  method = [NSString stringWithUTF8String: (char*)bytes + start];
 
 	  /*
 	   * Extract path string.
@@ -1417,14 +1440,14 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 	       * Extract query string.
 	       */
 	      bytes[end++] = '\0';
-	      query = [NSString stringWithUTF8String: bytes + end];
+	      query = [NSString stringWithUTF8String: (char*)bytes + end];
 
 	    }
 	  else
 	    {
 	      bytes[end] = '\0';
 	    }
-	  path = [NSString stringWithUTF8String: bytes + start];
+	  path = [NSString stringWithUTF8String: (char*)bytes + start];
 
 	  if ([method isEqualToString: @"GET"] == NO
 	    && [method isEqualToString: @"POST"] == NO)
@@ -1673,7 +1696,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 
   for (pos = 4; pos < len; pos++)
     {
-      if (strncmp(&buf[pos-4], "\r\n\r\n", 4) == 0)
+      if (strncmp((char*)&buf[pos-4], "\r\n\r\n", 4) == 0)
 	{
 	  break;
 	}

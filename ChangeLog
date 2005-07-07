@@ -1,3 +1,12 @@
+2005-07-07 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* MySQL.m:
+	* SQLClient.m:
+	* WebServer.h:
+	* WebServer.m:
+	Tweaks to keep gcc-4 happy (signedness issues) and add support for
+	using separate ssl conmfig for different IP addresses.
+
 2005-06-21 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Expand tilde in paths searched for backend bundles.

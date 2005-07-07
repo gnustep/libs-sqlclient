@@ -634,12 +634,13 @@ static unsigned int	maxConnections = 8;
 			name: (NSString*)reference
 {
   NSNotification	*n;
-  id			conf = config;
+  NSDictionary		*conf = config;
   id			existing;
 
   if (conf == nil)
     {
-      conf = [NSUserDefaults standardUserDefaults];
+      // Pretend the defaults object is a dictionary.
+      conf = (NSDictionary*)[NSUserDefaults standardUserDefaults];
     }
 
   if ([reference isKindOfClass: NSStringClass] == NO)
@@ -1239,7 +1240,7 @@ static void	quoteString(NSMutableString *s)
  */
 - (void) _configure: (NSNotification*)n
 {
-  id		o = [n object];
+  NSDictionary	*o = [n object];
   NSDictionary	*d;
   NSString	*s;
   Class		c;
@@ -1292,7 +1293,7 @@ static void	quoteString(NSMutableString *s)
 	  /* Try alternative version with more libraries linked in.
 	   * In some systems and situations the dynamic linker needs
 	   * to haved the SQLClient, gnustep-base, and objc libraries
-	   * explicityly linked into the bundle, but in others it
+	   * explicitly linked into the bundle, but in others it
 	   * requires them to not be linked. To handle that, we create
 	   * two versions of each bundle, the seond version has _libs
 	   * appended to the bundle name, and has the extra libraries linked.
@@ -1456,7 +1457,7 @@ static void	quoteString(NSMutableString *s)
 	  NSRange	s;
 	  NSString	*v;
 	  NSString	*alt;
-	  id	o;
+	  id		o;
 	  unsigned	i;
 
 	  r.length = l - pos;
@@ -1527,7 +1528,7 @@ static void	quoteString(NSMutableString *s)
 
 	      if ([k length] > 0)
 		{
-		  o = [o objectForKey: k];
+		  o = [(NSDictionary*)o objectForKey: k];
 		}
 	    }
 	  if (o == vals)
@@ -1538,7 +1539,7 @@ static void	quoteString(NSMutableString *s)
 	    {
 	      if ([o isKindOfClass: NSStringClass] == YES)
 		{
-		  v = o;
+		  v = (NSString*)o;
 		}
 	      else
 		{
@@ -1688,9 +1689,9 @@ static void	quoteString(NSMutableString *s)
 {
   return [query hash];
 }
-- (BOOL) isEqual: (SQLClientCacheInfo*)other
+- (BOOL) isEqual: (id)other
 {
-  return [query isEqual: other->query];
+  return [query isEqual: ((SQLClientCacheInfo*)other)->query];
 }
 @end
 

@@ -419,6 +419,11 @@
  * <code>KeyFile</code> and <code>Password</code> then the server will
  * use the specified certificate and key files (which it will access
  * using the password).<br />
+ * The <em>secure</em> dictionary may also contain other dictionaries
+ * keyed on IP addresses, and if the address that an incoming connection
+ * arrived on matches the key of a dictionary, that dictionary is used
+ * to provide the certificate information, with the top-level values
+ * being used as a fallback.<br />
  * This method returns YES on success, NO on failure ... if it returns NO
  * then the receiver will <em>not</em> be capable of handling incoming
  * web requests!<br />
