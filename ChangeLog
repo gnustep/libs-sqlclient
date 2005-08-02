@@ -1,3 +1,8 @@
+2005-08-02 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* GNUmakefile: Don't build WebServer stuff on MacOS-X when using the
+	apple runtime (and presumably foundation).
+
 2005-07-07 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* MySQL.m:

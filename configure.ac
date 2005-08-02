@@ -3,13 +3,22 @@ dnl Process this file with autoconf to produce configure.
 AC_INIT(SQLClient.h)
 AC_CONFIG_HEADER(config.h)
 
-AC_ARG_WITH(additional-include-dir,
-  [  --with-additional-include-dir=PATH  specify additional include dirs to use],
-  additional_include_dir="$withval", additional_include_dir="no")
+AC_ARG_WITH(additional-include,
+  [  --with-additional-include=flags  specify additional include dirs to use],
+  additional_include="$withval", additional_include="no")
 
-if test "$additional_include_dir" != "no"; then
-  CPPFLAGS="$CPPFLAGS $additional_include_dir"
-  INCD="$INCD $additional_include_dir"
+if test "$additional_include" != "no"; then
+  CPPFLAGS="$CPPFLAGS $additional_include"
+  INCD="$INCD $additional_include"
+fi
+
+AC_ARG_WITH(additional-lib,
+  [  --with-additional-lib=flags  specify additional lib dirs to use],
+  additional_lib="$withval", additional_lib="no")
+
+if test "$additional_lib" != "no"; then
+  LDFLAGS="$LDFLAGS $additional_lib"
+  LIBD="$LIBD $additional_lib"
 fi
 
 echo "Postgres development support"

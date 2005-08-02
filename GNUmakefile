@@ -10,20 +10,26 @@ CVS_TAG_NAME = SQLClient
 TEST_TOOL_NAME=
 
 LIBRARY_NAME=SQLClient
+DOCUMENT_NAME=SQLClient
 
 SQLClient_INTERFACE_VERSION=1.1
 
-SQLClient_OBJC_FILES = SQLClient.m WebServer.m WebServerBundles.m
+SQLClient_OBJC_FILES = SQLClient.m
 SQLClient_LIBRARIES_DEPEND_UPON =
-SQLClient_HEADER_FILES = SQLClient.h  WebServer.h
+SQLClient_HEADER_FILES = SQLClient.h
+SQLClient_AGSDOC_FILES = SQLClient.h
 
+#
+# Assume that the use of the gnu runtime means we have the gnustep
+# base library and can use its extensions to build WebServer stuff.
+#
+ifeq ($(OBJC_RUNTIME_LIB), gnu)
+SQLClient_OBJC_FILES += WebServer.m WebServerBundles.m
+SQLClient_HEADER_FILES += WebServer.h
+SQLClient_AGSDOC_FILES += WebServer.h
+endif
 
 SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
-
-
-DOCUMENT_NAME=SQLClient
-SQLClient_AGSDOC_FILES = SQLClient.h WebServer.h
-
 
 BUNDLE_NAME=
 
