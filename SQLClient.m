@@ -45,7 +45,6 @@
 #include	<Foundation/NSPathUtilities.h>
 #include	<Foundation/NSSet.h>
 
-#include	<GNUstepBase/GNUstep.h>
 #include	<GNUstepBase/GSLock.h>
 
 #include	"SQLClient.h"

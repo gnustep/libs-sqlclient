@@ -175,6 +175,8 @@
 #include	<Foundation/NSObject.h>
 #include	<Foundation/NSArray.h>
 
+#include	<GNUstepBase/GNUstep.h>
+
 @class	NSData;
 @class	NSDate;
 @class	NSMutableSet;

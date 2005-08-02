@@ -23,7 +23,15 @@ SQLClient_AGSDOC_FILES = SQLClient.h
 # Assume that the use of the gnu runtime means we have the gnustep
 # base library and can use its extensions to build WebServer stuff.
 #
-ifeq ($(OBJC_RUNTIME_LIB), gnu)
+ifeq ($(OBJC_RUNTIME_LIB),gnu)
+APPLE=0
+else
+APPLE=1
+endif
+
+ifeq ($(APPLE),1)
+ADDITIONAL_OBJC_LIBS += -lgnustep-baseadd
+else
 SQLClient_OBJC_FILES += WebServer.m WebServerBundles.m
 SQLClient_HEADER_FILES += WebServer.h
 SQLClient_AGSDOC_FILES += WebServer.h
@@ -42,6 +50,13 @@ BUNDLE_INSTALL_DIR=$(GNUSTEP_INSTALLATION_DIR)/Library/Bundles/SQLClient
 # has _libs appended to the bundle name, and has the extra libraries linked.
 
 ifneq ($(ECPG),)
+ifeq ($(APPLE),1)
+BUNDLE_NAME += ECPG
+ECPG_OBJC_FILES = ECPG.m
+ECPG_LIB_DIRS = -L./obj
+ECPG_BUNDLE_LIBS += -lSQLClient -lecpg
+ECPG_PRINCIPAL_CLASS = SQLClientECPG
+else
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
 ECPG_LIB_DIRS = -L./obj
@@ -52,6 +67,7 @@ ECPG_libs_OBJC_FILES = ECPG.m
 ECPG_libs_LIB_DIRS = -L./obj
 ECPG_libs_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lecpg
 ECPG_libs_PRINCIPAL_CLASS = SQLClientECPG_libs
+endif
 TEST_TOOL_NAME += testECPG
 testECPG_OBJC_FILES = testECPG.m
 testECPG_TOOL_LIBS += -lSQLClient
@@ -59,6 +75,13 @@ testECPG_LIB_DIRS += -L./obj
 endif
 
 ifneq ($(POSTGRES),)
+ifeq ($(APPLE),1)
+BUNDLE_NAME += Postgres
+Postgres_OBJC_FILES = Postgres.m
+Postgres_LIB_DIRS = -L./obj
+Postgres_BUNDLE_LIBS += -lSQLClient -lpq
+Postgres_PRINCIPAL_CLASS = SQLClientPostgres
+else
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
 Postgres_LIB_DIRS = -L./obj
@@ -69,6 +92,7 @@ Postgres_libs_OBJC_FILES = Postgres.m
 Postgres_libs_LIB_DIRS = -L./obj
 Postgres_libs_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lpq
 Postgres_libs_PRINCIPAL_CLASS = SQLClientPostgres_libs
+endif
 TEST_TOOL_NAME += testPostgres
 testPostgres_OBJC_FILES = testPostgres.m
 testPostgres_LIB_DIRS += -L./obj
@@ -76,6 +100,13 @@ testPostgres_TOOL_LIBS += -lSQLClient
 endif
 
 ifneq ($(MYSQL),)
+ifeq ($(APPLE),1)
+BUNDLE_NAME += MySQL
+MySQL_OBJC_FILES = MySQL.m
+MySQL_LIB_DIRS = -L./obj
+MySQL_BUNDLE_LIBS += -lSQLClient -lmysqlclient
+MySQL_PRINCIPAL_CLASS = SQLClientMySQL
+else
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
 MySQL_LIB_DIRS = -L./obj
@@ -86,6 +117,7 @@ MySQL_libs_OBJC_FILES = MySQL.m
 MySQL_libs_LIB_DIRS = -L./obj
 MySQL_libs_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lmysqlclient
 MySQL_libs_PRINCIPAL_CLASS = SQLClientMySQL_libs
+endif
 TEST_TOOL_NAME += testMySQL
 testMySQL_OBJC_FILES = testMySQL.m
 testMySQL_LIB_DIRS += -L./obj
