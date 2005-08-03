@@ -4,6 +4,8 @@
 	suggested by Yen-Ju Chen.
 	* SQLClient.m: Don't call allocation debug functions on apple,
 	and avoid bogus apple compiler warning.
+	Guard against nil object passed to NSMapRemove() ... the apple
+	implementation crashes on this.
 
 2005-08-02 Richard Frith-Macdonald  <rfm@gnu.org>
 

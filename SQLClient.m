@@ -967,7 +967,10 @@ static void	quoteString(NSMutableString *s)
 	  [self disconnect];
 	}
       RETAIN(self);
-      NSMapRemove(cache, (void*)_name);
+      if (_name != nil)
+	{
+          NSMapRemove(cache, (void*)_name);
+        }
       ASSIGNCOPY(_name, s);
       ASSIGN(_client, [[NSProcessInfo processInfo] globallyUniqueString]);
       NSMapInsert(cache, (void*)_name, (void*)self);
