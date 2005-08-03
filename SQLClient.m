@@ -134,6 +134,11 @@ inline NSTimeInterval	SQLClientTimeNow()
       DESTROY(ptr[count + pos]);
     }
   NSDeallocateObject(self);
+#ifndef	GNUSTEP
+  // Avoid bogus compiler warning about missing call to super implementation.
+  self = nil;
+  [super dealloc];
+#endif
 }
 
 - (NSMutableDictionary*) dictionary
@@ -1316,9 +1321,13 @@ static void	quoteString(NSMutableString *s)
   if (c != [self class])
     {
       [self disconnect];
+#ifdef	GNUSTEP
       GSDebugAllocationRemove(self->isa, self);
+#endif
       self->isa = c;
+#ifdef	GNUSTEP
       GSDebugAllocationAdd(self->isa, self);
+#endif
     }
 
   s = [d objectForKey: @"Database"];

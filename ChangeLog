@@ -1,3 +1,10 @@
+2005-08-03 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* GNUmakefile: Add SQLClient_LIBRARIES_DEPEND_UPON for apple as
+	suggested by Yen-Ju Chen.
+	* SQLClient.m: Don't call allocation debug functions on apple,
+	and avoid bogus apple compiler warning.
+
 2005-08-02 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* GNUmakefile: Don't build WebServer stuff on MacOS-X when using the

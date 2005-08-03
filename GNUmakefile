@@ -31,6 +31,7 @@ endif
 
 ifeq ($(APPLE),1)
 ADDITIONAL_OBJC_LIBS += -lgnustep-baseadd
+SQLClient_LIBRARIES_DEPEND_UPON = -lgnustep-baseadd
 else
 SQLClient_OBJC_FILES += WebServer.m WebServerBundles.m
 SQLClient_HEADER_FILES += WebServer.h
