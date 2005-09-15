@@ -1,3 +1,8 @@
+2005-09-15 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * configure.ac: Locate postgres 8.0 on debian
+	* configure: regenerate
+		
 2005-08-03 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* GNUmakefile: Add SQLClient_LIBRARIES_DEPEND_UPON for apple as

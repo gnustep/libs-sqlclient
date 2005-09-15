@@ -52,77 +52,96 @@ if test "$MYSQL" = "yes"; then
 fi
 AC_SUBST(MYSQL)
 
-AC_CHECK_HEADERS(libpq-fe.h)
-if test "$ac_cv_header_libpq_fe_h" = "yes"; then
-  POSTGRES=yes
-else
-  old="$CPPFLAGS"
-  CPPFLAGS="$CPPFLAGS -I/usr/include/postgresql"
-  AC_CHECK_HEADERS(/usr/include/postgresql/libpq-fe.h)
-  CPPFLAGS="$old"
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
+POSTGRES=
+
+if test "$POSTGRES" = ""; then
+  AC_CHECK_HEADERS(libpq-fe.h)
+  if test "$ac_cv_header_libpq_fe_h" = "yes"; then
     POSTGRES=yes
-  else
-    CPPFLAGS="$CPPFLAGS -I/usr/include/pgsql"
-    AC_CHECK_HEADERS(/usr/include/pgsql/libpq-fe.h)
-    CPPFLAGS="$old"
-    if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
-      INCD="$INCD -I/usr/include/pgsql"
-      POSTGRES=yes
-    else
-      CPPFLAGS="$CPPFLAGS -I/usr/local/include/pgsql"
-      AC_CHECK_HEADERS(/usr/local/include/pgsql/libpq-fe.h)
-      CPPFLAGS="$old"
-      if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
-	INCD="$INCD -I/usr/local/include/pgsql"
-	POSTGRES=yes
-      else
-	CPPFLAGS="$save_CPPFLAGS"
-	POSTGRES=
-	echo "**************************************************************"
-	echo "Unable to locate libpq (postgres) headers (are they installed)"
-	echo "**************************************************************"
-      fi
-    fi
+  fi
+fi
+if test "$ECPG" = ""; then
+  AC_CHECK_HEADERS(ecpglib.h)
+  if test "$ac_cv_header_ecpglib_h" = "yes"; then
+    ECPG=yes
   fi
 fi
 
-AC_CHECK_HEADERS(ecpglib.h)
-if test "$ac_cv_header_ecpglib_h" = "yes"; then
-  ECPG=yes
-else
-  old="$CPPFLAGS"
-  CPPFLAGS="$CPPFLAGS -I/usr/include/postgresql"
-  AC_CHECK_HEADERS(/usr/include/postgresql/ecpglib.h)
-  CPPFLAGS="$old"
-  if test "$ac_cv_header__usr_include_postgresql_ecpglib_h" = "yes"; then
+if test "$POSTGRES" = ""; then
+  AC_CHECK_HEADERS(/usr/include/postgresql/libpq-fe.h)
+  CPPFLAGS="$save_CPPFLAGS"
+  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
     INCD="$INCD -I/usr/include/postgresql"
-    ECPG=yes
-  else
-    CPPFLAGS="$CPPFLAGS -I/usr/include/pgsql"
-    AC_CHECK_HEADERS(/usr/include/pgsql/ecpglib.h)
-    CPPFLAGS="$old"
-    if test "$ac_cv_header__usr_include_pgsql_ecpglib_h" = "yes"; then
-      INCD="$INCD -I/usr/include/pgsql"
-      ECPG=yes
-    else
-      CPPFLAGS="$CPPFLAGS -I/usr/local/include/pgsql"
-      AC_CHECK_HEADERS(/usr/local/include/pgsql/ecpglib.h)
-      CPPFLAGS="$old"
-      if test "$ac_cv_header__usr_local_include_pgsql_ecpglib_h" = "yes"; then
-	INCD="$INCD -I/usr/local/include/pgsql"
-	ECPG=yes
-      else
-	CPPFLAGS="$save_CPPFLAGS"
-	ECPG=
-	echo "*************************************************************"
-	echo "Unable to locate ecpg (postgres) headers (are they installed)"
-	echo "*************************************************************"
-      fi
-    fi
+    POSTGRES=yes
   fi
 fi
+if test "$ECPG" = ""; then
+  AC_CHECK_HEADERS(/usr/include/postgresql/ecpglib.h)
+  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/postgresql"
+    ECPG=yes
+  fi
+fi
+
+if test "$POSTGRES" = ""; then
+  AC_CHECK_HEADERS(/usr/include/postgresql/8.0/libpq-fe.h)
+  CPPFLAGS="$save_CPPFLAGS"
+  if test "$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/postgresql/8.0"
+    POSTGRES=yes
+  fi
+fi
+if test "$ECPG" = ""; then
+  AC_CHECK_HEADERS(/usr/include/postgresql/8.0/ecpglib.h)
+  if test "$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/postgresql/8.0"
+    ECPG=yes
+  fi
+fi
+
+if test "$POSTGRES" = ""; then
+  AC_CHECK_HEADERS(/usr/include/pgsql/libpq-fe.h)
+  CPPFLAGS="$save_CPPFLAGS"
+  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/postgresql"
+    POSTGRES=yes
+  fi
+fi
+if test "$ECPG" = ""; then
+  AC_CHECK_HEADERS(/usr/include/pgsql/ecpglib.h)
+  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/postgresql"
+    ECPG=yes
+  fi
+fi
+
+if test "$POSTGRES" = ""; then
+  AC_CHECK_HEADERS(/usr/local/include/pgsql/libpq-fe.h)
+  CPPFLAGS="$save_CPPFLAGS"
+  if test "$ac_cv_header__usr_local_include_postgresql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/include/postgresql"
+    POSTGRES=yes
+  fi
+fi
+if test "$ECPG" = ""; then
+  AC_CHECK_HEADERS(/usr/local/include/pgsql/ecpglib.h)
+  if test "$ac_cv_header__usr_local_include_postgresql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/include/postgresql"
+    ECPG=yes
+  fi
+fi
+
+if test "$POSTGRES" = ""; then
+  echo "**************************************************************"
+  echo "Unable to locate libpq (postgres) headers (are they installed)"
+  echo "**************************************************************"
+fi
+if test "$ECPG" = ""; then
+  echo "*************************************************************"
+  echo "Unable to locate ecpg (postgres) headers (are they installed)"
+  echo "*************************************************************"
+fi
+
 if test "$POSTGRES" = "yes"; then
   # NICOLA - hack
   if test -d /usr/lib/pgsql ; then
