@@ -223,7 +223,10 @@
 
 /**
  * Replaces the value of the named field.<br />
- * The field name is case insensitive.
+ * The field name is case insensitive.<br />
+ * NB. You must be careful not to change the contents of a record which
+ * has been cached (unless you are sure you really want to), as you will
+ * be changing the contents of the cache, not just a private copy.
  */
 - (void) setObject: (id)anObject forKey: (NSString*)aKey;
 @end
