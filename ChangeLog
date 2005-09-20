@@ -1,3 +1,8 @@
+2005-09-20 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: make SQLRecord modifieable (replace values).
+	* SQLClient.m: ditto.
+
 2005-09-15 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * configure.ac: Locate postgres 8.0 on debian

@@ -220,6 +220,12 @@
  * The field name is case insensitive.
  */
 - (id) objectForKey: (NSString*)key;
+
+/**
+ * Replaces the value of the named field.<br />
+ * The field name is case insensitive.
+ */
+- (void) setObject: (id)anObject forKey: (NSString*)aKey;
 @end
 
 extern NSString	*SQLException;

@@ -198,6 +198,36 @@ inline NSTimeInterval	SQLClientTimeNow()
     }
   return nil;
 }
+
+- (void) setObject: (id)anObject forKey: (NSString*)aKey
+{
+  id		*ptr;
+  unsigned int 	pos;
+
+  if (anObject == nil)
+    {
+      anObject = null;
+    }
+  ptr = ((void*)&count) + sizeof(count);
+  for (pos = 0; pos < count; pos++)
+    {
+      if ([aKey isEqualToString: ptr[pos + count]] == YES)
+	{
+	  ASSIGN(ptr[pos], anObject);
+	  return;
+	}
+    }
+  for (pos = 0; pos < count; pos++)
+    {
+      if ([aKey caseInsensitiveCompare: ptr[pos + count]] == NSOrderedSame)
+	{
+	  ASSIGN(ptr[pos], anObject);
+	  return;
+	}
+    }
+  [NSException raise: NSInvalidArgumentException
+	      format: @"Bad key (%@) in -setObject:forKey:", aKey];
+}
 @end
 
 /**
