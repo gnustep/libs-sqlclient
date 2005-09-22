@@ -234,7 +234,7 @@ main()
       r1 = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] == [r1 lastObject], @"Cache failed");
       sleep(1);
-      records = [db query: @"select * from xxx", nil];
+      records = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
 
       [db execute: @"drop table xxx", nil];
@@ -258,7 +258,7 @@ main()
 	    }
 	}
 
-      NSLog(@"Records - %@", records);
+      NSLog(@"Records - %@", [SQLCache class]);
     }
 
   RELEASE(pool);

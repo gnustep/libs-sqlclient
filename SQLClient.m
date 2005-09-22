@@ -2401,10 +2401,8 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
 	  lifetime: (unsigned)lifetime
 {
   SQLCItem	*item;
-  unsigned	maxObjects = [self maxObjects];
-  unsigned	maxSize = [self maxSize];
-  unsigned	newSize = [self currentSize];
-  unsigned	newObjects = [self currentObjects];
+  unsigned	maxObjects = my->maxObjects;
+  unsigned	maxSize = my->maxSize;
   unsigned	addObjects = (anObject == nil ? 0 : 1);
   unsigned	addSize = 0;
 
@@ -2412,10 +2410,10 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
   if (item != nil)
     {
       removeItem(item, &my->first);
-      newObjects--;
+      my->currentObjects--;
       if (my->maxSize > 0)
 	{
-	  newSize -= item->size;
+	  my->currentSize -= item->size;
 	}
       NSMapRemove(my->contents, (void*)aKey);
     }
@@ -2452,8 +2450,8 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
       item->size = addSize;
       NSMapInsert(my->contents, (void*)item->key, (void*)item);
       appendItem(item, &my->first);
-      my->currentObjects = newObjects;
-      my->currentSize = newSize;
+      my->currentObjects += addObjects;
+      my->currentSize += addSize;
       RELEASE(item);
     }
 }
