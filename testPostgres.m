@@ -164,6 +164,9 @@ main()
     }
   else
     {
+      id	r0;
+      id	r1;
+
       for (i = 0; i < 256; i++)
 	{
 	  dbuf[i] = i;
@@ -227,12 +230,18 @@ main()
 	nil];
       [db commit];
 
+      r0 = [db cache: 1 query: @"select * from xxx", nil];
+      r1 = [db cache: 1 query: @"select * from xxx", nil];
+      NSCAssert([r0 lastObject] == [r1 lastObject], @"Cache failed");
+      sleep(1);
       records = [db query: @"select * from xxx", nil];
+      NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
+
       [db execute: @"drop table xxx", nil];
 
-      if ([records count] != 2)
+      if ([records count] != 3)
 	{
-	  NSLog(@"Expected 2 records but got %u", [records count]);
+	  NSLog(@"Expected 3 records but got %u", [records count]);
 	}
       else
 	{

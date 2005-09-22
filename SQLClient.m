@@ -35,7 +35,7 @@
 #include	<Foundation/NSProcessInfo.h>
 #include	<Foundation/NSNotification.h>
 #include	<Foundation/NSUserDefaults.h>
-#include	<Foundation/NShashTable.h>
+#include	<Foundation/NSHashTable.h>
 #include	<Foundation/NSMapTable.h>
 #include	<Foundation/NSBundle.h>
 #include	<Foundation/NSLock.h>
@@ -2063,7 +2063,7 @@ static void	quoteString(NSMutableString *s)
   i = (SQLCItem*)NSAllocateObject(self, 0, NSDefaultMallocZone());
   i->object = RETAIN(anObject);
   i->key = [aKey copy];
-  return self;
+  return i;
 }
 - (void) dealloc
 {

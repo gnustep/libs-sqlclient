@@ -809,7 +809,7 @@ static unsigned int trim(char *str)
 	}
     }
   dst[dLen] = '\0';
-  return dst;		// Owned by autoreleased NSMutableData
+  return (const char*)dst;	// Owned by autoreleased NSMutableData
 }
 
 - (NSData *) dataFromBlob: (const char *)blob
