@@ -35,6 +35,7 @@
 #include	<Foundation/NSProcessInfo.h>
 #include	<Foundation/NSNotification.h>
 #include	<Foundation/NSUserDefaults.h>
+#include	<Foundation/NShashTable.h>
 #include	<Foundation/NSMapTable.h>
 #include	<Foundation/NSBundle.h>
 #include	<Foundation/NSLock.h>
@@ -60,10 +61,79 @@ static Class		NSDateClass = 0;
 static SEL		tiSel = 0;
 static NSTimeInterval	(*tiImp)(Class,SEL) = 0;
 
+static NSTimeInterval	baseTime = 0;
+static NSTimeInterval	lastTime = 0;
+
 inline NSTimeInterval	SQLClientTimeNow()
 {
-  return (*tiImp)(NSDateClass, tiSel);
+  return (lastTime = (*tiImp)(NSDateClass, tiSel));
 }
+
+@interface	NSArray (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude;
+@end
+
+@interface	NSData (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude;
+@end
+
+@interface	NSObject (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude;
+@end
+
+@interface	NSString (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude;
+@end
+
+@implementation	NSArray (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+{
+  if ([exclude member: self] != nil)
+    {
+      return 0;
+    }
+  else
+    {
+      unsigned	count = [self count];
+      unsigned	size = [super sizeInBytes: exclude] + count*sizeof(void*);
+
+      if (exclude == nil)
+	{
+	  exclude = [NSMutableSet setWithCapacity: 8];
+	}
+      [exclude addObject: self];
+      while (count-- > 0)
+	{
+	  size += [[self objectAtIndex: count] sizeInBytes: exclude];
+	}
+      return size;
+    }
+}
+@end
+
+@implementation	NSData (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+{
+  if ([exclude member: self] != nil) return 0;
+  return [super sizeInBytes: exclude] + [self length];
+}
+@end
+
+@implementation	NSObject (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+{
+  if ([exclude member: self] != nil) return 0;
+  return isa->instance_size;
+}
+@end
+
+@implementation	NSString (SizeInBytes)
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+{
+  if ([exclude member: self] != nil) return 0;
+  return [super sizeInBytes: exclude] + sizeof(unichar) * [self length];
+}
+@end
 
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
@@ -228,6 +298,28 @@ inline NSTimeInterval	SQLClientTimeNow()
   [NSException raise: NSInvalidArgumentException
 	      format: @"Bad key (%@) in -setObject:forKey:", aKey];
 }
+
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+{
+  if ([exclude member: self] != nil)
+    {
+      return 0;
+    }
+  else
+    {
+      unsigned	size = [super sizeInBytes: exclude];
+      unsigned	pos;
+      id		*ptr;
+
+      ptr = ((void*)&count) + sizeof(count);
+      for (pos = 0; pos < count; pos++)
+	{
+	  size += [ptr[pos] sizeInBytes: exclude];
+	}
+      return size;
+    }
+}
+
 @end
 
 /**
@@ -1738,6 +1830,16 @@ static void	quoteString(NSMutableString *s)
 @end
 
 @implementation SQLClient (Caching)
+
+- (SQLCache*) cache
+{
+  if (_cache == nil)
+    {
+      _cache = [SQLCache new];
+    }
+  return _cache;
+}
+
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...
 {
@@ -1765,22 +1867,23 @@ static void	quoteString(NSMutableString *s)
   [lock lock];
   NS_DURING
     {
-      NSTimeInterval		start;
-      SQLClientCacheInfo	*item;
-      SQLClientCacheInfo	*old;
+      NSTimeInterval	start = SQLClientTimeNow();
+      SQLCache		*c = [self cache];
+      id		toCache = nil;
 
-      item = AUTORELEASE([SQLClientCacheInfo new]);
-      item->query = [stmt copy];
-      old = [_cache member: item];
-      start = SQLClientTimeNow();
-      if (seconds > 0 && old != nil && old->expires > start)
-	{
-	  // Cached item still valid ... just use it.
-	  result = old->result;
+      [c tick: (unsigned)(start - baseTime)];
+      if (seconds < 0)
+        {
+	  seconds = -seconds;
 	}
       else
 	{
-	  result = [self backendQuery: stmt];
+	  result = [c objectForKey: stmt];
+        }
+
+      if (result == nil)
+	{
+	  result = toCache = [self backendQuery: stmt];
 	  _lastOperation = SQLClientTimeNow();
 	  if (_duration >= 0)
 	    {
@@ -1792,47 +1895,21 @@ static void	quoteString(NSMutableString *s)
 		  [self debug: @"Duration %g for query %@", d, stmt];
 		}
 	    }
-	  if (seconds < 0)
-	    {
-	      seconds = -seconds;
-	    }
-	  if (old != nil)
-	    {
-	      if (seconds == 0)
-		{
-		  // We hve been tod to remove the existing cached item.
-		  [_cache removeObject: old];
-		}
-	      else
-		{
-		  // We read a new value ... store it in cache
-		  ASSIGN(old->result, result);
-		  old->expires = _lastOperation + seconds;
-		}
-	    }
-	  else
-	    {
-	      /*
-	       * Unless removing from cache (seconds == 0) we must
-	       * add the new item to the cache with the appropriate
-	       * expiry.
-	       */
-	      if (seconds > 0)
-		{
-		  ASSIGN(item->result, result);
-		  item->expires = _lastOperation + seconds;
-		  if (_cache == nil)
-		    {
-		      _cache = [NSMutableSet new];
-		    }
-		  [_cache addObject: item];
-		}
-	    }
 	}
-      /*
-       * Return an autoreleased copy ... not the original cached data.
-       */
-      result = [NSMutableArray arrayWithArray: result];
+      if (seconds == 0)
+	{
+	  // We have been told to remove the existing cached item.
+	  toCache = nil;
+	}
+      [c setObject: toCache forKey: stmt lifetime: seconds];
+
+      if (result != nil)
+	{
+	  /*
+	   * Return an autoreleased copy ... not the original cached data.
+	   */
+	  result = [NSMutableArray arrayWithArray: result];
+	}
     }
   NS_HANDLER
     {
@@ -1846,23 +1923,9 @@ static void	quoteString(NSMutableString *s)
 
 - (void) cachePurge
 {
-  NSEnumerator	*e;
-
+  NSTimeInterval	now = SQLClientTimeNow();
   [lock lock];
-  e = [_cache objectEnumerator];
-  if (e != nil)
-    {
-      NSTimeInterval		start = SQLClientTimeNow();
-      SQLClientCacheInfo	*item;
-
-      while ((item = [e nextObject]) != nil)
-	{
-	  if (item->expires < start)
-	    {
-	      [_cache removeObject: item];
-	    }
-	}
-    }
+  [_cache purge: (unsigned)(now - baseTime)];
   [lock unlock];
 }
 @end
@@ -1975,6 +2038,457 @@ static void	quoteString(NSMutableString *s)
 {
   [_info removeAllObjects];
   _count = 0;
+}
+@end
+
+
+@interface	SQLCItem : NSObject
+{
+@public
+  SQLCItem	*next;
+  SQLCItem	*prev;
+  unsigned	when;
+  unsigned	size;
+  NSString	*key;
+  id		object;
+}
++ (SQLCItem*) newWithObject: (id)anObject forKey: (NSString*)aKey;
+@end
+
+@implementation	SQLCItem
++ (SQLCItem*) newWithObject: (id)anObject forKey: (NSString*)aKey
+{
+  SQLCItem	*i;
+
+  i = (SQLCItem*)NSAllocateObject(self, 0, NSDefaultMallocZone());
+  i->object = RETAIN(anObject);
+  i->key = [aKey copy];
+  return self;
+}
+- (void) dealloc
+{
+  RELEASE(key);
+  RELEASE(object);
+  NSDeallocateObject(self);
+}
+@end
+
+
+@implementation	SQLCache
+
+static NSHashTable	*SQLCacheInstances = 0;
+static NSLock		*SQLCacheLock = nil;
+
+typedef struct {
+  unsigned	currentObjects;
+  unsigned	currentSize;
+  unsigned	lifetime;
+  unsigned	maxObjects;
+  unsigned	maxSize;
+  unsigned	when;
+  unsigned	hits;
+  unsigned	misses;
+  NSMapTable	*contents;
+  SQLCItem	*first;
+  NSString	*name;
+  NSMutableSet	*exclude;
+} SQLC;
+#define	my	((SQLC*)&self[1])
+
+/*
+ * Add item to linked list starting at *first
+ */
+static void appendItem(SQLCItem *item, SQLCItem **first)
+{
+  if (*first == nil)
+    {
+      item->next = item->prev = item;
+      *first = item;
+    }
+  else
+    {
+      (*first)->prev->next = item;
+      item->prev = (*first)->prev;
+      (*first)->prev = item;
+      item->next = *first;
+    }
+}
+
+/*
+ * Remove item from linked list starting at *first
+ */
+static void removeItem(SQLCItem *item, SQLCItem **first)
+{
+  if (*first == item)
+    {
+      if (item->next == item)
+	{
+	  *first = nil; 
+	}
+      else
+	{
+	  *first = item->next;
+	}
+    }
+  item->next->prev = item->prev;
+  item->prev->next = item->next;
+  item->prev = item->next = item;
+}
+
++ (NSArray*) allCaches
+{
+  NSArray	*a;
+
+  [SQLCacheLock lock];
+  a = NSAllHashTableObjects(SQLCacheInstances);
+  [SQLCacheLock unlock];
+  return a;
+}
+
++ (id) alloc
+{
+  return [self allocWithZone: NSDefaultMallocZone()];
+}
+
++ (id) allocWithZone: (NSZone*)z
+{
+  SQLCache	*c;
+
+  c = (SQLCache*)NSAllocateObject(self, sizeof(SQLC), z);
+  [SQLCacheLock lock];
+  NSHashInsert(SQLCacheInstances, (void*)c);
+  [SQLCacheLock unlock];
+  return c;
+}
+
++ (NSString*) description
+{
+  NSMutableString	*ms;
+  NSHashEnumerator	e;
+  SQLCache		*c;
+
+  ms = [NSMutableString stringWithString: [super description]];
+  [SQLCacheLock lock];
+  e = NSEnumerateHashTable(SQLCacheInstances);
+  while ((c = (SQLCache*)NSNextHashEnumeratorItem(&e)) != nil)
+    {
+      [ms appendFormat: @"\n%@", [c description]];
+    }
+  NSEndHashTableEnumeration(&e);
+  [SQLCacheLock unlock];
+  return ms;
+}
+
++ (void) initialize
+{
+  if (SQLCacheInstances == 0)
+    {
+      SQLCacheLock = [NSLock new];
+      SQLCacheInstances
+	= NSCreateHashTable(NSNonRetainedObjectHashCallBacks, 0);
+    }
+}
+
+- (unsigned) currentObjects
+{
+  return my->currentObjects;
+}
+
+- (unsigned) currentSize
+{
+  return my->currentSize;
+}
+
+- (void) dealloc
+{
+  [SQLCacheLock lock];
+  if (my->contents != 0)
+    {
+      [self shrinkObjects: 0 andSize: 0];
+      NSFreeMapTable(my->contents);
+    }
+  RELEASE(my->exclude);
+  RELEASE(my->name);
+  NSHashRemove(SQLCacheInstances, (void*)self);
+  NSDeallocateObject(self);
+  [SQLCacheLock unlock];
+}
+
+- (NSString*) description
+{
+  NSString	*n = my->name;
+
+  if (n == nil)
+    {
+      n = [super description];
+    }
+  return [NSString stringWithFormat:
+    @"  %@\n"
+    @"    Items: %u(%u)\n"
+    @"    Size:  %u(%u)\n"
+    @"    Life:  %u\n"
+    @"    Hit:   %u\n"
+    @"    Miss: %u\n",
+    n,
+    my->currentObjects, my->maxObjects,
+    my->currentSize, my->maxSize,
+    my->lifetime,
+    my->hits,
+    my->misses];
+}
+
+- (id) init
+{
+  my->contents = NSCreateMapTable(NSObjectMapKeyCallBacks,
+    NSObjectMapValueCallBacks, 0);
+  return self;
+}
+
+- (unsigned) lifetime
+{
+  return my->lifetime;
+}
+
+- (unsigned) maxObjects
+{
+  return my->maxObjects;
+}
+
+- (unsigned) maxSize
+{
+  return my->maxSize;
+}
+
+- (NSString*) name
+{
+  return my->name;
+}
+
+- (id) objectForKey: (NSString*)aKey
+{
+  SQLCItem	*item;
+
+  item = (SQLCItem*)NSMapGet(my->contents, aKey);
+  if (item == nil)
+    {
+      my->misses++;
+      return nil;
+    }
+  removeItem(item, &my->first);
+  if (item->when > 0 && item->when < my->when)
+    {
+      my->currentObjects--;
+      if (my->maxSize > 0)
+	{
+	  my->currentSize -= item->size;
+	}
+      NSMapRemove(my->contents, (void*)item->key);
+      my->misses++;
+      return nil;	// Lifetime expired.
+    }
+
+  // Least recently used ... move to end of list.
+  appendItem(item, &my->first);
+  my->hits++;
+  return item->object;
+}
+
+- (void) purge: (unsigned)when
+{
+  if (when > my->when)
+    {
+      my->when = when;
+    }
+  if (my->contents != 0)
+    {
+      NSMapEnumerator	e;
+      SQLCItem		*i;
+      NSString		*k;
+
+      e = NSEnumerateMapTable(my->contents);
+      while (NSNextMapEnumeratorPair(&e, (void**)&k, (void**)&i) != 0)
+	{
+	  if (i->when < my->when)
+	    {
+	      removeItem(i, &my->first);
+	      my->currentObjects--;
+	      if (my->maxSize > 0)
+		{
+		  my->currentSize -= i->size;
+		}
+	      NSMapRemove(my->contents, (void*)i->key);
+	    }
+	}
+      NSEndMapTableEnumeration(&e);
+    }
+}
+
+- (void) setLifetime: (unsigned)max
+{
+  my->lifetime = max;
+}
+
+- (void) setMaxObjects: (unsigned)max
+{
+  my->maxObjects = max;
+  if (my->currentObjects > my->maxObjects)
+    {
+      [self shrinkObjects: my->maxObjects
+		  andSize: my->maxSize];
+    }
+}
+
+- (void) setMaxSize: (unsigned)max
+{
+  if (max > 0 && my->maxSize == 0)
+    {
+      NSMapEnumerator	e = NSEnumerateMapTable(my->contents);
+      SQLCItem		*i;
+      NSString		*k;
+      unsigned		size = 0;
+
+      if (my->exclude == nil)
+	{
+	  my->exclude = [NSMutableSet new];
+	}
+      while (NSNextMapEnumeratorPair(&e, (void**)&k, (void**)&i) != 0)
+	{
+	  if (i->size == 0)
+	    {
+	      [my->exclude removeAllObjects];
+	      i->size = [i->object sizeInBytes: my->exclude];
+	    }
+	  if (i->size > max)
+	    {
+	      /*
+	       * Item in cache is too big for new size limit ...
+	       * Remove it.
+	       */
+	      removeItem(i, &my->first);
+	      NSMapRemove(my->contents, (void*)i->key);
+	      my->currentObjects--;
+	      continue;
+	    }
+	  size += i->size;
+	}
+      NSEndMapTableEnumeration(&e);
+      my->currentSize = size;
+    }
+  else if (max == 0)
+    {
+      my->currentSize = 0;
+    }
+  my->maxSize = max;
+  if (my->currentSize > my->maxSize)
+    {
+      [self shrinkObjects: my->maxObjects
+		  andSize: my->maxSize];
+    }
+}
+
+- (void) setName: (NSString*)name
+{
+  ASSIGN(my->name, name);
+}
+
+- (void) setObject: (id)anObject forKey: (NSString*)aKey
+{
+  [self setObject: anObject forKey: aKey lifetime: my->lifetime];
+}
+
+- (void) setObject: (id)anObject
+	    forKey: (NSString*)aKey
+	  lifetime: (unsigned)lifetime
+{
+  SQLCItem	*item;
+  unsigned	maxObjects = [self maxObjects];
+  unsigned	maxSize = [self maxSize];
+  unsigned	newSize = [self currentSize];
+  unsigned	newObjects = [self currentObjects];
+  unsigned	addObjects = (anObject == nil ? 0 : 1);
+  unsigned	addSize = 0;
+
+  item = (SQLCItem*)NSMapGet(my->contents, aKey);
+  if (item != nil)
+    {
+      removeItem(item, &my->first);
+      newObjects--;
+      if (my->maxSize > 0)
+	{
+	  newSize -= item->size;
+	}
+      NSMapRemove(my->contents, (void*)aKey);
+    }
+
+  if (maxSize > 0 || maxObjects > 0)
+    {
+      if (maxSize > 0)
+	{
+	  if (my->exclude == nil)
+	    {
+	      my->exclude = [NSMutableSet new];
+	    }
+	  [my->exclude removeAllObjects];
+	  addSize = [anObject sizeInBytes: my->exclude];
+	  if (addSize > maxSize)
+	    {
+	      return;	// Object too big to cache.
+	    }
+	}
+    }
+
+  if (addObjects > 0)
+    {
+      /*
+       * Make room for new object.
+       */
+      [self shrinkObjects: maxObjects - addObjects
+		  andSize: maxSize - addSize];
+      item = [SQLCItem newWithObject: anObject forKey: aKey];
+      if (lifetime > 0)
+	{
+	  item->when = my->when + lifetime;
+	}
+      item->size = addSize;
+      NSMapInsert(my->contents, (void*)item->key, (void*)item);
+      appendItem(item, &my->first);
+      my->currentObjects = newObjects;
+      my->currentSize = newSize;
+      RELEASE(item);
+    }
+}
+
+- (void) shrinkObjects: (unsigned)objects andSize: (unsigned)size 
+{
+  unsigned	newSize = [self currentSize];
+  unsigned	newObjects = [self currentObjects];
+
+  if (newObjects > objects || (my->maxSize > 0 && newSize > size))
+    {
+      [self purge: 0];
+      newSize = [self currentSize];
+      newObjects = [self currentObjects];
+      while (newObjects > objects || (my->maxSize > 0 && newSize > size))
+	{
+	  SQLCItem	*item;
+
+	  item = my->first;
+	  removeItem(item, &my->first);
+	  newObjects--;
+	  if (my->maxSize > 0)
+	    {
+	      newSize -= item->size;
+	    }
+	  NSMapRemove(my->contents, (void*)item->key);
+	}
+      my->currentObjects = newObjects;
+      my->currentSize = newSize;
+    }
+}
+
+- (void) tick: (unsigned)when
+{
+  my->when = when;
 }
 @end
 

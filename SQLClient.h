@@ -182,6 +182,7 @@
 @class	NSMutableSet;
 @class	NSRecursiveLock;
 @class	NSString;
+@class	SQLCache;
 @class	SQLTransaction;
 
 /**
@@ -229,6 +230,13 @@
  * be changing the contents of the cache, not just a private copy.
  */
 - (void) setObject: (id)anObject forKey: (NSString*)aKey;
+
+/**
+ * Return approximate size of this record in bytes.<br />
+ * The exclude set is used to specify objects to exclude from the
+ * calculation (to prevent recursion etc).
+ */
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude;
 @end
 
 extern NSString	*SQLException;
@@ -281,7 +289,7 @@ extern NSTimeInterval	SQLClientTimeNow();
   NSTimeInterval	_lastOperation;	
   NSTimeInterval	_duration;
   unsigned int		_debugging;	/** The current debugging level */
-  NSMutableSet		*_cache;
+  SQLCache		*_cache;	/** The cache for query results */
 }
 
 /**
@@ -918,6 +926,139 @@ extern NSTimeInterval	SQLClientTimeNow();
 - (void) setDurationLogging: (NSTimeInterval)threshold;
 @end
 
+/**
+ * The SQLCache class is used to maintain a cache of objects.<br />
+ * When full, old objects are removed to make room for new ones
+ * on a least-recently-used basis.<br />
+ * Cache sizes may be limited by the number of objects in the cache,
+ * or by the memory used by the cache, or both.  Calculation of the
+ * size of items in the cache is relatively expensive, so caches are
+ * only limited by number of objects in the default case.<br />
+ * Objects stored in the cache may be given a limited lifetime,
+ * in which case an attempt to fetch an <em>expired</em> object
+ * from the cache will cause it to be removed from the cache instead.
+ */
+@interface	SQLCache : NSObject
+
+/**
+ * Return all the current cache instances... useful if you want to do
+ * something to all cache instances in your process.
+ */
++ (NSArray*) allCaches;
+
+/**
+ * Return a report on all SQLCache instances ... calls the -description
+ * method of the individual cache instances to get a report on each one.
+ */
++ (NSString*) description;
+
+/**
+ * Return the count of objects currently in the cache.
+ */
+- (unsigned) currentObjects;
+
+/**
+ * Return the total size of the objects currently in the cache.
+ */
+- (unsigned) currentSize;
+
+/**
+ * Return the default lifetime for items set in the cache.<br />
+ * A value of zero means that items are not purged based on lifetime.
+ */
+- (unsigned) lifetime;
+
+/**
+ * Return the maximum number of items in the cache.<br />
+ * A value of zero means there is no limit.
+ */
+- (unsigned) maxObjects;
+
+/**
+ * Return the maximum tital size of items in the cache.<br />
+ * A value of zero means there is no limit.
+ */
+- (unsigned) maxSize;
+
+/**
+ * Return the name of this instance (as set using -setName:)
+ */
+- (NSString*) name;
+
+/**
+ * Return the cached value for the specified key, or nil if there
+ * is no value in the cache.
+ */
+- (id) objectForKey: (NSString*)aKey;
+
+/**
+ * Set the current timestamp and remove all items whose lifetimes
+ * have passed (if lifetimes are in use for the cache).
+ */
+- (void) purge: (unsigned)when;
+
+/**
+ * Sets the lifetime (seconds) for items added to the cache.  If this
+ * is set to zero then items are not removed from the cache based on
+ * lifetimes when the cache is full and an object is added, though
+ * <em>expired</em> items are still removed when an attempt to retrieve
+ * them is made.
+ */
+- (void) setLifetime: (unsigned)max;
+
+/**
+ * Sets the maximum number of objects in the cache.  If this is non-zero
+ * then an attempt to set an object in a full cache will result in the
+ * least recently used item in the cache being removed.
+ */
+- (void) setMaxObjects: (unsigned)max;
+
+/**
+ * Sets the maximum total size for objects in the cache.  If this is non-zero
+ * then an attempt to set an object whose size would exceed the cache limit
+ * will result in the least recently used items in the cache being removed.
+ */
+- (void) setMaxSize: (unsigned)max;
+
+/**
+ * Sets the name of this instance.
+ */
+- (void) setName: (NSString*)name;
+
+/**
+ * Sets (or replaces)the cached value for the specified key.
+ */
+- (void) setObject: (id)anObject forKey: (NSString*)aKey;
+
+/**
+ * Sets (or replaces)the cached value for the specified key, giving
+ * the value the specified lifetime (in seconds).  A lifetime of zero
+ * means that the item is not limited by lifetime.
+ */
+- (void) setObject: (id)anObject
+	    forKey: (NSString*)aKey
+	  lifetime: (unsigned)lifetime;
+
+/**
+ * Called by -setObject:forKey:lifetime: to make space for a new
+ * object in the cache (also when the cache is resized).<br />
+ * This will, if a lifetime is set (see the -setLifetime: method)
+ * first purge all <em>expired</em> objects from the cache, then
+ * (if necessary) remove objects from the cache until the number
+ * of objects and size of cache meet the limits specified.<br />
+ * If the objects argument is zero then all objects are removed from
+ * the cache.<br />
+ * The size argument is used <em>only</em> if a maximum size is set
+ * for the cache.
+ */
+- (void) shrinkObjects: (unsigned)objects andSize: (unsigned)size; 
+
+/**
+ * Sets the current timestamp (shoudl be called frequently) to be used
+ * for setting lifetimes of items added to the cache.
+ */
+- (void) tick: (unsigned)when;
+@end
 
 /**
  * This category porovides methods for caching the results of queries
@@ -926,6 +1067,12 @@ extern NSTimeInterval	SQLClientTimeNow();
  * from the database frequently.
  */
 @interface      SQLClient (Caching)
+
+/**
+ * Returns the cache used by the receiver for storing the results of
+ * requests made through it.
+ */
+- (SQLCache*) cache;
 
 /**
  * If the result of the query is already cached and is still valid,
