@@ -145,6 +145,11 @@ Oracle_libs_BUNDLE_LIBS += -lclntsh \
 Oracle_libs_PRINCIPAL_CLASS = SQLClientOracle_libs
 endif
 
+TEST_TOOL_NAME+=testWebServer
+testWebServer_OBJC_FILES = testWebServer.m
+testWebServer_TOOL_LIBS += -lSQLClient
+testWebServer_LIB_DIRS += -L./obj
+
 -include GNUmakefile.preamble
 
 include $(GNUSTEP_MAKEFILES)/library.make
