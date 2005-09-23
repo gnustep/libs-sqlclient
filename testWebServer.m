@@ -41,6 +41,7 @@
 
   s = [[NSString alloc] initWithData: [request rawMimeData]
 			    encoding: NSISOLatin1StringEncoding];
+  NSLog(@"Got request -\n%@\n", s);
   [response setContent: s type: @"text/plain" name: nil];
   RELEASE(s);
 
