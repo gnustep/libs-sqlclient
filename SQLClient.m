@@ -45,6 +45,7 @@
 #include	<Foundation/NSDebug.h>
 #include	<Foundation/NSPathUtilities.h>
 #include	<Foundation/NSSet.h>
+#include	<Foundation/NSTimer.h>
 
 #include	<GNUstepBase/GSLock.h>
 
@@ -64,9 +65,37 @@ static NSTimeInterval	(*tiImp)(Class,SEL) = 0;
 static NSTimeInterval	baseTime = 0;
 static NSTimeInterval	lastTime = 0;
 
+inline NSTimeInterval	SQLClientTimeLast()
+{
+  return lastTime;
+}
+
 inline NSTimeInterval	SQLClientTimeNow()
 {
+  if (baseTime == 0)
+    {
+      NSDateClass = [NSDate class];
+      tiSel = @selector(timeIntervalSinceReferenceDate);
+      tiImp
+	= (NSTimeInterval (*)(Class,SEL))[NSDateClass methodForSelector: tiSel];
+      baseTime = lastTime = (*tiImp)(NSDateClass, tiSel);
+      return baseTime;
+    }
   return (lastTime = (*tiImp)(NSDateClass, tiSel));
+}
+
+inline NSTimeInterval	SQLClientTimeStart()
+{
+  if (baseTime == 0)
+    {
+      return SQLClientTimeNow();
+    }
+  return baseTime;
+}
+
+inline unsigned	SQLClientTimeTick()
+{
+  return (SQLClientTimeLast() - SQLClientTimeStart());
 }
 
 @interface	NSArray (SizeInBytes)
@@ -144,6 +173,7 @@ inline NSTimeInterval	SQLClientTimeNow()
 
 + (void) initialize
 {
+  SQLClientTimeNow();
   if (null == nil)
     {
       null = [NSNull new];
@@ -413,6 +443,7 @@ static NSArray		*rollbackStatement = nil;
 - (void) _configure: (NSNotification*)n;
 - (NSArray*) _prepare: (NSString*)stmt args: (va_list)args;
 - (NSArray*) _substitute: (NSString*)str with: (NSDictionary*)vals;
+- (void) _tick: (NSTimer*)t;
 @end
 
 @implementation	SQLClient
@@ -483,6 +514,11 @@ static unsigned int	maxConnections = 8;
 
 + (void) initialize
 {
+  SQLClientTimeNow();
+  if (null == nil)
+    {
+      null = [NSNull new];
+    }
   if (cache == 0)
     {
       cache = NSCreateMapTable(NSObjectMapKeyCallBacks,
@@ -492,10 +528,11 @@ static unsigned int	maxConnections = 8;
       commitStatement = RETAIN([NSArray arrayWithObject: commitString]);
       rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
       NSStringClass = [NSString class];
-      NSDateClass = [NSDate class];
-      tiSel = @selector(timeIntervalSinceReferenceDate);
-      tiImp
-	= (NSTimeInterval (*)(Class,SEL))[NSDateClass methodForSelector: tiSel];
+      [NSTimer scheduledTimerWithTimeInterval: 1.0
+				       target: self
+				     selector: @selector(_tick:)
+				     userInfo: 0
+				      repeats: YES];
     }
 }
 
@@ -1714,6 +1751,15 @@ static void	quoteString(NSMutableString *s)
   RELEASE(arp);
   return ma;
 }
+
+/*
+ * Called at one second intervals to ensure that our current timestamp
+ * is reasonably accurate.
+ */
+- (void) _tick: (NSTimer*)t
+{
+  SQLClientTimeNow();
+}
 @end
 
 
@@ -1871,7 +1917,6 @@ static void	quoteString(NSMutableString *s)
       SQLCache		*c = [self cache];
       id		toCache = nil;
 
-      [c tick: (unsigned)(start - baseTime)];
       if (seconds < 0)
         {
 	  seconds = -seconds;
@@ -1921,13 +1966,6 @@ static void	quoteString(NSMutableString *s)
   return result;
 }
 
-- (void) cachePurge
-{
-  NSTimeInterval	now = SQLClientTimeNow();
-  [lock lock];
-  [_cache purge: (unsigned)(now - baseTime)];
-  [lock unlock];
-}
 @end
 
 @implementation	SQLTransaction
@@ -2085,7 +2123,6 @@ typedef struct {
   unsigned	lifetime;
   unsigned	maxObjects;
   unsigned	maxSize;
-  unsigned	when;
   unsigned	hits;
   unsigned	misses;
   NSMapTable	*contents;
@@ -2181,6 +2218,11 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
 
 + (void) initialize
 {
+  SQLClientTimeNow();
+  if (null == nil)
+    {
+      null = [NSNull new];
+    }
   if (SQLCacheInstances == 0)
     {
       SQLCacheLock = [NSLock new];
@@ -2267,6 +2309,7 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
 - (id) objectForKey: (NSString*)aKey
 {
   SQLCItem	*item;
+  unsigned	when = SQLClientTimeTick();
 
   item = (SQLCItem*)NSMapGet(my->contents, aKey);
   if (item == nil)
@@ -2275,7 +2318,7 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
       return nil;
     }
   removeItem(item, &my->first);
-  if (item->when > 0 && item->when < my->when)
+  if (item->when > 0 && item->when < when)
     {
       my->currentObjects--;
       if (my->maxSize > 0)
@@ -2293,12 +2336,10 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
   return item->object;
 }
 
-- (void) purge: (unsigned)when
+- (void) purge
 {
-  if (when > my->when)
-    {
-      my->when = when;
-    }
+  unsigned	when = SQLClientTimeTick();
+
   if (my->contents != 0)
     {
       NSMapEnumerator	e;
@@ -2308,7 +2349,7 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
       e = NSEnumerateMapTable(my->contents);
       while (NSNextMapEnumeratorPair(&e, (void**)&k, (void**)&i) != 0)
 	{
-	  if (i->when < my->when)
+	  if (i->when > 0 && i->when < when)
 	    {
 	      removeItem(i, &my->first);
 	      my->currentObjects--;
@@ -2445,7 +2486,7 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
       item = [SQLCItem newWithObject: anObject forKey: aKey];
       if (lifetime > 0)
 	{
-	  item->when = my->when + lifetime;
+	  item->when = SQLClientTimeTick() + lifetime;
 	}
       item->size = addSize;
       NSMapInsert(my->contents, (void*)item->key, (void*)item);
@@ -2463,7 +2504,7 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
 
   if (newObjects > objects || (my->maxSize > 0 && newSize > size))
     {
-      [self purge: 0];
+      [self purge];
       newSize = [self currentSize];
       newObjects = [self currentObjects];
       while (newObjects > objects || (my->maxSize > 0 && newSize > size))
@@ -2482,11 +2523,6 @@ static void removeItem(SQLCItem *item, SQLCItem **first)
       my->currentObjects = newObjects;
       my->currentSize = newSize;
     }
-}
-
-- (void) tick: (unsigned)when
-{
-  my->when = when;
 }
 @end
 

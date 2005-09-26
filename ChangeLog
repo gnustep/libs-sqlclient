@@ -1,3 +1,8 @@
+2005-09-26 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Clean up caching/timestamps.
+	* SQLClient.m: ditto.
+
 2005-09-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Rewrite caching, and expose cache for external use.

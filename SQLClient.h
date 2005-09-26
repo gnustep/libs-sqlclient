@@ -245,9 +245,21 @@ extern NSString	*SQLEmptyException;
 extern NSString	*SQLUniqueException;
 
 /**
- * Convenience function to provide timing information quickly.
+ * Returns the timestamp of the most recent call to SQLClientTimeNow().
+ */
+extern NSTimeInterval SQLClientTimeLast();
+
+/**
+ * Convenience function to provide timing information quickly.<br />
+ * This returns the current date/time.
  */
 extern NSTimeInterval	SQLClientTimeNow();
+
+/**
+ * This returns the timestamp from which any of the SQLClient classes was
+ * first used or SQLClientTimeNow() was first called (whichever came first).
+ */
+extern NSTimeInterval	SQLClientTimeStart();
 
 /**
  * <p>The SQLClient class encapsulates dynamic SQL access to relational
@@ -992,10 +1004,12 @@ extern NSTimeInterval	SQLClientTimeNow();
 - (id) objectForKey: (NSString*)aKey;
 
 /**
- * Set the current timestamp and remove all items whose lifetimes
- * have passed (if lifetimes are in use for the cache).
+ * Remove all items whose lifetimes have passed
+ * (if lifetimes are in use for the cache).<br />
+ * The 'current' timestamp is that of the last call to SQLClientTimeNow(),
+ * which is usually the timestmap of the most recent SQL query.
  */
-- (void) purge: (unsigned)when;
+- (void) purge;
 
 /**
  * Sets the lifetime (seconds) for items added to the cache.  If this
@@ -1052,12 +1066,6 @@ extern NSTimeInterval	SQLClientTimeNow();
  * for the cache.
  */
 - (void) shrinkObjects: (unsigned)objects andSize: (unsigned)size; 
-
-/**
- * Sets the current timestamp (shoudl be called frequently) to be used
- * for setting lifetimes of items added to the cache.
- */
-- (void) tick: (unsigned)when;
 @end
 
 /**
@@ -1112,10 +1120,6 @@ extern NSTimeInterval	SQLClientTimeNow();
  */
 - (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
 
-/**
- * Purge any expired items from the cache.
- */
-- (void) cachePurge;
 @end
 
 /**

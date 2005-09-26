@@ -65,6 +65,14 @@ main()
     ];
 
   server = [WebServer new];
+  {
+    NSData *d = [NSData dataWithContentsOfFile: @"/home/richard/web.log"];
+    NSMutableDictionary *p = [NSMutableDictionary dictionary];
+    [server decodeURLEncodedForm: d into: p];
+    NSLog(@"Params: %@", p);
+    exit(0);
+  }
+
   handler = [Handler new];
   [server setDelegate: handler];
   [server setPort: [defs stringForKey: @"Port"] secure: nil];
