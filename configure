@@ -4075,8 +4075,8 @@ fi
 done
 
   CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
+  if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/pgsql"
     POSTGRES=yes
   fi
 fi
@@ -4230,8 +4230,8 @@ fi
 
 done
 
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
+  if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/pgsql"
     ECPG=yes
   fi
 fi
@@ -4387,8 +4387,8 @@ fi
 done
 
   CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_local_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/include/postgresql"
+  if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/include/pgsql"
     POSTGRES=yes
   fi
 fi
@@ -4542,8 +4542,8 @@ fi
 
 done
 
-  if test "$ac_cv_header__usr_local_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/include/postgresql"
+  if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/include/pgsql"
     ECPG=yes
   fi
 fi

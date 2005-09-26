@@ -102,15 +102,15 @@ fi
 if test "$POSTGRES" = ""; then
   AC_CHECK_HEADERS(/usr/include/pgsql/libpq-fe.h)
   CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
+  if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/pgsql"
     POSTGRES=yes
   fi
 fi
 if test "$ECPG" = ""; then
   AC_CHECK_HEADERS(/usr/include/pgsql/ecpglib.h)
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
+  if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/include/pgsql"
     ECPG=yes
   fi
 fi
@@ -118,15 +118,15 @@ fi
 if test "$POSTGRES" = ""; then
   AC_CHECK_HEADERS(/usr/local/include/pgsql/libpq-fe.h)
   CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_local_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/include/postgresql"
+  if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/include/pgsql"
     POSTGRES=yes
   fi
 fi
 if test "$ECPG" = ""; then
   AC_CHECK_HEADERS(/usr/local/include/pgsql/ecpglib.h)
-  if test "$ac_cv_header__usr_local_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/include/postgresql"
+  if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/include/pgsql"
     ECPG=yes
   fi
 fi
