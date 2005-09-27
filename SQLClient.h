@@ -251,7 +251,8 @@ extern NSTimeInterval SQLClientTimeLast();
 
 /**
  * Convenience function to provide timing information quickly.<br />
- * This returns the current date/time.
+ * This returns the current date/time, and stores the value for use
+ * by the SQLClientTimeLast() function.
  */
 extern NSTimeInterval	SQLClientTimeNow();
 
@@ -260,6 +261,21 @@ extern NSTimeInterval	SQLClientTimeNow();
  * first used or SQLClientTimeNow() was first called (whichever came first).
  */
 extern NSTimeInterval	SQLClientTimeStart();
+
+/**
+ * A convenience method to return the current clock 'tick' ... which is
+ * the current second based on the time we started.  This does <em>not</em>
+ * check the current time, but relies on SQLClientTimeLast() returning an
+ * up to date value (so if you need an accurate tick, you should ensure
+ * that SQLClientTimeNow() is called at least once a second).<br />
+ * The returned value is always greater than zero, and is basically
+ * calculated as (SQLClientTimeLast() - SQLClientTimeStart() + 1).<br />
+ * In the event that the system clock is reset into the past, the value
+ * of SQLClientTimeStart() is automatically adjusted to ensure that the
+ * result of a call to SQLClientTimeTick() is never less than the result
+ * of any earlier call to the function.
+ */
+extern unsigned	SQLClientTimeTick();
 
 /**
  * <p>The SQLClient class encapsulates dynamic SQL access to relational

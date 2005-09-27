@@ -81,7 +81,21 @@ inline NSTimeInterval	SQLClientTimeNow()
       baseTime = lastTime = (*tiImp)(NSDateClass, tiSel);
       return baseTime;
     }
-  return (lastTime = (*tiImp)(NSDateClass, tiSel));
+  else
+    {
+      NSTimeInterval	now = (*tiImp)(NSDateClass, tiSel);
+
+      /*
+       * If the clock has been reset so that time has gone backwards,
+       * we adjust the baseTime so that lastTime >= baseTime is true.
+       */
+      if (now < lastTime)
+	{
+	  baseTime -= (lastTime - now);
+	}
+      lastTime = now;
+      return lastTime;
+    }
 }
 
 inline NSTimeInterval	SQLClientTimeStart()
@@ -95,7 +109,9 @@ inline NSTimeInterval	SQLClientTimeStart()
 
 inline unsigned	SQLClientTimeTick()
 {
-  return (SQLClientTimeLast() - SQLClientTimeStart());
+  NSTimeInterval	start = SQLClientTimeStart();
+
+  return (SQLClientTimeLast() - start) + 1;
 }
 
 @interface	NSArray (SizeInBytes)
