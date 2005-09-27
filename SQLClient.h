@@ -1120,6 +1120,14 @@ extern NSTimeInterval	SQLClientTimeStart();
  */
 - (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
 
+/**
+ * Sets the cache to be used by the receiver for storing the results of
+ * requests made through it.<br />
+ * If aCache is nil, the current cache is released, and a new cache will
+ * be automatically created as soon as there is a need to cache anything.
+ */
+- (void) setCache: (SQLCache*)aCache;
+
 @end
 
 /**

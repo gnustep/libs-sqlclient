@@ -429,8 +429,8 @@ static NSTimeInterval	classDuration = -1;
 /**
  * Container for all instances.
  */
-static NSMapTable	*cache = 0;
-static NSRecursiveLock	*cacheLock = nil;
+static NSMapTable	*clientsMap = 0;
+static NSRecursiveLock	*clientsMapLock = nil;
 static NSString		*beginString = @"begin";
 static NSArray		*beginStatement = nil;
 static NSString		*commitString = @"commit";
@@ -443,7 +443,7 @@ static NSArray		*rollbackStatement = nil;
 - (void) _configure: (NSNotification*)n;
 - (NSArray*) _prepare: (NSString*)stmt args: (va_list)args;
 - (NSArray*) _substitute: (NSString*)str with: (NSDictionary*)vals;
-- (void) _tick: (NSTimer*)t;
++ (void) _tick: (NSTimer*)t;
 @end
 
 @implementation	SQLClient
@@ -454,9 +454,9 @@ static unsigned int	maxConnections = 8;
 {
   NSArray	*a;
 
-  [cacheLock lock];
-  a = NSAllMapTableValues(cache);
-  [cacheLock unlock];
+  [clientsMapLock lock];
+  a = NSAllMapTableValues(clientsMap);
+  [clientsMapLock unlock];
   return a;
 }
 
@@ -505,10 +505,10 @@ static unsigned int	maxConnections = 8;
 	}
     }
 
-  [cacheLock lock];
-  existing = (SQLClient*)NSMapGet(cache, reference);
+  [clientsMapLock lock];
+  existing = (SQLClient*)NSMapGet(clientsMap, reference);
   AUTORELEASE(RETAIN(existing));
-  [cacheLock unlock];
+  [clientsMapLock unlock];
   return existing;
 }
 
@@ -519,11 +519,11 @@ static unsigned int	maxConnections = 8;
     {
       null = [NSNull new];
     }
-  if (cache == 0)
+  if (clientsMap == 0)
     {
-      cache = NSCreateMapTable(NSObjectMapKeyCallBacks,
+      clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
         NSNonRetainedObjectMapValueCallBacks, 0);
-      cacheLock = [GSLazyRecursiveLock new];
+      clientsMapLock = [GSLazyRecursiveLock new];
       beginStatement = RETAIN([NSArray arrayWithObject: beginString]);
       commitStatement = RETAIN([NSArray arrayWithObject: commitString]);
       rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
@@ -549,8 +549,8 @@ static unsigned int	maxConnections = 8;
   unsigned int		connectionCount = 0;
   NSTimeInterval	t = [since timeIntervalSinceReferenceDate];
 
-  [cacheLock lock];
-  e = NSEnumerateMapTable(cache);
+  [clientsMapLock lock];
+  e = NSEnumerateMapTable(clientsMap);
   while (NSNextMapEnumeratorPair(&e, (void**)&n, (void**)&o) != 0)
     {
       if (since != nil)
@@ -568,7 +568,7 @@ static unsigned int	maxConnections = 8;
 	}
     }
   NSEndMapTableEnumeration(&e);
-  [cacheLock unlock];
+  [clientsMapLock unlock];
 
   while (connectionCount >= maxConnections)
     {
@@ -576,8 +576,8 @@ static unsigned int	maxConnections = 8;
       NSTimeInterval	oldest = 0.0;
   
       connectionCount = 0;
-      [cacheLock lock];
-      e = NSEnumerateMapTable(cache);
+      [clientsMapLock lock];
+      e = NSEnumerateMapTable(clientsMap);
       while (NSNextMapEnumeratorPair(&e, (void**)&n, (void**)&o))
 	{
 	  if ([o connected] == YES)
@@ -593,7 +593,7 @@ static unsigned int	maxConnections = 8;
 	    }
 	}
       NSEndMapTableEnumeration(&e);
-      [cacheLock unlock];
+      [clientsMapLock unlock];
       connectionCount--;
       if ([other debugging] > 0)
 	{
@@ -712,9 +712,9 @@ static unsigned int	maxConnections = 8;
   [nc removeObserver: self];
   if (_name != nil)
     {
-      [cacheLock lock];
-      NSMapRemove(cache, (void*)_name);
-      [cacheLock unlock];
+      [clientsMapLock lock];
+      NSMapRemove(clientsMap, (void*)_name);
+      [clientsMapLock unlock];
     }
   [self disconnect];
   DESTROY(lock);
@@ -816,8 +816,8 @@ static unsigned int	maxConnections = 8;
 	}
     }
 
-  [cacheLock lock];
-  existing = (SQLClient*)NSMapGet(cache, reference);
+  [clientsMapLock lock];
+  existing = (SQLClient*)NSMapGet(clientsMap, reference);
   if (existing == nil)
     {
       lock = [GSLazyRecursiveLock new];	// Ensure thread-safety.
@@ -848,7 +848,7 @@ static unsigned int	maxConnections = 8;
       RELEASE(self);
       self = RETAIN(existing);
     }
-  [cacheLock unlock];
+  [clientsMapLock unlock];
 
   return self;
 }
@@ -1110,11 +1110,11 @@ static void	quoteString(NSMutableString *s)
 	  [lock unlock];
 	  return;
 	}
-      [cacheLock lock];
-      if (NSMapGet(cache, s) != 0)
+      [clientsMapLock lock];
+      if (NSMapGet(clientsMap, s) != 0)
 	{
 	  [lock unlock];
-	  [cacheLock unlock];
+	  [clientsMapLock unlock];
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Error attempt to re-use client name %@", s];
@@ -1128,12 +1128,12 @@ static void	quoteString(NSMutableString *s)
       RETAIN(self);
       if (_name != nil)
 	{
-          NSMapRemove(cache, (void*)_name);
+          NSMapRemove(clientsMap, (void*)_name);
         }
       ASSIGNCOPY(_name, s);
       ASSIGN(_client, [[NSProcessInfo processInfo] globallyUniqueString]);
-      NSMapInsert(cache, (void*)_name, (void*)self);
-      [cacheLock unlock];
+      NSMapInsert(clientsMap, (void*)_name, (void*)self);
+      [clientsMapLock unlock];
       [lock unlock];
       RELEASE(self);
     }
@@ -1756,7 +1756,7 @@ static void	quoteString(NSMutableString *s)
  * Called at one second intervals to ensure that our current timestamp
  * is reasonably accurate.
  */
-- (void) _tick: (NSTimer*)t
++ (void) _tick: (NSTimer*)t
 {
   SQLClientTimeNow();
 }
@@ -1966,6 +1966,10 @@ static void	quoteString(NSMutableString *s)
   return result;
 }
 
+- (void) setCache: (SQLCache*)aCache
+{
+  ASSIGN(_cache, aCache);
+}
 @end
 
 @implementation	SQLTransaction
