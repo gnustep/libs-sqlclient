@@ -1957,12 +1957,19 @@ static void	quoteString(NSMutableString *s)
 		}
 	    }
 	}
+
       if (seconds == 0)
 	{
 	  // We have been told to remove the existing cached item.
+	  [c setObject: nil forKey: stmt lifetime: seconds];
 	  toCache = nil;
 	}
-      [c setObject: toCache forKey: stmt lifetime: seconds];
+
+      if (toCache != nil)
+	{
+	  // We have a newly retrieved object ... cache it.
+	  [c setObject: toCache forKey: stmt lifetime: seconds];
+	}
 
       if (result != nil)
 	{
