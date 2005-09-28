@@ -1997,6 +1997,12 @@ static void	quoteString(NSMutableString *s)
 @end
 
 @implementation	SQLTransaction
+
+- (unsigned) count
+{
+  return _count;
+}
+
 - (void) dealloc
 {
   DESTROY(_db);

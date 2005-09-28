@@ -1196,6 +1196,11 @@ extern unsigned	SQLClientTimeTick();
 - (void) append: (SQLTransaction*)other;
 
 /**
+ * Returns the number of statements in this transaction.
+ */
+- (unsigned) count;
+
+/**
  * Returns the database client with which this instance operates.<br />
  * This client is retained by the transaction.
  */

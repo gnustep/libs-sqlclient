@@ -1,6 +1,8 @@
 2005-09-28 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: boost performance of quoting a little.
+	Provide -count method for transactions.
+
 
 2005-09-26 Richard Frith-Macdonald  <rfm@gnu.org>
 
