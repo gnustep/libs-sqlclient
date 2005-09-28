@@ -978,20 +978,12 @@ static void	quoteString(NSMutableString *s)
   /**
    * For a nil object, we return NULL.
    */
-  if (obj == nil)
+  if (obj == nil || obj == null)
     {
       return @"NULL";
     }
   else if ([obj isKindOfClass: NSStringClass] == NO)
     {
-      /**
-       * For a nil or NSNull object, we return NULL.
-       */
-      if ([obj isKindOfClass: [NSNull class]] == YES)
-	{
-	  return @"NULL";
-	}
-
       /**
        * For a number, we simply convert directly to a string.
        */
@@ -1018,6 +1010,15 @@ static void	quoteString(NSMutableString *s)
       if ([obj isKindOfClass: [NSData class]] == YES)
 	{
 	  return obj;
+	}
+
+      /**
+       * Just in case an NSNull subclass has been created by someone.
+       * The normal NSNull instance should have been handled earlier.
+       */
+      if ([obj isKindOfClass: [NSNull class]] == YES)
+	{
+	  return @"NULL";
 	}
 
       /**
