@@ -217,6 +217,11 @@
 - (NSMutableDictionary*) dictionary;
 
 /**
+ * Optimised mechanism for retrieving all objects.
+ */
+- (void) getObjects: (id*)buf;
+
+/**
  * Returns the value of the named field.<br />
  * The field name is case insensitive.
  */

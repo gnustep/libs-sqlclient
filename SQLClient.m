@@ -272,6 +272,18 @@ inline unsigned	SQLClientTimeTick()
   return d;
 }
 
+- (void) getObjects: (id*)buf
+{
+  id		*ptr;
+  unsigned	pos;
+
+  ptr = ((void*)&count) + sizeof(count);
+  for (pos = 0; pos < count; pos++)
+    {
+      buf[pos] = ptr[pos];
+    }
+}
+
 - (id) init
 {
   NSLog(@"Illegal attempt to -init an SQLRecord");
