@@ -1,0 +1,103 @@
+{ /* -*-c-*- */
+  "prerequisite libraries" = (
+    "gnustep-base"
+  );
+  types = { 
+    NSTimeInterval = double;
+  };
+  classes = (
+    {
+      "java name" = "gnu.gnustep.SQLClient.SQLCache";
+      "objective-c name" = "SQLCache";
+      "class methods" = (
+	"allCaches"
+      );
+      "instance methods" = (
+	"currentObjects",
+	"currentSize",
+	"lifetime",
+	"maxObjects",
+	"maxSize",
+	"name",
+	"objectForKey:",
+	"purge",
+	"setLifetime:",
+	"setMaxObjects:",
+	"setMaxSize:",
+	"setName:",
+	"setObject:forKey:",
+	"setObject:forKey:lifetime:",
+	"shrinkObjects:andSize:"
+      );
+    },
+    {
+      "java name" = "gnu.gnustep.SQLClient.SQLClient";
+      "objective-c name" = "SQLClient";
+      "class methods" = (
+	"allClients",
+	"clientWithConfiguration:name:",
+	"existingClient:",
+	"maxConnections",
+	"purgeConnections:",
+	"setMaxConnections:",
+      );
+      "instance methods" = (
+	"begin",
+	"cache",
+	"cache:query:with:",
+	"cache:simpleQuery:",
+	"clientName",
+	"commit",
+	"connect",
+	"connected",
+	"database",
+	"debugging",
+	"disconnect",
+	"durationLogging",
+	"isInTransaction",
+	"lastOperation",
+	"name",
+	"password",
+	"query:with:",
+	"quote:",
+	"quoteChar:",
+	"quoteFloat:",
+	"quoteInteger:",
+	"rollback",
+	"setCache:",
+	"setDatabase:",
+	"setDebugging:",
+	"setDurationLogging:",
+	"setName:",
+	"setPassword:",
+	"setUser:",
+	"simpleExecute:",
+	"simpleQuery:",
+	"singletons:",
+	"transaction",
+	"user"
+      );
+    },
+    {
+      "java name" = "gnu.gnustep.SQLClient.SQLRecord";
+      "objective-c name" = "SQLRecord";
+      "instance methods" = (
+	"allKeys",
+	"dictionary",
+	"sizeInBytes:"
+      );
+    },
+    {
+      "java name" = "gnu.gnustep.SQLClient.SQLTransaction";
+      "objective-c name" = "SQLTransaction";
+      "instance methods" = (
+	"add:with:",
+	"append:",
+	"count",
+	"db",
+	"execute",
+	"reset"
+      );
+    }
+  );
+}

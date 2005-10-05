@@ -19,6 +19,9 @@ SQLClient_LIBRARIES_DEPEND_UPON =
 SQLClient_HEADER_FILES = SQLClient.h
 SQLClient_AGSDOC_FILES = SQLClient.h
 
+# Optional Java wrappers for the library
+JAVA_WRAPPER_NAME = SQLClient
+
 #
 # Assume that the use of the gnu runtime means we have the gnustep
 # base library and can use its extensions to build WebServer stuff.
@@ -154,6 +157,10 @@ testWebServer_LIB_DIRS += -L./obj
 
 include $(GNUSTEP_MAKEFILES)/library.make
 include $(GNUSTEP_MAKEFILES)/bundle.make
+# If JIGS is installed, automatically generate Java wrappers as well.
+# Because of the '-', should not complain if java-wrapper.make can't be
+# found ... simply skip generation of java wrappers in that case.
+-include $(GNUSTEP_MAKEFILES)/java-wrapper.make
 include $(GNUSTEP_MAKEFILES)/test-tool.make
 include $(GNUSTEP_MAKEFILES)/documentation.make
 

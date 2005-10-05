@@ -1,5 +1,11 @@
 2005-09-28 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* GNUmakefile.wrapper.objc.preamble: new file
+	* SQLClient.jigs: new file
+	* GNUmakefile: Provide java wrappings for SQLClient and friends
+
+2005-09-28 Richard Frith-Macdonald  <rfm@gnu.org>
+
 	* SQLClient.m: boost performance of quoting a little.
 	Provide -count method for transactions.
 
