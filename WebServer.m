@@ -1247,7 +1247,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 	  [hdl readInBackgroundAndNotify];
 	  if (_verbose == YES && [_quiet containsObject: a] == NO)
 	    {
-	      NSLog(@"%@ connect", session);
+	      [self _alert: @"%@ connect", session];
 	    }
 	}
     }
@@ -1551,7 +1551,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     {
       if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
 	{
-	  NSLog(@"%@ reset", session);
+	  [self _alert: @"%@ reset", session];
 	}
       [session reset];
       [hdl readInBackgroundAndNotify];	// Want another request.
@@ -1566,7 +1566,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     {
       if (_verbose == YES)
 	{
-	  NSLog(@"%@ disconnect", session);
+	  [self _alert: @"%@ disconnect", session];
 	}
       _handled++;
     }
@@ -1660,7 +1660,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
       _requests++;
       if (_verbose == YES)
 	{
-	  NSLog(@"Request %@ - %@", session, request);
+	  [self _alert: @"Request %@ - %@", session, request];
 	}
     }
   NS_DURING
@@ -1769,7 +1769,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     }
   if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
     {
-      NSLog(@"Response %@ - %@", session, out);
+      [self _alert: @"Response %@ - %@", session, out];
     }
   [[session handle] writeInBackgroundAndNotify: out];
 }
