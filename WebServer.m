@@ -34,7 +34,10 @@
   GSMimeParser		*parser;
   NSMutableData		*buffer;
   unsigned		byteCount;
+  unsigned		identity;
   NSTimeInterval	ticked;
+  NSTimeInterval	requestStart;
+  NSTimeInterval	sessionStart;
   BOOL			processing;
   BOOL			shouldEnd;
   BOOL			hasReset;
@@ -43,15 +46,20 @@
 - (NSMutableData*) buffer;
 - (NSFileHandle*) handle;
 - (BOOL) hasReset;
+- (unsigned) identity;
 - (unsigned) moreBytes: (unsigned)count;
 - (GSMimeParser*) parser;
 - (BOOL) processing;
+- (NSTimeInterval) requestDuration: (NSTimeInterval)now;
 - (void) reset;
+- (NSTimeInterval) sessionDuration: (NSTimeInterval)now;
 - (void) setAddress: (NSString*)aString;
 - (void) setBuffer: (NSMutableData*)aBuffer;
 - (void) setHandle: (NSFileHandle*)aHandle;
 - (void) setParser: (GSMimeParser*)aParser;
 - (void) setProcessing: (BOOL)aFlag;
+- (void) setRequestStart: (NSTimeInterval)when;
+- (void) setSessionStart: (NSTimeInterval)when;
 - (void) setShouldEnd: (BOOL)aFlag;
 - (void) setTicked: (NSTimeInterval)when;
 - (BOOL) shouldEnd;
@@ -81,8 +89,8 @@
 
 - (NSString*) description
 {
-  return [NSString stringWithFormat: @"%@ [%@] ",
-    [super description], [self address]];
+  return [NSString stringWithFormat: @"%@ (id:%08x) [%@] ",
+    [super description], [self identity], [self address]];
 }
 
 - (NSFileHandle*) handle
@@ -93,6 +101,19 @@
 - (BOOL) hasReset
 {
   return hasReset;
+}
+
+- (unsigned) identity
+{
+  return identity;
+}
+
+- (id) init
+{
+  static unsigned	sessionIdentity = 0;
+
+  identity = ++sessionIdentity;
+  return self;
 }
 
 - (unsigned) moreBytes: (unsigned)count
@@ -111,12 +132,31 @@
   return processing;
 }
 
+- (NSTimeInterval) requestDuration: (NSTimeInterval)now
+{
+  if (requestStart > 0.0)
+    {
+      return now - requestStart;
+    }
+  return 0.0;
+}
+
 - (void) reset
 {
   hasReset = YES;
+  [self setRequestStart: 0.0];
   [self setBuffer: [NSMutableData dataWithCapacity: 1024]];
   [self setParser: nil];
   [self setProcessing: NO];
+}
+
+- (NSTimeInterval) sessionDuration: (NSTimeInterval)now
+{
+  if (sessionStart > 0.0)
+    {
+      return now - sessionStart;
+    }
+  return 0.0;
 }
 
 - (void) setAddress: (NSString*)aString
@@ -142,6 +182,16 @@
 - (void) setProcessing: (BOOL)aFlag
 {
   processing = aFlag;
+}
+
+- (void) setRequestStart: (NSTimeInterval)when
+{
+  requestStart = when;
+}
+
+- (void) setSessionStart: (NSTimeInterval)when
+{
+  sessionStart = when;
 }
 
 - (void) setShouldEnd: (BOOL)aFlag
@@ -1145,6 +1195,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
   NSString		*a;
   NSHost		*h;
 
+  _ticked = [NSDate timeIntervalSinceReferenceDate];
   _accepting = NO;
   hdl = [userInfo objectForKey: NSFileHandleNotificationFileHandleItem];
   if (hdl == nil)
@@ -1233,6 +1284,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 	  [session setHandle: hdl];
 	  [session setBuffer: [NSMutableData dataWithCapacity: 1024]];
 	  [session setTicked: _ticked];
+	  [session setSessionStart: _ticked];
 	  NSMapInsert(_sessions, (void*)hdl, (void*)session);
 	  [_perHost addObject: [session address]];
 	  RELEASE(session);
@@ -1272,6 +1324,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
   WebServerSession	*session;
   GSMimeDocument	*doc;
 
+  _ticked = [NSDate timeIntervalSinceReferenceDate];
   session = (WebServerSession*)NSMapGet(_sessions, (void*)hdl);
   NSAssert(session != nil, NSInternalInconsistencyException);
   parser = [session parser];
@@ -1325,6 +1378,14 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
       unsigned int	pos;
       NSMutableData	*buffer;
 
+      /*
+       * If we are starting to read a new request, record the request
+       * startup time.
+       */
+      if ([session requestDuration: _ticked] == 0.0)
+	{
+	  [session setRequestStart: _ticked];
+	}
       /*
        * Add new data to any we already have and search for the end
        * of the initial request line.
@@ -1540,6 +1601,7 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
   NSFileHandle		*hdl = [notification object];
   WebServerSession	*session;
 
+  _ticked = [NSDate timeIntervalSinceReferenceDate];
   session = (WebServerSession*)NSMapGet(_sessions, (void*)hdl);
   NSAssert(session != nil, NSInternalInconsistencyException);
 
@@ -1551,7 +1613,16 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     {
       if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
 	{
-	  [self _alert: @"%@ reset", session];
+	  NSTimeInterval	t = [session requestDuration: _ticked];
+
+	  if (t == 0.0)
+	    {
+	      [self _alert: @"%@ reset", session];
+	    }
+	  else
+	    {
+	      [self _alert: @"%@ reset (duration %g)", session, t];
+	    }
 	}
       [session reset];
       [hdl readInBackgroundAndNotify];	// Want another request.
@@ -1566,7 +1637,14 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     {
       if (_verbose == YES)
 	{
-	  [self _alert: @"%@ disconnect", session];
+	  NSTimeInterval	r = [session requestDuration: _ticked];
+	  NSTimeInterval	s = [session sessionDuration: _ticked];
+
+	  if (r > 0.0)
+	    {
+	      [self _alert: @"%@ reset (duration %g)", session, r];
+	    }
+	  [self _alert: @"%@ disconnect (duration %g)", session, s];
 	}
       _handled++;
     }

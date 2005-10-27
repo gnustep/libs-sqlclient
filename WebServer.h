@@ -453,8 +453,8 @@
 
 /**
  * Sets a flag to determine whether verbose logging is to be performed.<br />
- * If this is YES then all incming requests and their responses will
- * be logged using the NSLog function.  This is useful for debugging
+ * If this is YES then all incoming requests and their responses will
+ * be logged using the webAlert:for: method.  This is useful for debugging
  * and where a full audit trail is required.
  */
 - (void) setVerbose: (BOOL)aFlag;

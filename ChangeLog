@@ -1,3 +1,9 @@
+2005-10-27 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* WebServer.m: Add more accurate timestamps and implement request
+	and session duration logging.  Also add a unique session ID number
+	to each log to make it easy to track requests on a session.
+
 2005-09-28 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* GNUmakefile.wrapper.objc.preamble: new file
