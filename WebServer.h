@@ -182,6 +182,7 @@
   NSString		*_port;
   BOOL			_accepting;
   BOOL			_verbose;
+  BOOL			_durations;
   NSDictionary		*_sslConfig;
   NSArray		*_quiet;
   NSArray		*_hosts;
@@ -383,6 +384,18 @@
 - (void) setDelegate: (id)anObject;
 
 /**
+ * Sets a flag to determine whether logging of request and session
+ * durations is to be performed.<br />
+ * If this is YES then the duration of requests and sessions will
+ * be logged using the -webAlert:for: method.<br />
+ * The request duration is calculated from the point where the first byte
+ * of data in the request is read to the point where the response has
+ * been completely written.<br />
+ * This is useful for debugging and where a full audit trail is required.
+ */
+- (void) setDurationLogging: (BOOL)aFlag;
+
+/**
  * Sets the maximum size of an uploaded request body.<br />
  * The default is 4M bytes.<br />
  */
@@ -454,8 +467,10 @@
 /**
  * Sets a flag to determine whether verbose logging is to be performed.<br />
  * If this is YES then all incoming requests and their responses will
- * be logged using the webAlert:for: method.  This is useful for debugging
- * and where a full audit trail is required.
+ * be logged using the -webAlert:for: method.<br />
+ * Setting this to YES automatically sets duration logging to YES as well,
+ * though you can then call -setDurationLogging: to set it back to NO.<br />
+ * This is useful for debugging and where a full audit trail is required.
  */
 - (void) setVerbose: (BOOL)aFlag;
 

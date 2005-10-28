@@ -89,8 +89,8 @@
 
 - (NSString*) description
 {
-  return [NSString stringWithFormat: @"%@ (id:%08x) [%@] ",
-    [super description], [self identity], [self address]];
+  return [NSString stringWithFormat: @"WebServerSession: %08x [%@] ",
+    [self identity], [self address]];
 }
 
 - (NSFileHandle*) handle
@@ -964,6 +964,11 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
   _delegate = anObject;
 }
 
+- (void) setDurationLogging: (BOOL)aFlag
+{
+  _durations = aFlag;
+}
+
 - (void) setMaxBodySize: (unsigned)max
 {
   _maxBodySize = max;
@@ -1071,6 +1076,10 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 - (void) setVerbose: (BOOL)aFlag
 {
   _verbose = aFlag;
+  if (aFlag == YES)
+    {
+      [self setDurationLogging: YES];
+    }
 }
 
 - (BOOL) substituteFrom: (NSString*)aTemplate
@@ -1611,17 +1620,20 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
     }
   else
     {
-      if (_verbose == YES && [_quiet containsObject: [session address]] == NO)
+      if (_durations == YES)
 	{
 	  NSTimeInterval	t = [session requestDuration: _ticked];
 
 	  if (t == 0.0)
 	    {
-	      [self _alert: @"%@ reset", session];
+	      if ([_quiet containsObject: [session address]] == NO)
+		{
+		  [self _alert: @"%@ reset", session];
+		}
 	    }
 	  else
 	    {
-	      [self _alert: @"%@ reset (duration %g)", session, t];
+	      [self _alert: @"%@ end of request (duration %g)", session, t];
 	    }
 	}
       [session reset];
@@ -1635,15 +1647,19 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
 
   if ([_quiet containsObject: [session address]] == NO)
     {
-      if (_verbose == YES)
+      if (_durations == YES)
 	{
 	  NSTimeInterval	r = [session requestDuration: _ticked];
-	  NSTimeInterval	s = [session sessionDuration: _ticked];
 
 	  if (r > 0.0)
 	    {
-	      [self _alert: @"%@ reset (duration %g)", session, r];
+	      [self _alert: @"%@ end of request (duration %g)", session, r];
 	    }
+	}
+      if (_verbose == YES)
+	{
+	  NSTimeInterval	s = [session sessionDuration: _ticked];
+
 	  [self _alert: @"%@ disconnect (duration %g)", session, s];
 	}
       _handled++;
@@ -1881,7 +1897,10 @@ escapeData(const unsigned char* bytes, unsigned length, NSMutableData *d)
       while ([array count] > 0)
 	{
 	  session = [array objectAtIndex: 0];
-	  [self _alert: @"Session timed out - %@", session];
+	  if (_verbose == YES)
+	    {
+	      [self _alert: @"Session timed out - %@", session];
+	    }
 	  [self _endSession: session];
 	  [array removeObjectAtIndex: 0];
 	}
