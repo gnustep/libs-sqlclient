@@ -24,6 +24,7 @@
    */ 
 
 #include	<Foundation/Foundation.h>
+#include	<Performance/GSCache.h>
 #include	"SQLClient.h"
 
 int
@@ -233,7 +234,7 @@ main()
       r0 = [db cache: 1 query: @"select * from xxx", nil];
       r1 = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] == [r1 lastObject], @"Cache failed");
-      sleep(1);
+      sleep(2);
       records = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
 
@@ -258,7 +259,7 @@ main()
 	    }
 	}
 
-      NSLog(@"Records - %@", [SQLCache class]);
+      NSLog(@"Records - %@", [GSCache class]);
     }
 
   RELEASE(pool);

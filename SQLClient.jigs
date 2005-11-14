@@ -1,36 +1,14 @@
 { /* -*-c-*- */
   "prerequisite libraries" = (
-    "gnustep-base"
+    "gnustep-base",
+    "Performance"
   );
   types = { 
     NSTimeInterval = double;
   };
   classes = (
     {
-      "java name" = "gnu.gnustep.SQLClient.SQLCache";
-      "objective-c name" = "SQLCache";
-      "class methods" = (
-	"allCaches"
-      );
-      "instance methods" = (
-	"currentObjects",
-	"currentSize",
-	"lifetime",
-	"maxObjects",
-	"maxSize",
-	"name",
-	"objectForKey:",
-	"purge",
-	"setLifetime:",
-	"setMaxObjects:",
-	"setMaxSize:",
-	"setName:",
-	"setObject:forKey:",
-	"setObject:forKey:lifetime:",
-	"shrinkObjects:andSize:"
-      );
-    },
-    {
+      "file to include in preamble java code" = "Performance.import";
       "java name" = "gnu.gnustep.SQLClient.SQLClient";
       "objective-c name" = "SQLClient";
       "class methods" = (

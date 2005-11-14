@@ -3,7 +3,7 @@ include $(GNUSTEP_MAKEFILES)/common.make
 -include config.make
 
 PACKAGE_NAME = SQLClient
-PACKAGE_VERSION = 1.1.0
+PACKAGE_VERSION = 1.2.0
 CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
 CVS_TAG_NAME = SQLClient
 
@@ -12,34 +12,15 @@ TEST_TOOL_NAME=
 LIBRARY_NAME=SQLClient
 DOCUMENT_NAME=SQLClient
 
-SQLClient_INTERFACE_VERSION=1.1
+SQLClient_INTERFACE_VERSION=1.2
 
 SQLClient_OBJC_FILES = SQLClient.m
-SQLClient_LIBRARIES_DEPEND_UPON =
+SQLClient_LIBRARIES_DEPEND_UPON = -lPerformance
 SQLClient_HEADER_FILES = SQLClient.h
 SQLClient_AGSDOC_FILES = SQLClient.h
 
 # Optional Java wrappers for the library
 JAVA_WRAPPER_NAME = SQLClient
-
-#
-# Assume that the use of the gnu runtime means we have the gnustep
-# base library and can use its extensions to build WebServer stuff.
-#
-ifeq ($(OBJC_RUNTIME_LIB),gnu)
-APPLE=0
-else
-APPLE=1
-endif
-
-ifeq ($(APPLE),1)
-ADDITIONAL_OBJC_LIBS += -lgnustep-baseadd
-SQLClient_LIBRARIES_DEPEND_UPON = -lgnustep-baseadd
-else
-SQLClient_OBJC_FILES += WebServer.m WebServerBundles.m
-SQLClient_HEADER_FILES += WebServer.h
-SQLClient_AGSDOC_FILES += WebServer.h
-endif
 
 SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
 
@@ -147,11 +128,6 @@ Oracle_libs_BUNDLE_LIBS += -lclntsh \
                       -ldl -lm
 Oracle_libs_PRINCIPAL_CLASS = SQLClientOracle_libs
 endif
-
-TEST_TOOL_NAME+=testWebServer
-testWebServer_OBJC_FILES = testWebServer.m
-testWebServer_TOOL_LIBS += -lSQLClient
-testWebServer_LIB_DIRS += -L./obj
 
 -include GNUmakefile.preamble
 
