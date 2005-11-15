@@ -48,7 +48,8 @@
 #include	<Foundation/NSTimer.h>
 
 #include	<GNUstepBase/GSLock.h>
-#include	<Performance/Performance.h>
+#include	<Performance/GSCache.h>
+#include	<Performance/GSTicker.h>
 
 #include	"SQLClient.h"
 
@@ -1668,7 +1669,7 @@ static void	quoteString(NSMutableString *s)
  */
 + (void) _tick: (NSTimer*)t
 {
-  GSTickerTimeNow();
+  (void) GSTickerTimeNow();
 }
 @end
 
