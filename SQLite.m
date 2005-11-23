@@ -211,7 +211,7 @@
       char		*statement;
       int		result;
       sqlite3_stmt	*prepared;
-      const char	*prepEnd;
+      const char	*stmtEnd;
 
       /*
        * Ensure we have a working connection.
@@ -225,7 +225,7 @@
 
       statement = (char*)[stmt UTF8String];
       result = sqlite3_prepare((sqlite3 *)extra,
-	statement, -1, &prepared, &prepEnd);
+	statement, strlen(statement), &prepared, &stmtEnd);
       if (result != SQLITE_OK)
 	{
 	  [NSException raise: SQLException
@@ -347,6 +347,15 @@ static char hex[16] = "0123456789ABCDEF";
    * two hex digits per byte.
    */
   return 3 + [blob length] * 2;
+}
+
+- (NSString*) quote: (id)obj
+{
+  if ([obj isKindOfClass: [NSDate class]] == YES)
+    {
+      obj = [NSNumber numberWithDouble: [obj timeIntervalSinceReferenceDate]];
+    }
+  return [super quote: obj];
 }
 
 @end
