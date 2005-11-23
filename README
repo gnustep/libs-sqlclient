@@ -49,6 +49,13 @@ Current backend bundles are -
       I don't use MySQL... but the test program ran successfully with a
       vanilla install of the MySQL packages for recent Debian unstable.
 
+    * SQLite - a bundle using the sqlite3 library which supports an
+      SQL-like API for direct access to a database file (rather than
+      acting as a client of a database server process).
+      Not as functional as the other backends (doesn't support dates
+      for instance), but good enough for many purposes and very
+      'lightweight'.  See http://www.sqlite.org
+
     * Oracle - a bundle using embedded SQL for Oracle.
       Completely untested... may even need some work to compile...
       but this *is* based on code which was working about a year ago.
@@ -64,8 +71,8 @@ To build this library you must have a basic GNUstep environment set up...
 
     * The gnustep-make package must have been built and installed.
     * The gnustep-base package must have been built and installed.
-    * You must hace sourced the GNUstep.sh script (from gnustep-make)
-      to set up environment variables needed for building this.
+    * The Performance library (from the dev-libs area in GNUstep CVS)
+    must have been built and installed.
     * If this environment is in place, all you should need to do is
       run 'make' to configure and build the library, 'make install'
       to install it.

@@ -103,6 +103,14 @@
 	vanilla install of the MySQL packages for recent Debian unstable.
       </item>
       <item>
+	SQLite - a bundle using the sqlite3 library which supports an
+	SQL-like API for direct access to a database file (rather than
+	acting as a client of a database server process).<br />
+	Not as functional as the other backends (doesn't support dates
+	for instance), but good enough for many purposes and very
+	'lightweight'.  See http://www.sqlite.org
+      </item>
+      <item>
         Oracle - a bundle using embedded SQL for Oracle.<br />
 	Completely untested ... may even need some work to compile ... but
 	this *is* based on code which was working about a year ago.<br />
@@ -129,8 +137,8 @@
 	The gnustep-base package must have been built and installed.
       </item>
       <item>
-	You must have sourced the GNUstep.sh script (from gnustep-make) to set
-	up environment variables needed for building this.
+	The Performance library (from the dev-libs area in GNUstep CVS)
+	must have been built and installed.
       </item>
       <item>
 	If this environment is in place, all you should need to do is run 'make'

@@ -1,3 +1,7 @@
+2005-11-23 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	Added SQLite backend support.
+
 2005-11-14 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	Factor out WebServer into separate library, and timer and caching
