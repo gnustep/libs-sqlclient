@@ -109,6 +109,31 @@ testMySQL_LIB_DIRS += -L./obj
 testMySQL_TOOL_LIBS += -lSQLClient
 endif
 
+ifneq ($(SQLITE),)
+ifeq ($(APPLE),1)
+BUNDLE_NAME += SQLite
+SQLite_OBJC_FILES = SQLite.m
+SQLite_LIB_DIRS = -L./obj
+SQLite_BUNDLE_LIBS += -lSQLClient -lsqlite3
+SQLite_PRINCIPAL_CLASS = SQLClientSQLite
+else
+BUNDLE_NAME += SQLite
+SQLite_OBJC_FILES = SQLite.m
+SQLite_LIB_DIRS = -L./obj
+SQLite_BUNDLE_LIBS += -lsqlite3
+SQLite_PRINCIPAL_CLASS = SQLClientSQLite
+BUNDLE_NAME += SQLite_libs
+SQLite_libs_OBJC_FILES = SQLite.m
+SQLite_libs_LIB_DIRS = -L./obj
+SQLite_libs_BUNDLE_LIBS += -lSQLClient -lgnustep-base -lobjc -lsqlite3
+SQLite_libs_PRINCIPAL_CLASS = SQLClientSQLite_libs
+endif
+TEST_TOOL_NAME += testSQLite
+testSQLite_OBJC_FILES = testSQLite.m
+testSQLite_LIB_DIRS += -L./obj
+testSQLite_TOOL_LIBS += -lSQLClient
+endif
+
 ifneq ($(ORACLE_HOME),)
 BUNDLE_NAME += Oracle
 Oracle_OBJC_FILES = Oracle.m
