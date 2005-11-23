@@ -225,7 +225,7 @@ else
 fi
 AC_MSG_RESULT(${BUNDLE})
 
-if test "$SQKITE" = "yes"; then
+if test "$SQLITE" = "yes"; then
   BUNDLE="The SQLite backend bundle will be built"
 else
   BUNDLE="The SQLite backend bundle will NOT be built"
