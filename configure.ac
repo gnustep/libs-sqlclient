@@ -3,6 +3,15 @@ dnl Process this file with autoconf to produce configure.
 AC_INIT(SQLClient.h)
 AC_CONFIG_HEADER(config.h)
 
+if test -z "$GNUSTEP_MAKEFILES"; then
+  AC_MSG_ERROR([You must have the gnustep-make package installed and set up the GNUSTEP_MAKEFILES environment variable to contain the path to the makefiles directory before configuring!])
+fi
+
+# Fetch basic path information from config file.
+GNUSTEP_CONFIG_FILE=`grep '^GNUSTEP_CONFIG_FILE *=' $GNUSTEP_MAKEFILES/config.make | sed -e 's/GNUSTEP_CONFIG_FILE *= *\(.*\)/\1/'`
+. "$GNUSTEP_CONFIG_FILE"
+
+#--------------------------------------------------------------------
 AC_ARG_WITH(additional-include,
   [  --with-additional-include=flags  specify additional include dirs to use],
   additional_include="$withval", additional_include="no")
