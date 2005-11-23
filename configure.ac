@@ -52,6 +52,26 @@ if test "$MYSQL" = "yes"; then
 fi
 AC_SUBST(MYSQL)
 
+AC_CHECK_HEADERS(sqlite3.h)
+if test "$ac_cv_header_sqlite3_h" = "yes"; then
+  SQLITE=yes
+else
+  SQLITE=
+  echo "*****************************************************"
+  echo "Unable to locate sqlite3 headers (are they installed)"
+  echo "*****************************************************"
+fi
+if test "$SQLITE" = "yes"; then
+  AC_CHECK_LIB(sqlite3,sqlite3_open)
+  if test "$ac_cv_lib_sqlite3_sqlite3_open" != "yes"; then
+    SQLITE=
+    echo "******************************************************"
+    echo "Unable to locate sqlite3 library (is it installed)"
+    echo "******************************************************"
+  fi
+fi
+AC_SUBST(SQLITE)
+
 POSTGRES=
 
 if test "$POSTGRES" = ""; then
@@ -193,6 +213,13 @@ if test "$MYSQL" = "yes"; then
   BUNDLE="The MySQL backend bundle will be built"
 else
   BUNDLE="The MySQL backend bundle will NOT be built"
+fi
+AC_MSG_RESULT(${BUNDLE})
+
+if test "$SQKITE" = "yes"; then
+  BUNDLE="The SQLite backend bundle will be built"
+else
+  BUNDLE="The SQLite backend bundle will NOT be built"
 fi
 AC_MSG_RESULT(${BUNDLE})
 

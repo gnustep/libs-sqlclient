@@ -209,10 +209,7 @@
   NS_DURING
     {
       char		*statement;
-      char 		*err;
       int		result;
-      int		columns;
-      NSString		**keys = 0;
       sqlite3_stmt	*prepared;
       const char	*prepEnd;
 
@@ -236,7 +233,7 @@
 	}
       if ((result = sqlite3_step(prepared)) == SQLITE_ROW)
         {
-	  int		columns = sqlite3_columns(prepared);
+	  int		columns = sqlite3_column_count(prepared);
 	  NSString	*keys[columns];
 	  int		i;
 
@@ -258,7 +255,7 @@
 		  switch (type)
 		    {
 		      case SQLITE_INTEGER:
-			values[i] = [NSNumber numberWithInt
+			values[i] = [NSNumber numberWithInt:
 			  sqlite3_column_int(prepared, i)];
 			break;
 
