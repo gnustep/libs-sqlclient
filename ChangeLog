@@ -1,3 +1,10 @@
+2006-01-11  Nicola Pero <nicola@brainstorm.co.uk>
+
+	* configure.ac: Do not source GNUSTEP_CONFIG_FILE if it doesn't
+	exist, so that the library can be used with older versions of
+	gnustep-make/gnustep-base too. :-)
+	* configure: Regenerated.
+
 2005-11-23 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	Added SQLite backend support.

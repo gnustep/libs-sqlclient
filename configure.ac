@@ -9,7 +9,15 @@ fi
 
 # Fetch basic path information from config file.
 GNUSTEP_CONFIG_FILE=`grep '^GNUSTEP_CONFIG_FILE *=' $GNUSTEP_MAKEFILES/config.make | sed -e 's/GNUSTEP_CONFIG_FILE *= *\(.*\)/\1/'`
-. "$GNUSTEP_CONFIG_FILE"
+
+# This is for backwards compatibility with older gnustep releases,
+# which have no GNUSTEP_CONFIG_FILE -- but it can be dropped in a year
+# or so ;-) -- NB: We could do better here, like checking the
+# GNUSTEP_MAKE_VERSION or emitting a warning if no config file is
+# found etc.
+if test -n "$GNUSTEP_CONFIG_FILE"; then
+  . "$GNUSTEP_CONFIG_FILE"
+fi
 
 #--------------------------------------------------------------------
 AC_ARG_WITH(additional-include,
