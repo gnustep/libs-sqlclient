@@ -60,6 +60,7 @@ typedef	struct {
 static NSNull	*null = nil;
 
 static Class		NSStringClass = 0;
+static Class		NSArrayClass = 0;
 static Class		NSDateClass = 0;
 
 @implementation	SQLRecord
@@ -438,6 +439,7 @@ static unsigned int	maxConnections = 8;
       commitStatement = RETAIN([NSArray arrayWithObject: commitString]);
       rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
       NSStringClass = [NSString class];
+      NSArrayClass = [NSArray class];
       [NSTimer scheduledTimerWithTimeInterval: 1.0
 				       target: self
 				     selector: @selector(_tick:)
@@ -913,6 +915,30 @@ static void	quoteString(NSMutableString *s)
       if ([obj isKindOfClass: [NSNull class]] == YES)
 	{
 	  return @"NULL";
+	}
+
+      /**
+       * For an NSArray object, we produce a bracketed list of the
+       * (quoted) objects in the array.
+       */
+      if ([obj isKindOfClass: NSArrayClass] == YES)
+	{
+	  NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
+	  unsigned		count = [obj count];
+	  unsigned		i;
+
+	  [ms appendString: @"("];
+	  if (count > 0)
+	    {
+	      [ms appendString: [self quote: [obj objectAtIndex: 0]]];
+	      for (i = 1; i < count; i++)
+		{
+		  [ms appendString: @","];
+		  [ms appendString: [self quote: [obj objectAtIndex: i]]];
+		}
+	    }
+	  [ms appendString: @")"];
+	  return ms;
 	}
 
       /**
