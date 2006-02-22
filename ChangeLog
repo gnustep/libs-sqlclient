@@ -1,3 +1,7 @@
+2005-02-22 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Support quoting of NSArray and NSSet objects.
+
 2006-01-11  Nicola Pero <nicola@brainstorm.co.uk>
 
 	* configure.ac: Do not source GNUSTEP_CONFIG_FILE if it doesn't

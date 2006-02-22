@@ -62,6 +62,7 @@ static NSNull	*null = nil;
 static Class		NSStringClass = 0;
 static Class		NSArrayClass = 0;
 static Class		NSDateClass = 0;
+static Class		NSSetClass = 0;
 
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
@@ -440,6 +441,7 @@ static unsigned int	maxConnections = 8;
       rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
       NSStringClass = [NSString class];
       NSArrayClass = [NSArray class];
+      NSSetClass = [NSSet class];
       [NSTimer scheduledTimerWithTimeInterval: 1.0
 				       target: self
 				     selector: @selector(_tick:)
@@ -918,24 +920,25 @@ static void	quoteString(NSMutableString *s)
 	}
 
       /**
-       * For an NSArray object, we produce a bracketed list of the
+       * For an NSArray or NSSet, we produce a bracketed list of the
        * (quoted) objects in the array.
        */
-      if ([obj isKindOfClass: NSArrayClass] == YES)
+      if ([obj isKindOfClass: NSArrayClass] == YES ||
+	[obj isKindOfClass: NSSetClass] == YES)
 	{
 	  NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
-	  unsigned		count = [obj count];
-	  unsigned		i;
+	  NSEnumerator		*enumerator = [obj objectEnumerator];
+	  id			value = [enumerator nextObject];
 
 	  [ms appendString: @"("];
-	  if (count > 0)
+	  if (value != nil)
 	    {
-	      [ms appendString: [self quote: [obj objectAtIndex: 0]]];
-	      for (i = 1; i < count; i++)
-		{
-		  [ms appendString: @","];
-		  [ms appendString: [self quote: [obj objectAtIndex: i]]];
-		}
+	      [ms appendString: [self quote: value]];
+	    }
+	  while ((value = [enumerator nextObject]) != nil)
+	    {
+	      [ms appendString: @","];
+	      [ms appendString: [self quote: value]];
 	    }
 	  [ms appendString: @")"];
 	  return ms;
