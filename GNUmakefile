@@ -38,18 +38,18 @@ ifneq ($(ECPG),)
 ifeq ($(APPLE),1)
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
-ECPG_LIB_DIRS = -L./obj
+ECPG_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_BUNDLE_LIBS += -lSQLClient -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
 else
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
-ECPG_LIB_DIRS = -L./obj
+ECPG_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_BUNDLE_LIBS += -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
 BUNDLE_NAME += ECPG_libs
 ECPG_libs_OBJC_FILES = ECPG.m
-ECPG_libs_LIB_DIRS = -L./obj
+ECPG_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lecpg
 ECPG_libs_PRINCIPAL_CLASS = SQLClientECPG_libs
@@ -57,32 +57,32 @@ endif
 TEST_TOOL_NAME += testECPG
 testECPG_OBJC_FILES = testECPG.m
 testECPG_TOOL_LIBS += -lSQLClient
-testECPG_LIB_DIRS += -L./obj
+testECPG_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 endif
 
 ifneq ($(POSTGRES),)
 ifeq ($(APPLE),1)
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
-Postgres_LIB_DIRS = -L./obj
+Postgres_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_BUNDLE_LIBS += -lSQLClient -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
 else
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
-Postgres_LIB_DIRS = -L./obj
+Postgres_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_BUNDLE_LIBS += -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
 BUNDLE_NAME += Postgres_libs
 Postgres_libs_OBJC_FILES = Postgres.m
-Postgres_libs_LIB_DIRS = -L./obj
+Postgres_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lpq
 Postgres_libs_PRINCIPAL_CLASS = SQLClientPostgres_libs
 endif
 TEST_TOOL_NAME += testPostgres
 testPostgres_OBJC_FILES = testPostgres.m
-testPostgres_LIB_DIRS += -L./obj
+testPostgres_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testPostgres_TOOL_LIBS += -lSQLClient
 endif
 
@@ -90,25 +90,25 @@ ifneq ($(MYSQL),)
 ifeq ($(APPLE),1)
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
-MySQL_LIB_DIRS = -L./obj
+MySQL_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_BUNDLE_LIBS += -lSQLClient -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
 else
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
-MySQL_LIB_DIRS = -L./obj
+MySQL_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_BUNDLE_LIBS += -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
 BUNDLE_NAME += MySQL_libs
 MySQL_libs_OBJC_FILES = MySQL.m
-MySQL_libs_LIB_DIRS = -L./obj
+MySQL_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lmysqlclient
 MySQL_libs_PRINCIPAL_CLASS = SQLClientMySQL_libs
 endif
 TEST_TOOL_NAME += testMySQL
 testMySQL_OBJC_FILES = testMySQL.m
-testMySQL_LIB_DIRS += -L./obj
+testMySQL_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testMySQL_TOOL_LIBS += -lSQLClient
 endif
 
@@ -116,32 +116,32 @@ ifneq ($(SQLITE),)
 ifeq ($(APPLE),1)
 BUNDLE_NAME += SQLite
 SQLite_OBJC_FILES = SQLite.m
-SQLite_LIB_DIRS = -L./obj
+SQLite_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_BUNDLE_LIBS += -lSQLClient -lsqlite3
 SQLite_PRINCIPAL_CLASS = SQLClientSQLite
 else
 BUNDLE_NAME += SQLite
 SQLite_OBJC_FILES = SQLite.m
-SQLite_LIB_DIRS = -L./obj
+SQLite_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_BUNDLE_LIBS += -lsqlite3
 SQLite_PRINCIPAL_CLASS = SQLClientSQLite
 BUNDLE_NAME += SQLite_libs
 SQLite_libs_OBJC_FILES = SQLite.m
-SQLite_libs_LIB_DIRS = -L./obj
+SQLite_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lsqlite3
 SQLite_libs_PRINCIPAL_CLASS = SQLClientSQLite_libs
 endif
 TEST_TOOL_NAME += testSQLite
 testSQLite_OBJC_FILES = testSQLite.m
-testSQLite_LIB_DIRS += -L./obj
+testSQLite_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testSQLite_TOOL_LIBS += -lSQLClient
 endif
 
 ifneq ($(ORACLE_HOME),)
 BUNDLE_NAME += Oracle
 Oracle_OBJC_FILES = Oracle.m
-Oracle_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./obj \
+Oracle_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./$(GNUSTEP_OBJ_DIR) \
 			$(shell cat $(ORACLE_HOME)/lib/ldflags)
 Oracle_BUNDLE_LIBS += -lclntsh \
                       $(shell cat $(ORACLE_HOME)/lib/sysliblist) \
@@ -149,7 +149,7 @@ Oracle_BUNDLE_LIBS += -lclntsh \
 Oracle_PRINCIPAL_CLASS = SQLClientOracle
 BUNDLE_NAME += Oracle_libs
 Oracle_libs_OBJC_FILES = Oracle.m
-Oracle_libs_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./obj \
+Oracle_libs_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./$(GNUSTEP_OBJ_DIR) \
 			$(shell cat $(ORACLE_HOME)/lib/ldflags)
 Oracle_libs_BUNDLE_LIBS += -lclntsh \
 		      -lSQLClient -lPerformance -lgnustep-base -lobjc \
