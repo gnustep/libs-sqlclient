@@ -34,8 +34,15 @@ BUNDLE_INSTALL_DIR=$(GNUSTEP_INSTALLATION_DIR)/Library/Bundles/SQLClient
 # To handle that, we create two versions of each bundle, the seond version
 # has _libs appended to the bundle name, and has the extra libraries linked.
 
+ifeq ($(LINKSQLCLIENT),)
+  LINKSQLCLIENT=0
+  ifeq ($(APPLE),1)
+    LINKSQLCLIENT=1
+  endif
+endif
+
 ifneq ($(ECPG),)
-ifeq ($(APPLE),1)
+ifeq ($(LINKSQLCLIENT),1)
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
 ECPG_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
@@ -61,7 +68,7 @@ testECPG_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 endif
 
 ifneq ($(POSTGRES),)
-ifeq ($(APPLE),1)
+ifeq ($(LINKSQLCLIENT),1)
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
 Postgres_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
@@ -87,7 +94,7 @@ testPostgres_TOOL_LIBS += -lSQLClient
 endif
 
 ifneq ($(MYSQL),)
-ifeq ($(APPLE),1)
+ifeq ($(LINKSQLCLIENT),1)
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
 MySQL_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
@@ -113,7 +120,7 @@ testMySQL_TOOL_LIBS += -lSQLClient
 endif
 
 ifneq ($(SQLITE),)
-ifeq ($(APPLE),1)
+ifeq ($(LINKSQLCLIENT),1)
 BUNDLE_NAME += SQLite
 SQLite_OBJC_FILES = SQLite.m
 SQLite_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
