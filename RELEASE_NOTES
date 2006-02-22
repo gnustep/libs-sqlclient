@@ -1,0 +1,73 @@
+
+This is the 1.2 release of the 'sqlclient' library (version 1.2.0)
+
+
+Scope
+====
+This library is a lightweight database abstraction layer designed to make
+it simple to write high performance applications using SQL databases from
+Objective-C.
+The library consists of a semi-abstract superclass doing much of the work
+and allowing extremely simple database specific bundles to be written to
+talk to particular database servers.  It comes with backend bundles for
+Postgres, MySQL, and SQLite (plus an untested Oracle bundle).
+
+
+Platforms
+=========
+GNUstep gnu/linux
+GNUstep	windows/mingw32 (only tested for SQLite)
+Cocoa ... reported to work.
+
+
+New in this release
+===================
+Removed  WebServe rinto its own library
+Supports in-memory caching using GSCache from performance library
+SQLite support
+Can quote arrays and sets of database values.
+Minor fixes.
+
+
+Contents
+========
+SQLClient
+Provides managements of connections to (multiple) database backends.
+Each instance represents a database connection.
+
+SQLClient(Caching)
+Category providing methods for handling locally cached query results.
+
+SQLRecord
+Represents a record in the database
+
+SQLTransaction
+Represents a sequence of operations to be performed as a single transaction.
+Statements may be added to transactions and transactions may be merged.
+
+SQLClientECPG
+Backend bundle using embedded SQL for Postgres.
+
+SQLClientMySQL
+Backend bundle handling MySQL database.
+
+SQLClientOracle
+Backend bundle using embedded SQL for Oracle.
+
+SQLClientPostgres
+Backend bundle handling Postgres database.
+
+SQLClientSQLite
+Backend bundle handling SQLite database.
+
+
+Location
+========
+Available from the gnustep subversion repository.
+
+Browse at http://svn.gna.org/viewcvs/gnustep/libs/sqlclient/tags/1.2.0
+
+Download with:
+svn co svn://svn.gna.org/svn/gnustep/libs/sqlclient/tags/1.2.0 sqlclient
+
+
