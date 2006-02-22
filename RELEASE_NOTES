@@ -27,6 +27,11 @@ Supports in-memory caching using GSCache from performance library
 SQLite support
 Can quote arrays and sets of database values.
 Minor fixes.
+Windows/Mingw32 support ... NB you have to build with ...
+  LINKSQLCLIENT=1 make
+or
+  LINKSQLCLIENT=1 make debug=yes
+depending on whether you build with debug or not.
 
 
 Contents
