@@ -6,6 +6,8 @@ PACKAGE_NAME = SQLClient
 PACKAGE_VERSION = 1.2.0
 CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
 CVS_TAG_NAME = SQLClient
+SVN_BASE_URL=http://svn.gna.org/svn/gnustep/libs
+SVN_MODULE_NAME=sqlclient
 
 TEST_TOOL_NAME=
 
