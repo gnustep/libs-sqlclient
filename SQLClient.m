@@ -653,7 +653,15 @@ static unsigned int	maxConnections = 8;
   [s appendFormat: @"  Password    - %@\n",
     [self password] == nil ? @"unknown" : @"known"];
   [s appendFormat: @"  Connected   - %@\n", connected ? @"yes" : @"no"];
-  [s appendFormat: @"  Transaction - %@\n\n", _inTransaction ? @"yes" : @"no"];
+  [s appendFormat: @"  Transaction - %@\n", _inTransaction ? @"yes" : @"no"];
+  if (_cache == nil)
+    {
+      [s appendString: @"\n"];
+    }
+  else
+    {
+      [s appendFormat: @"  Cache -       %@\n", _cache];
+    }
   return s;
 }
 
