@@ -1385,14 +1385,16 @@ static void	quoteString(NSMutableString *s)
   c = NSClassFromString([@"SQLClient" stringByAppendingString: s]);
   if (c == nil)
     {
-      NSString	*path;
-      NSBundle	*bundle;
-      NSArray	*paths;
-      unsigned	count;
+      NSString		*path;
+      NSBundle		*bundle;
+      NSArray		*paths;
+      NSMutableArray	*tried;
+      unsigned		count;
 
       paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
 	NSLocalDomainMask, YES);
       count = [paths count];
+      tried = [NSMutableArray arrayWithCapacity: count];
       while (count-- > 0)
 	{
 	  path = [paths objectAtIndex: count];
@@ -1401,9 +1403,13 @@ static void	quoteString(NSMutableString *s)
 	  path = [path stringByAppendingPathComponent: s];
 	  path = [path stringByAppendingPathExtension: @"bundle"];
 	  bundle = [NSBundle bundleWithPath: path];
-	  if (bundle != nil && (c = [bundle principalClass]) != nil)
+	  if (bundle != nil)
 	    {
-	      break;	// Found it.
+	      [tried addObject: path];
+	      if ((c = [bundle principalClass]) != nil)
+		{
+		  break;	// Found it.
+		}
 	    }
 	  /* Try alternative version with more libraries linked in.
 	   * In some systems and situations the dynamic linker needs
@@ -1417,14 +1423,27 @@ static void	quoteString(NSMutableString *s)
 	  path = [path stringByAppendingString: @"_libs"];
 	  path = [path stringByAppendingPathExtension: @"bundle"];
 	  bundle = [NSBundle bundleWithPath: path];
-	  if (bundle != nil && (c = [bundle principalClass]) != nil)
+	  if (bundle != nil)
 	    {
-	      break;	// Found it.
+	      [tried addObject: path];
+	      if ((c = [bundle principalClass]) != nil)
+		{
+		  break;	// Found it.
+		}
 	    }
 	}
       if (c == nil)
 	{
-	  [self debug: @"unable to load bundle for '%@' server type", s];
+	  if ([tried count] == 0)
+	    {
+	      [self debug: @"unable to load bundle for '%@' server type"
+		@" ... failed to locate bundle in %@", s, paths];
+	    }
+	  else
+	    {
+	      [self debug: @"unable to load backend class for '%@' server type"
+		@" ... dynamic library load failed in %@", s, tried];
+	    }
 	  return;
 	}
     }
