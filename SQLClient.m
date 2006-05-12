@@ -858,7 +858,7 @@ static void	quoteString(NSMutableString *s)
       if (c == 0)
 	{
 	  r.length = 1;
-	  [s replaceCharactersInRange: r withString: nil];
+	  [s replaceCharactersInRange: r withString: @""];
 	  l--;
 	}
       else
@@ -1696,11 +1696,15 @@ static void	quoteString(NSMutableString *s)
 	  if ([v length] == 0)
 	    {
 	      v = alt;
+	      if (v == nil)
+	        {
+		  v = @"";
+	        }
 	    }
 	  vLength = [v length];
 
 	  [mtext replaceCharactersInRange: r withString: v];
-	  l += vLength;		// Add length of string inserted
+	  l += vLength;			// Add length of string inserted
 	  l -= r.length;		// Remove length of string replaced
 	  r.location += vLength;
 
