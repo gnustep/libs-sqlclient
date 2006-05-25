@@ -604,6 +604,7 @@ extern unsigned	SQLClientTimeTick();
  * Subclasses may override this method to provide appropriate quoting for
  * types of object which need database backend specific quoting conventions.
  * However, the defalt implementation should be OK for most cases.<br />
+ * This method makes use of -quoteString: to quote literal strings.<br />
  * The base class implementation formats NSDate objects as<br />
  * YYYY-MM-DD hh:mm:ss.mmm ?ZZZZ<br />
  * NSData objects are not quoted ... they must not appear in queries, and
@@ -618,12 +619,16 @@ extern unsigned	SQLClientTimeTick();
 - (NSString*) quotef: (NSString*)fmt, ...;
 
 /**
- * Convert a 'C' string to a string suitable for use in an SQL query.
+ * Convert a 'C' string to a string suitable for use in an SQL query
+ * by using -quoteString: to convert it to a literal string format.<br />
+ * NB. a null pointer is treated as an empty string.
  */
 - (NSString*) quoteCString: (const char *)s;
 
 /**
- * Convert a single character to a string suitable for use in an SQL query.
+ * Convert a single character to a string suitable for use in an SQL query
+ * by using -quoteString: to convert it to a literal string format.<br />
+ * NB. a nul character is not allowed and will cause an exception.
  */
 - (NSString*) quoteChar: (char)c;
 
@@ -636,6 +641,14 @@ extern unsigned	SQLClientTimeTick();
  * Convert an integer to a string suitable for use in an SQL query.
  */
 - (NSString*) quoteInteger: (int)i;
+
+/**
+ * Convert a string to a form suitable for use as a string
+ * literal in an SQL query.<br />
+ * Subclasses may override this for non-standard literal string
+ * quoting conventions.
+ */
+- (NSString*) quoteString: (NSString *)s;
 
 /**
  * Revert a transaction for this database client.<br />
@@ -767,7 +780,7 @@ extern unsigned	SQLClientTimeTick();
  * </example>
  * <p>The backend implementation is required to perform the SQL statement
  * using the supplied NSData objects at the points in the statement
- * marked by the <code>'''</code> sequence.  The marker saequences are
+ * marked by the <code>'?'''?'</code> sequence.  The marker saequences are
  * inserted into the statement at an earlier stage by the -execute:,...
  * and -execute:with: methods.
  * </p>
@@ -835,7 +848,7 @@ extern unsigned	SQLClientTimeTick();
  * copied and into which the BLOBs are to be inserted.
  * </p>
  * <p>The marker and mLength arguments specify the sequence of marker bytes
- * in the statement which indicate a position for insertion of a n escaped BLOB.
+ * in the statement which indicate a position for insertion of an escaped BLOB.
  * </p>
  * <p>The method returns either the original statement or a copy containing
  * the escaped BLOBs.  The length of the returned data is stored in result.
@@ -857,6 +870,7 @@ extern unsigned	SQLClientTimeTick();
  * bytestream which will be inserted.
  */
 - (unsigned) lengthOfEscapedBLOB: (NSData*)blob;
+
 @end
 
 /**

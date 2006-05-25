@@ -162,8 +162,8 @@
       statement = [self insertBLOBs: info
 	              intoStatement: statement
 			     length: length
-			 withMarker: "'''"
-			     length: 3
+			 withMarker: "'?'''?'"
+			     length: 7
 			     giving: &length];
 
       result = sqlite3_exec((sqlite3 *)extra, statement, 0, 0, &err);

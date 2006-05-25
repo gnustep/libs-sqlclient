@@ -29,6 +29,7 @@
 #include	<Foundation/NSData.h>
 #include	<Foundation/NSDate.h>
 #include	<Foundation/NSCalendarDate.h>
+#include	<Foundation/NSCharacterSet.h>
 #include	<Foundation/NSException.h>
 #include	<Foundation/NSProcessInfo.h>
 #include	<Foundation/NSNotification.h>
@@ -52,12 +53,19 @@
 - (NSDate*) dbToDateFromBuffer: (char*)b length: (int)l;
 @end
 
-@implementation	SQLClientPostgres
+typedef struct	{
+  PGconn	*_connection;
+  BOOL		_standardEscaping;
+} ConnectionInfo;
 
-#define	connection	((PGconn*)(self->extra))
+#define	cInfo			((ConnectionInfo*)(self->extra))
+#define	connection		(cInfo->_connection)
+#define	standardEscaping	(cInfo->_standardEscaping)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
+
+@implementation	SQLClientPostgres
 
 + (void) initialize
 {
@@ -87,6 +95,11 @@ connectQuote(NSString *str)
 
 - (BOOL) backendConnect
 {
+  if (extra == 0)
+    {
+      extra = NSZoneMalloc(NSDefaultMallocZone(), sizeof(ConnectionInfo));
+      memset(extra, '\0', sizeof(ConnectionInfo));
+    }
   if (connection == 0)
     {
       connected = NO;
@@ -155,16 +168,36 @@ connectQuote(NSString *str)
 	    {
 	      [self debug: @"Connect to '%@' as %@", m, [self name]];
 	    }
-	  extra = PQconnectdb([m UTF8String]);
+	  connection = PQconnectdb([m UTF8String]);
 	  if (PQstatus(connection) != CONNECTION_OK)
 	    {
 	      [self debug: @"Error connecting to '%@' (%@) - %s",
 		[self name], m, PQerrorMessage(connection)];
 	      PQfinish(connection);
-	      extra = 0;
+	      connection = 0;
+	    }
+	  else if (PQsetClientEncoding(connection, "UTF-8") < 0)
+	    {
+	      [self debug: @"Error setting UTF-8 with '%@' (%@) - %s",
+		[self name], m, PQerrorMessage(connection)];
+	      PQfinish(connection);
+	      connection = 0;
 	    }
 	  else
 	    {
+#ifdef	HAVE_PQESCAPESTRINGCONN
+	      char	buf[8];
+	      int	err;
+
+	      if (PQescapeStringConn(connection, buf, "\\", 1, &err) == 1)
+		{
+		  standardEscaping = YES;
+		}
+	      else
+		{
+		  standardEscaping = NO;
+		}
+#endif
 	      connected = YES;
 	      if ([self debugging] > 0)
 		{
@@ -184,7 +217,7 @@ connectQuote(NSString *str)
 
 - (void) backendDisconnect
 {
-  if (connection != 0)
+  if (extra != 0 && connection != 0)
     {
       NS_DURING
 	{
@@ -198,7 +231,7 @@ connectQuote(NSString *str)
 	      [self debug: @"Disconnecting client %@", [self clientName]];
 	    }
 	  PQfinish(connection);
-	  extra = 0;
+	  connection = 0;
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Disconnected client %@", [self clientName]];
@@ -206,7 +239,7 @@ connectQuote(NSString *str)
 	}
       NS_HANDLER
 	{
-	  extra = 0;
+	  connection = 0;
 	  [self debug: @"Error disconnecting from database (%@): %@",
 	    [self clientName], localException];
 	}
@@ -248,8 +281,8 @@ connectQuote(NSString *str)
       statement = [self insertBLOBs: info
 		      intoStatement: statement
 			     length: length
-			 withMarker: "'''"
-			     length: 3
+			 withMarker: "'?'''?'"
+			     length: 7
 			     giving: &length];
 
       result = PQexec(connection, statement);
@@ -528,14 +561,17 @@ static unsigned int trim(char *str)
 	}
       else if (c == '\\')
 	{
-	  ptr[length++] = '\\';
-	  ptr[length++] = '\\';
+	  if (standardEscaping == NO)
+	    {
+	      ptr[length++] = '\\';
+	      ptr[length++] = '\\';
+	    }
 	  ptr[length++] = '\\';
 	  ptr[length++] = '\\';
 	}
       else if (c == '\'')
 	{
-	  ptr[length++] = '\\';
+	  ptr[length++] = '\'';
 	  ptr[length++] = '\'';
 	}
       else
@@ -564,7 +600,11 @@ static unsigned int trim(char *str)
 	}
       else if (c == '\\')
 	{
-	  length += 3;
+	  if (standardEscaping == NO)
+	    {
+	      length += 2;
+	    }
+	  length += 1;
 	}
       else if (c == '\'')
 	{
@@ -620,7 +660,6 @@ static unsigned int trim(char *str)
     }
   return md;
 }
-
 
 - (NSDate*) dbToDateFromBuffer: (char*)b length: (int)l
 {
@@ -778,6 +817,39 @@ static unsigned int trim(char *str)
 	}
       return d;
     }
+}
+
+- (void) dealloc
+{
+  if (extra != 0)
+    {
+      [self backendDisconnect];
+      NSZoneFree(NSDefaultMallocZone(), extra);
+    }
+  [super dealloc];
+}
+
+- (NSString*) quoteString: (NSString *)s
+{
+  NSData	*d = [s dataUsingEncoding: NSUTF8StringEncoding];
+  unsigned	l = [d length];
+  unsigned char	*to = NSZoneMalloc(NSDefaultMallocZone(), (l * 2) + 3);
+
+#ifdef	HAVE_PQESCAPESTRINGCONN
+  int		err;
+
+  [self backendConnect];
+  l = PQescapeStringConn(connection, to + 1, [d bytes], l, &err);
+#else
+  l = PQescapeString(to + 1, [d bytes], l);
+#endif
+  to[0] = '\'';
+  to[l + 1] = '\'';
+  s = [[NSString alloc] initWithBytesNoCopy: to
+				     length: l + 2
+				   encoding: NSUTF8StringEncoding
+			       freeWhenDone: YES];
+  return AUTORELEASE(s);
 }
 
 @end

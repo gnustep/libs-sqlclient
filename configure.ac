@@ -204,6 +204,8 @@ if test "$POSTGRES" = "yes"; then
       echo "Perhaps you can try 'configure --with-postgres=dir=path'"
       echo "to point to the postgres version you wish to use."
       echo "******************************************************"
+  else
+    AC_CHECK_FUNCS(PQescapeStringConn)
   fi
   AC_CHECK_LIB(ecpg,ECPGconnect)
   if test "$ac_cv_lib_ecpg_ECPGconnect" != "yes"; then

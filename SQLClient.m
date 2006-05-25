@@ -827,58 +827,6 @@ static unsigned int	maxConnections = 8;
   return result;
 }
 
-static void	quoteString(NSMutableString *s)
-{
-  static NSCharacterSet	*special = nil;
-  NSRange		r;
-  unsigned		l;
-
-  if (special == nil)
-    {
-      /*
-       * NB. length of C string is 3, so we include a nul character as a
-       * special.
-       */
-      special = [NSCharacterSet characterSetWithCharactersInString:
-	[NSString stringWithCString: "\\'" length: 3]];
-      RETAIN(special);
-    }
-
-  /*
-   * Step through string removing nul characters (illegal in postgres)
-   * and escaping other characters as required.
-   */
-  l = [s length];
-  r = NSMakeRange(0, l);
-  r = [s rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
-  while (r.length > 0)
-    {
-      unichar	c = [s characterAtIndex: r.location];
-
-      if (c == 0)
-	{
-	  r.length = 1;
-	  [s replaceCharactersInRange: r withString: @""];
-	  l--;
-	}
-      else
-	{
-	  r.length = 0;
-	  [s replaceCharactersInRange: r withString: @"\\"];
-	  l++;
-	  r.location += 2;
-	} 
-      r = NSMakeRange(r.location, l - r.location);
-      r = [s rangeOfCharacterFromSet: special
-			     options: NSLiteralSearch
-			       range: r];
-    }
-
-  /* Add quoting around it.  */
-  [s replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
-  [s appendString: @"'"];
-}
-
 - (NSString*) quote: (id)obj
 {
   /**
@@ -960,48 +908,56 @@ static void	quoteString(NSMutableString *s)
     }
 
   /* Get a string description of the object.  */
-  obj = AUTORELEASE([obj mutableCopy]);
-  quoteString(obj);
+  obj = [self quoteString: obj];
 
   return obj;
 }
 
 - (NSString*) quotef: (NSString*)fmt, ...
 {
-  va_list		ap;
-  NSMutableString	*s;
+  va_list	ap;
+  NSString	*str;
+  NSString	*quoted;
 
   va_start(ap, fmt);
-  s = [[NSMutableString allocWithZone: NSDefaultMallocZone()]
+  str = [[NSString allocWithZone: NSDefaultMallocZone()]
     initWithFormat: fmt arguments: ap];
   va_end(ap);
 
-  quoteString(s);
-
-  return AUTORELEASE(s);
+  quoted = [self quoteString: str];
+  RELEASE(str);
+  return quoted;
 }
 
 - (NSString*) quoteCString: (const char *)s
 {
-  NSString	*str = [[NSString alloc] initWithCString: s];
-  NSString	*result = [self quote: str];
+  NSString	*str;
+  NSString	*quoted;
 
+  if (s == 0)
+    {
+      s = "";
+    }
+  str = [[NSString alloc] initWithCString: s];
+  quoted = [self quoteString: str];
   RELEASE(str);
-  return result;
+  return quoted;
 }
 
 - (NSString*) quoteChar: (char)c
 {
+  NSString	*str;
+  NSString	*quoted;
+
   if (c == 0)
     {
       [NSException raise: NSInvalidArgumentException
 		  format: @"Attempt to quote a nul character in -quoteChar:"];
     }
-  if (c == '\'' || c == '\\')
-    {
-      return [NSString stringWithFormat: @"'\\%c'", c];
-    }
-  return [NSString stringWithFormat: @"'%c'", c];
+  str = [[NSString alloc] initWithFormat: @"%c", c];
+  quoted = [self quoteString: str];
+  RELEASE(str);
+  return quoted;
 }
 
 - (NSString*) quoteFloat: (float)f
@@ -1012,6 +968,66 @@ static void	quoteString(NSMutableString *s)
 - (NSString*) quoteInteger: (int)i
 {
   return [NSString stringWithFormat: @"%d", i];
+}
+
+- (NSString*) quoteString: (NSString *)s
+{
+  static NSCharacterSet	*special = nil;
+  NSMutableString	*m;
+  NSRange		r;
+  unsigned		l;
+
+  if (special == nil)
+    {
+      NSString	*s;
+
+      /*
+       * NB. length of C string is 2, so we include a nul character as a
+       * special.
+       */
+      s = [[NSString alloc] initWithBytes: "'"
+				   length: 2
+				 encoding: NSASCIIStringEncoding];
+      special = [NSCharacterSet characterSetWithCharactersInString: s];
+      RELEASE(s);
+      RETAIN(special);
+    }
+
+  /*
+   * Step through string removing nul characters
+   * and escaping quote characters as required.
+   */
+  m = AUTORELEASE([s mutableCopy]);
+  l = [m length];
+  r = NSMakeRange(0, l);
+  r = [m rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
+  while (r.length > 0)
+    {
+      unichar	c = [m characterAtIndex: r.location];
+
+      if (c == 0)
+	{
+	  r.length = 1;
+	  [m replaceCharactersInRange: r withString: @""];
+	  l--;
+	}
+      else
+        {
+	  r.length = 0;
+	  [m replaceCharactersInRange: r withString: @"'"];
+	  l++;
+	  r.location += 2;
+        }
+      r = NSMakeRange(r.location, l - r.location);
+      r = [m rangeOfCharacterFromSet: special
+			     options: NSLiteralSearch
+			       range: r];
+    }
+
+  /* Add quoting around it.  */
+  [m replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
+  [m appendString: @"'"];
+  return m;
 }
 
 - (void) rollback
@@ -1498,7 +1514,7 @@ static void	quoteString(NSMutableString *s)
  * and concatenating the resulting strings in a nil terminated list.<br />
  * Returns an array containing the statement as the first object and
  * any NSData objects following.  The NSData objects appear in the
- * statement strings as the marker sequence - <code>'''</code>
+ * statement strings as the marker sequence - <code>'?'''?'</code>
  */
 - (NSArray*) _prepare: (NSString*)stmt args: (va_list)args
 {
@@ -1521,7 +1537,7 @@ static void	quoteString(NSMutableString *s)
 	      if ([tmp isKindOfClass: [NSData class]] == YES)
 		{
 		  [ma addObject: tmp];
-		  [s appendString: @"'''"];	// Marker.
+		  [s appendString: @"'?'''?'"];	// Marker.
 		}
 	      else
 		{
@@ -1547,7 +1563,7 @@ static void	quoteString(NSMutableString *s)
  * appear by name.  Non-string objects in the dictionary are quoted.<br />
  * Returns an array containing the statement as the first object and
  * any NSData objects following.  The NSData objects appear in the
- * statement strings as the marker sequence - <code>'''</code>
+ * statement strings as the marker sequence - <code>'?'''?'</code>
  */
 - (NSArray*) _substitute: (NSString*)str with: (NSDictionary*)vals
 {
@@ -1684,7 +1700,7 @@ static void	quoteString(NSMutableString *s)
 		  if ([o isKindOfClass: [NSData class]] == YES)
 		    {
 		      [ma addObject: o];
-		      v = @"'''";
+		      v = @"'?'''?'";
 		    }
 		  else
 		    {
@@ -1967,7 +1983,8 @@ static void	quoteString(NSMutableString *s)
 - (NSString*) description
 {
   return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
-    [super description], (_count == 0 ? @"" : [_info objectAtIndex: 0]), _db];
+    [super description],
+    (_count == 0 ? (id)@"" : (id)[_info objectAtIndex: 0]), _db];
 }
 
 - (void) _addInfo: (NSArray*)info

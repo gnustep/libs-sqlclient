@@ -210,8 +210,8 @@ static NSNull	*null = nil;
       statement = [self insertBLOBs: info
 	              intoStatement: statement
 			     length: length
-			 withMarker: "'''"
-			     length: 3
+			 withMarker: "'?'''?'"
+			     length: 7
 			     giving: &length];
 
       if (mysql_real_query(connection, statement, length) != 0)

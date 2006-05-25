@@ -1,3 +1,16 @@
+2005-05-25 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* configure.ac: Check for new postgres string escaping
+	* configure: Regenerate
+	* SQLClient.h: Add quoteString method for subclasses to override
+	* SQLClient.m:  Add new method and change marker for blobs to be
+	one that shouldn't occur in a quoted string.
+	* SQLite.m: Use new blob marker
+	* MySQL.m: Use new blob marker
+	* config.h.in: Add new postgres escaping function
+	* Postgres.m: Handle new escaping
+	* testPostgres.m: Add check for escaping odd characters.
+
 2005-02-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Support quoting of NSArray and NSSet objects.

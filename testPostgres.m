@@ -165,9 +165,13 @@ main()
     }
   else
     {
+      NSString	*oddChars;
+      NSString	*nonLatin;
       id	r0;
       id	r1;
 
+      oddChars = @"'a\\b'c\r\nd'\\ed\\";
+      nonLatin = [[NSString stringWithCString: "\"\\U2A11\""] propertyList];
       for (i = 0; i < 256; i++)
 	{
 	  dbuf[i] = i;
@@ -219,9 +223,10 @@ main()
 	nil];
       [db execute: @"insert into xxx "
 	@"(k, char1, boolval, intval, when1, when2, b) "
-	@"values ("
-	@"'hello', ",
-	[db quote: [[NSString stringWithCString: "\"\\U2A11\""] propertyList]],
+	@"values (",
+	[db quote: oddChars],
+	@", ",
+	[db quote: nonLatin],
 	@",TRUE, "
 	@"1, ",
 	[NSDate date], @", ",
@@ -256,6 +261,15 @@ main()
 	  if ([[record objectForKey: @"b"] isEqual: [NSData data]] == NO)
 	    {
 	      NSLog(@"Retrieved empty data does not match saved data");
+	    }
+	  record = [records objectAtIndex: 2];
+	  if ([[record objectForKey: @"char1"] isEqual: nonLatin] == NO)
+	    {
+	      NSLog(@"Retrieved non-latin does not match saved string");
+	    }
+	  if ([[record objectForKey: @"k"] isEqual: oddChars] == NO)
+	    {
+	      NSLog(@"Retrieved odd chars does not match saved string");
 	    }
 	}
 
