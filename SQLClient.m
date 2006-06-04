@@ -133,12 +133,7 @@ static Class		NSSetClass = 0;
       DESTROY(ptr[pos]);
       DESTROY(ptr[count + pos]);
     }
-  NSDeallocateObject(self);
-#ifndef	GNUSTEP
-  // Avoid bogus compiler warning about missing call to super implementation.
-  self = nil;
   [super dealloc];
-#endif
 }
 
 - (NSMutableDictionary*) dictionary

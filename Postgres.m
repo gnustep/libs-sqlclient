@@ -839,7 +839,7 @@ static unsigned int trim(char *str)
   int		err;
 
   [self backendConnect];
-  l = PQescapeStringConn(connection, to + 1, [d bytes], l, &err);
+  l = PQescapeStringConn(connection, (char*)(to + 1), [d bytes], l, &err);
 #else
   l = PQescapeString(to + 1, [d bytes], l);
 #endif

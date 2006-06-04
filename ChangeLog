@@ -1,3 +1,7 @@
+2005-06-04 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: avoid useless compiler warnings.
+
 2005-05-25 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* configure.ac: Check for new postgres string escaping
