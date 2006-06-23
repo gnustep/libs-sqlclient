@@ -2035,43 +2035,48 @@ static unsigned int	maxConnections = 8;
   return _db;
 }
 
+
 - (void) execute
 {
   if (_count > 0)
     {
+      BOOL		wrapped = NO;
+      NSMutableString	*sql = [_info objectAtIndex: 0];
+
       NS_DURING
 	{
 	  if (_count > 1 && [_db isInTransaction] == NO)
 	    {
-	      [_db begin];
+	      wrapped = YES;
+	      [sql replaceCharactersInRange: NSMakeRange(0, 0)
+				 withString: @"begin;"];
+	      [sql replaceCharactersInRange: NSMakeRange([sql length], 0)
+				 withString: @";commit"];
 	    }
 	  [_db simpleExecute: _info];
-	  if ([_db isInTransaction] == YES)
+	  if (wrapped == YES)
 	    {
-	      [_db commit];
+	      wrapped = NO;
+	      [sql replaceCharactersInRange: NSMakeRange([sql length] - 7, 7)
+				 withString: @""];
+	      [sql replaceCharactersInRange: NSMakeRange(0, 6)
+				 withString: @""];
 	    }
 	}
       NS_HANDLER
 	{
-	  if ([_db isInTransaction] == YES)
+	  if (wrapped == YES)
 	    {
-	      NS_DURING
-		{
-		  [_db rollback];
-		}
-	      NS_HANDLER
-		{
-		  NSLog(@"Exception rolling back transaction: %@",
-		    localException);
-		}
-	      NS_ENDHANDLER
+	      [sql replaceCharactersInRange: NSMakeRange([sql length] - 7, 7)
+				 withString: @""];
+	      [sql replaceCharactersInRange: NSMakeRange(0, 6)
+				 withString: @""];
 	    }
 	  [localException raise];
 	}
       NS_ENDHANDLER
     }
 }
-
 - (void) reset
 {
   [_info removeAllObjects];
