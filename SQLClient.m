@@ -974,17 +974,17 @@ static unsigned int	maxConnections = 8;
 
   if (special == nil)
     {
-      NSString	*s;
+      NSString	*stemp;
 
       /*
        * NB. length of C string is 2, so we include a nul character as a
        * special.
        */
-      s = [[NSString alloc] initWithBytes: "'"
-				   length: 2
-				 encoding: NSASCIIStringEncoding];
-      special = [NSCharacterSet characterSetWithCharactersInString: s];
-      RELEASE(s);
+      stemp = [[NSString alloc] initWithBytes: "'"
+	 			       length: 2
+		 		     encoding: NSASCIIStringEncoding];
+      special = [NSCharacterSet characterSetWithCharactersInString: stemp];
+      RELEASE(stemp);
       RETAIN(special);
     }
 
