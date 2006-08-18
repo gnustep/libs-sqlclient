@@ -49,6 +49,30 @@ if test "$postgres_topdir" != "no"; then
   LIBD="$LIBD -L$postgres_topdir/lib"
 fi
 
+AC_CHECK_HEADERS(jni.h)
+if test "$ac_cv_header_jni_h" = "yes"; then
+  JDBC=yes
+  JDBC_VM_LIBS="-ljava -ljvm -lhpi"
+  jre_lib="$JAVA_HOME/jre/lib"
+  case "$GNUSTEP_HOST_CPU" in
+    ix86)	JAVA_CPU=i386;;
+    x86_64)	JAVA_CPU=amd64;;
+    *)		JAVA_CPU=i386;;
+  esac
+  jre_cpu="$jre_lib/$JAVA_CPU"
+  JDBC_VM_LIBDIRS="-L$jre_cpu -L$jre_cpu/native_threads -L$jre_cpu/classic -L$jre_cpu/server"
+else
+  JDBC=
+  JDBC_VM_LIBS=
+  JDBC_VM_LIBDIRS=
+  echo "*********************************************"
+  echo "Unable to locate jni header (is it installed)"
+  echo "*********************************************"
+fi
+AC_SUBST(JDBC)
+AC_SUBST(JDBC_VM_LIBS)
+AC_SUBST(JDBC_VM_LIBDIRS)
+
 AC_CHECK_HEADERS(mysql/mysql.h)
 if test "$ac_cv_header_mysql_mysql_h" = "yes"; then
   MYSQL=yes
@@ -227,6 +251,13 @@ AC_SUBST(ORACLE_HOME)
 AC_SUBST(INCD)
 AC_SUBST(LIBD)
 AC_SUBST(LIBS)
+
+if test "$JDBC" = "yes"; then
+  BUNDLE="The JDBC backend bundle will be built"
+else
+  BUNDLE="The JDBC backend bundle will NOT be built"
+fi
+AC_MSG_RESULT(${BUNDLE})
 
 if test "$MYSQL" = "yes"; then
   BUNDLE="The MySQL backend bundle will be built"
