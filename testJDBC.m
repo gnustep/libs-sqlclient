@@ -58,6 +58,7 @@ main()
     ];
 
   db = [SQLClient clientWithConfiguration: nil name: @"test"];
+  [db connect];
 
   if ((name = [defs stringForKey: @"Producer"]) != nil)
     {

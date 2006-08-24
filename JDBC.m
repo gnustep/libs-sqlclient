@@ -47,6 +47,22 @@
 
 #include	<jni.h>
 
+static NSString	*JDBCException = @"SQLClientJDBCException";
+
+/*
+ * Cache connection information
+ */
+typedef struct {
+  jobject	connection;
+  jmethodID	commit;
+  jmethodID	rollback;
+  jmethodID	prepare;
+  jobject	statement;
+  jmethodID	executeUpdate;
+  jmethodID	executeQuery;
+} JInfo;
+
+
 /* SQLClientJVM shamelessly stolen from JIGS ... written by Nicola Pero
  * and copyright the Free Software Foundation.
  */
@@ -117,7 +133,6 @@ JNIEnv *SQLClientJNIEnv ()
   JavaVMOption options[2];
   jint result;
   JNIEnv *env;
-  NSDictionary *environment = [[NSProcessInfo processInfo] environment];
   NSString *path;
   NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
 
@@ -131,7 +146,7 @@ JNIEnv *SQLClientJNIEnv ()
   // If we don't pass these options, it assumes they are really @""
   if (classPath == nil)
     {
-      classPath = [environment objectForKey: @"CLASSPATH"];
+      classPath = [self defaultClassPath];
       if (classPath == nil)
 	{
 	  classPath = @"";
@@ -139,26 +154,26 @@ JNIEnv *SQLClientJNIEnv ()
     }
   if (libraryPath == nil)
     {
-      libraryPath = [environment objectForKey: @"LD_LIBRARY_PATH"];
+      libraryPath = [self defaultLibraryPath];
       if (libraryPath == nil)
 	{
 	  libraryPath = @"";
 	}
     }
 
+  JNI_GetDefaultJavaVMInitArgs(&jvm_args);
+
   jvm_args.nOptions = 2;
   
-  path = [NSString stringWithFormat: @"-Djava.class.path=%@", 
-		   classPath];
-  options[0].optionString = (char *)[path cString];
+  path = [NSString stringWithFormat: @"-Djava.class.path=%@", classPath];
+  options[0].optionString = (char *)[path UTF8String];
 
-  path = [NSString stringWithFormat: @"-Djava.library.path=%@", 
-		   libraryPath];
-  options[1].optionString = (char *)[path cString];
+  path = [NSString stringWithFormat: @"-Djava.library.path=%@", libraryPath];
+  options[1].optionString = (char *)[path UTF8String];
   
-  jvm_args.version = 0x00010002;
+  jvm_args.version = JNI_VERSION_1_2;
   jvm_args.options = options;
-  jvm_args.ignoreUnrecognized = JNI_TRUE;
+  jvm_args.ignoreUnrecognized = JNI_FALSE;
   
   result = JNI_CreateJavaVM (&SQLClientJavaVM, (void **)&env, &jvm_args);
   
@@ -394,6 +409,153 @@ NSStringFromJString (JNIEnv *env, jstring string)
   return gnustepString;
 }
 
+static NSData *
+NSDataFromByteArray (JNIEnv *env, jbyteArray array)
+{
+  NSData *returnData;
+  jbyte *bytes;
+  unsigned length;
+
+  length = (*env)->GetArrayLength (env, array);
+
+  bytes = (*env)->GetByteArrayElements (env, array, NULL);
+  if (bytes == NULL)
+    {
+      /* OutOfMemoryError */
+      return nil;
+    }
+
+  returnData = [NSData dataWithBytes: bytes  length: length];
+  
+  (*env)->ReleaseByteArrayElements (env, array, bytes, 0);
+
+  return returnData;
+}
+
+static jbyteArray
+ByteArrayFromNSData (JNIEnv *env, NSData *data)
+{
+  const jbyte *bytes;
+  unsigned length;
+  jbyteArray javaArray;
+  
+  length = [data length];
+  bytes = [data bytes];
+
+  javaArray = (*env)->NewByteArray (env, length);
+  if (javaArray == NULL)
+    {
+      /* OutOfMemory exception thrown */
+      return NULL;
+    }
+  
+  (*env)->SetByteArrayRegion (env, javaArray, 0, length, (jbyte *)bytes);
+  if ((*env)->ExceptionCheck (env))
+    {
+      /* No reason for this to happen - except a bug in NSData */
+      return NULL;
+    }
+  
+  return javaArray;
+}
+
+
+
+static NSString *JExceptionClear (JNIEnv *env)
+{
+  NSString *desc = nil;
+  jthrowable exc = (*env)->ExceptionOccurred (env);
+
+  if (exc != NULL)
+    {
+      static jclass java_lang_Exception = NULL;
+      jmethodID jid = NULL;
+      jstring jstr = NULL;
+
+(*env)->ExceptionDescribe (env);
+
+      // We need to clear the exception before doing anything else. 
+      (*env)->ExceptionClear (env);
+
+      java_lang_Exception = (*env)->FindClass(env, "java/lang/Exception");
+      
+      if (java_lang_Exception == NULL)
+	{
+	  (*env)->DeleteLocalRef (env, exc);
+	  (*env)->ExceptionDescribe (env); 
+	  desc = @"Could not get global reference to "
+	    @"java/lang/Exception to describe exception";
+	  goto done;
+	}
+
+      jid = (*env)->GetMethodID (env, java_lang_Exception, "getMessage", 
+				 "()Ljava/lang/String;");
+      if (jid == NULL)
+	{
+	  (*env)->DeleteLocalRef (env, exc);
+	  desc = @"Could not get the jmethodID of getMessage"
+	    @"of java/lang/Exception to describe exception";
+	  goto done;
+	}
+     
+      if ((*env)->PushLocalFrame (env, 1) < 0)
+	{
+	  (*env)->DeleteLocalRef (env, exc);
+	  (*env)->ExceptionDescribe (env);
+	  desc = @"Could not create enough JNI local references "
+	    @"to get a description of the exception";
+	  goto done;
+	}      
+      
+      // Get the message
+      jstr = (*env)->CallObjectMethod (env, exc, jid);
+      if ((*env)->ExceptionOccurred (env))
+	{
+	  (*env)->ExceptionDescribe (env);
+	  (*env)->PopLocalFrame (env, NULL);
+	  desc = @"Exception occurred while getting a description of exception";
+	  goto done;
+	}
+
+      (*env)->DeleteLocalRef (env, exc);
+      if ((*env)->ExceptionOccurred (env))
+	{
+	  (*env)->ExceptionDescribe (env);
+	  (*env)->PopLocalFrame (env, NULL);
+	  desc = @"Exception occurred while getting a description of exception";
+	  goto done;
+	}
+      
+      if (jstr == NULL) // Oh oh - something really wrong here
+	{
+	  (*env)->PopLocalFrame (env, NULL);
+	  desc = @"NULL description of exception";
+	  goto done;
+	}
+      
+      desc = NSStringFromJString (env, jstr);
+      if (desc == nil)
+	{
+	  (*env)->PopLocalFrame (env, NULL);
+	  desc = @"Exception while converting string of exception";
+	}
+
+      (*env)->PopLocalFrame (env, NULL);
+    }
+done:
+  return desc;
+}
+
+// Throw an exception if one occurred
+static void JException (JNIEnv *env)
+{
+  NSString	*text = JExceptionClear (env);
+
+  if (text != nil)
+    {
+      [NSException raise: JDBCException format:  @"%@", text];
+    }
+}
 
 @interface SQLClientJDBC : SQLClient
 @end
@@ -405,6 +567,7 @@ NSStringFromJString (JNIEnv *env, jstring string)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
+
 
 @implementation	SQLClientJDBC
 
@@ -420,6 +583,40 @@ static NSNull	*null = nil;
       RETAIN(null);
 
       [SQLClientJVM startVirtualMachineWithClassPath: nil libraryPath: nil];
+    }
+}
+
+/* Disconnect and deallocate all resources used.
+ * Do NOT raise an exception.
+ */
+- (void) _backendDisconnect
+{
+  if (extra != 0)
+    {
+      JNIEnv	*env = SQLClientJNIEnv();
+      JInfo	*ji = (JInfo*)extra;
+      jmethodID	jm;
+
+      if (ji->statement != 0)
+        {
+	  jm = (*env)->GetMethodID (env, ji->statement, "close", "()V");
+	  if (jm == 0) JExceptionClear(env);
+	  else (*env)->CallVoidMethod (env, ji->statement, jm);
+	  if (jm == 0) JExceptionClear(env);
+	  (*env)->DeleteGlobalRef (env, ji->statement);
+	  if (jm == 0) JExceptionClear(env);
+	}
+      if (ji->connection != 0)
+        {
+	  jm = (*env)->GetMethodID (env, ji->connection, "close", "()V");
+	  if (jm == 0) JExceptionClear(env);
+	  else (*env)->CallVoidMethod (env, ji->connection, jm);
+	  if (jm == 0) JExceptionClear(env);
+	  (*env)->DeleteGlobalRef (env, ji->connection);
+	  if (jm == 0) JExceptionClear(env);
+	}
+      NSZoneFree(NSDefaultMallocZone(), extra);
+      extra = 0;
     }
 }
 
@@ -461,6 +658,7 @@ static NSNull	*null = nil;
 	      jc = (*env)->FindClass(env, [cname UTF8String]);
 	      if (jc == 0)
 	        {
+		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to load driver '%@'",
 		    [self name], cname];
 		  return NO;
@@ -471,6 +669,7 @@ static NSNull	*null = nil;
 	      jc = (*env)->FindClass(env, "java.sql.DriverManager");
 	      if (jc == 0)
 	        {
+		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to load DriverManager",
 		    [self name]];
 		  return NO;
@@ -483,6 +682,7 @@ static NSNull	*null = nil;
 		"Ljava/sql/Connection");
 	      if (jm == 0)
 	        {
+		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to get connect method",
 		    [self name]];
 		  return NO;
@@ -496,22 +696,94 @@ static NSNull	*null = nil;
 	        JStringFromNSString(env, [self password]));
 	      if (jo == 0)
 	        {
+		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to get connection",
+		    [self name]];
+		  return NO;
+		}
+
+	      /* Get the method to set autocommit.
+	       */
+	      jm = (*env)->GetMethodID(env, jo, "setAutoCommit", "(Z)V");
+	      if (jm == 0)
+	        {
+		  JExceptionClear (env);
+		  [self debug: @"Connect to '%@' failed to get commit method",
+		    [self name]];
+		  return NO;
+		}
+	      /* Turn off autocommit
+	       */
+	      (*env)->CallVoidMethod (env, jo, jm, 0);
+	      if (JExceptionClear (env))
+	        {
+		  [self debug: @"Connect to '%@' failed to get change commit",
 		    [self name]];
 		  return NO;
 		}
 
 	      /* Make a reference so it can't be garbage collected.
 	       */
-	      extra = (void*)(*env)->NewGlobalRef(env, jo)
-	      if (extra == 0)
+	      jo = (void*)(*env)->NewGlobalRef(env, jo);
+	      if (jo == 0)
 		{
+		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to get global ref",
 		    [self name]];
 		  return NO;
 		}
 	      else
 		{
+		  JInfo	*ji;
+
+		  ji = NSZoneMalloc(NSDefaultMallocZone(), sizeof(JInfo));
+		  memset(ji, '\0', sizeof(*ji));
+		  extra = ji;
+
+		  NS_DURING
+		    {
+		      ji->connection = jo;
+
+		      ji->commit = (*env)->GetMethodID (env,
+			ji->connection, "commit", "()V");
+		      JException(env);
+
+		      ji->rollback = (*env)->GetMethodID (env,
+			ji->connection, "rollback", "()V");
+		      JException(env);
+
+		      ji->prepare = (*env)->GetMethodID (env,
+			ji->connection, "prepareStatement",
+			"(Ljava/lang/String;)Ljava/sql/PreparedStatement");
+		      JException(env);
+
+		      jm = (*env)->GetMethodID (env, ji->connection,
+			"createStatement", "()Ljava/sql/Statement");
+		      JException(env);
+
+		      jo = (*env)->CallObjectMethod (env, ji->connection, jm);
+		      JException(env);
+		      ji->statement = (*env)->NewGlobalRef(env, jo);
+		      JException(env);
+
+		      ji->executeUpdate = (*env)->GetMethodID (env,
+			ji->statement, "executeUpdate",
+			"(Ljava/lang/String;)");
+		      JException(env);
+
+		      ji->executeQuery = (*env)->GetMethodID (env,
+			ji->statement, "executeQuery",
+			"(Ljava/lang/String;)");
+		      JException(env);
+		    }
+		  NS_HANDLER
+		    {
+		      [self _backendDisconnect];
+		      [self debug: @"Connect to '%@' using '%@' problem: %@",
+			[self name], [self database], localException];
+		      return NO;
+		    }
+		  NS_ENDHANDLER
 		  connected = YES;
 		}
 	    }
@@ -534,7 +806,6 @@ static NSNull	*null = nil;
 
 - (void) backendDisconnect
 {
-#if 0
   if (extra != 0)
     {
       NS_DURING
@@ -548,8 +819,9 @@ static NSNull	*null = nil;
 	    {
 	      [self debug: @"Disconnecting client %@", [self clientName]];
 	    }
-	  PQfinish(extra);
-	  extra = 0;
+
+          [self _backendDisconnect];
+
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Disconnected client %@", [self clientName]];
@@ -557,21 +829,18 @@ static NSNull	*null = nil;
 	}
       NS_HANDLER
 	{
-	  extra = 0;
+          [self _backendDisconnect];
 	  [self debug: @"Error disconnecting from database (%@): %@",
 	    [self clientName], localException];
 	}
       NS_ENDHANDLER
       connected = NO;
     }
-#endif
 }
 
 - (void) backendExecute: (NSArray*)info
 {
-#if 0
   CREATE_AUTORELEASE_POOL(arp);
-  PGresult	*result = 0;
   NSString	*stmt = [info objectAtIndex: 0];
 
   if ([stmt length] == 0)
@@ -583,8 +852,10 @@ static NSNull	*null = nil;
 
   NS_DURING
     {
-      const char	*statement;
-      unsigned		length;
+      JNIEnv	*env = SQLClientJNIEnv();
+      JInfo	*ji = (JInfo*)extra;
+      jmethodID	jm;
+      jobject	js;
 
       /*
        * Ensure we have a working connection.
@@ -596,55 +867,44 @@ static NSNull	*null = nil;
 	    [self name], stmt];
 	} 
 
-      statement = (char*)[stmt UTF8String];
-      length = strlen(statement);
-      statement = [self insertBLOBs: info
-		      intoStatement: statement
-			     length: length
-			 withMarker: "'?'''?'"
-			     length: 7
-			     giving: &length];
+      if ([info count] > 1)
+        {
+	  unsigned	i;
 
-      result = PQexec(extra, statement);
-      if (result == 0 || PQresultStatus(result) == PGRES_FATAL_ERROR)
-	{
-	  NSString	*str;
-	  const char	*cstr;
+	  stmt = [stmt stringByReplacingString: @"'?'''?'" withString: @"?"];
 
-	  if (result == 0)
+	  js = (*env)->CallObjectMethod (env, ji->connection, ji->prepare,
+	    JStringFromNSString(env, stmt));
+	  JException(env);
+
+	  jm = (*env)->GetMethodID (env, js, "setBytes", "(I[B)V");
+	  JException(env);
+
+	  for (i = 1; i < [info count]; i++)
 	    {
-	      cstr = PQerrorMessage(extra);
+	      (*env)->CallIntMethod (env, js, jm, i,
+	        ByteArrayFromNSData(env, [info objectAtIndex: i]));
+	      JException(env);
 	    }
-	  else
-	    {
-	      cstr = PQresultErrorMessage(result);
-	    }
-	  str = [NSString stringWithUTF8String: cstr];
-	  [self backendDisconnect];
-	  [NSException raise: SQLException format: @"%@ %@", str, stmt];
+
+	  jm = (*env)->GetMethodID (env, js,
+	    "executeUpdate", "()I");
+	  JException(env);
+	  (*env)->CallIntMethod (env, js, jm);
 	}
-      if (PQresultStatus(result) != PGRES_COMMAND_OK)
+      else
 	{
-	  [NSException raise: SQLException format: @"%s",
-	    PQresultErrorMessage(result)];
+	  (*env)->CallIntMethod (env, ji->statement,
+	    ji->executeUpdate, JStringFromNSString(env, stmt));
 	}
+      JException(env);
     }
   NS_HANDLER
     {
-      NSString	*n = [localException name];
-
-      if ([n isEqual: SQLConnectionException] == YES) 
-	{
-	  [self backendDisconnect];
-	}
       if ([self debugging] > 0)
 	{
 	  [self debug: @"Error executing statement:\n%@\n%@",
 	    stmt, localException];
-	}
-      if (result != 0)
-	{
-	  PQclear(result);
 	}
       RETAIN (localException);
       RELEASE (arp);
@@ -652,12 +912,7 @@ static NSNull	*null = nil;
       [localException raise];
     }
   NS_ENDHANDLER
-  if (result != 0)
-    {
-      PQclear(result);
-    }
   DESTROY(arp);
-  #endif
 }
 
 static unsigned int trim(char *str)
@@ -856,6 +1111,62 @@ static unsigned int trim(char *str)
     }
 #endif
   return AUTORELEASE(records);
+}
+
+- (void) commit
+{
+  [lock lock];
+  if (_inTransaction == NO)
+    {
+      [lock unlock];
+      [NSException raise: NSInternalInconsistencyException
+		  format: @"commit used outside transaction"];
+    }
+  NS_DURING
+    {
+      JNIEnv	*env = SQLClientJNIEnv();
+      JInfo	*info = (JInfo*)extra;
+
+      (*env)->CallVoidMethod (env, info->connection, info->commit);
+      JException(env);
+      _inTransaction = NO;
+      [lock unlock];		// Locked at start of -commit
+      [lock unlock];		// Locked by -begin
+    }
+  NS_HANDLER
+    {
+      _inTransaction = NO;
+      [lock unlock];		// Locked at start of -commit
+      [lock unlock];		// Locked by -begin
+      [localException raise];
+    }
+  NS_ENDHANDLER
+}
+
+- (void) rollback
+{
+  [lock lock];
+  if (_inTransaction == YES)
+    {
+      _inTransaction = NO;
+      NS_DURING
+	{
+	  JNIEnv	*env = SQLClientJNIEnv();
+	  JInfo	*info = (JInfo*)extra;
+
+	  (*env)->CallVoidMethod (env, info->connection, info->rollback);
+	  JException(env);
+	  [lock unlock];		// Locked at start of -rollback
+	  [lock unlock];		// Locked by -begin
+	}
+      NS_HANDLER
+	{
+	  [lock unlock];		// Locked at start of -rollback
+	  [lock unlock];		// Locked by -begin
+	  [localException raise];
+	}
+      NS_ENDHANDLER
+    }
 }
 
 - (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf
