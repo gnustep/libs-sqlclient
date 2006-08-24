@@ -49,8 +49,10 @@ if test "$postgres_topdir" != "no"; then
   LIBD="$LIBD -L$postgres_topdir/lib"
 fi
 
+CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include"
 AC_CHECK_HEADERS(jni.h)
 if test "$ac_cv_header_jni_h" = "yes"; then
+  INCD="$INCD -I$JAVA_HOME/include"
   JDBC=yes
   JDBC_VM_LIBS="-ljava -ljvm -lhpi"
   jre_lib="$JAVA_HOME/jre/lib"

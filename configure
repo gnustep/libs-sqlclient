@@ -1735,6 +1735,7 @@ if test "$postgres_topdir" != "no"; then
   LIBD="$LIBD -L$postgres_topdir/lib"
 fi
 
+CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include"
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -3599,6 +3600,7 @@ fi
 done
 
 if test "$ac_cv_header_jni_h" = "yes"; then
+  INCD="$INCD -I$JAVA_HOME/include"
   JDBC=yes
   JDBC_VM_LIBS="-ljava -ljvm -lhpi"
   jre_lib="$JAVA_HOME/jre/lib"

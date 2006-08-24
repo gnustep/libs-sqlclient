@@ -130,7 +130,8 @@ JNIEnv *SQLClientJNIEnv ()
 			      libraryPath: (NSString *)libraryPath
 {
   JavaVMInitArgs jvm_args;
-  JavaVMOption options[2];
+  JavaVMOption options[32];
+  int	args = 0;
   jint result;
   JNIEnv *env;
   NSString *path;
@@ -161,22 +162,27 @@ JNIEnv *SQLClientJNIEnv ()
 	}
     }
 
-  JNI_GetDefaultJavaVMInitArgs(&jvm_args);
-
-  jvm_args.nOptions = 2;
-  
-  path = [NSString stringWithFormat: @"-Djava.class.path=%@", classPath];
-  options[0].optionString = (char *)[path UTF8String];
-
   path = [NSString stringWithFormat: @"-Djava.library.path=%@", libraryPath];
-  options[1].optionString = (char *)[path UTF8String];
+  options[args].optionString = strdup([path UTF8String]);
+  options[args++].extraInfo = 0;
+
+  path = [NSString stringWithFormat: @"-Djava.class.path=%@", classPath];
+  options[args].optionString = strdup([path UTF8String]);
+  options[args++].extraInfo = 0;
+
+  path = [NSString stringWithFormat: @"-Xbootclasspath/a:%@", classPath];
+  options[args].optionString = strdup([path UTF8String]);
+  options[args++].extraInfo = 0;
+
+  options[args].optionString = "-verbose:class,jni";
+  options[args++].extraInfo = 0;
   
+  jvm_args.nOptions = args;
   jvm_args.version = JNI_VERSION_1_2;
   jvm_args.options = options;
   jvm_args.ignoreUnrecognized = JNI_FALSE;
   
   result = JNI_CreateJavaVM (&SQLClientJavaVM, (void **)&env, &jvm_args);
-  
   if (result < 0)
     {
       [NSException raise: NSGenericException
@@ -595,11 +601,13 @@ static NSNull	*null = nil;
     {
       JNIEnv	*env = SQLClientJNIEnv();
       JInfo	*ji = (JInfo*)extra;
+      jclass	jc;
       jmethodID	jm;
 
       if (ji->statement != 0)
         {
-	  jm = (*env)->GetMethodID (env, ji->statement, "close", "()V");
+          jc = (*env)->GetObjectClass(env, ji->statement);
+	  jm = (*env)->GetMethodID (env, jc, "close", "()V");
 	  if (jm == 0) JExceptionClear(env);
 	  else (*env)->CallVoidMethod (env, ji->statement, jm);
 	  if (jm == 0) JExceptionClear(env);
@@ -608,7 +616,8 @@ static NSNull	*null = nil;
 	}
       if (ji->connection != 0)
         {
-	  jm = (*env)->GetMethodID (env, ji->connection, "close", "()V");
+          jc = (*env)->GetObjectClass(env, ji->connection);
+	  jm = (*env)->GetMethodID (env, jc, "close", "()V");
 	  if (jm == 0) JExceptionClear(env);
 	  else (*env)->CallVoidMethod (env, ji->connection, jm);
 	  if (jm == 0) JExceptionClear(env);
@@ -653,20 +662,56 @@ static NSNull	*null = nil;
 		  return NO;
 		}
 
-	      /* Ensure the driver for the database is loaded.
-	       */
-	      jc = (*env)->FindClass(env, [cname UTF8String]);
+#if 0
+	      jc = (*env)->FindClass(env, "java/lang/ClassLoader");
+	      JException (env);
+	      jm = (*env)->GetStaticMethodID(env, jc,
+	        "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
+	      JException (env);
+	      jo = (*env)->CallStaticObjectMethod(env, jc, jm);
+	      JException (env);
+	      jm = (*env)->GetMethodID(env, jc,
+	        "findClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+	      JException (env);
+	      jc = (*env)->CallObjectMethod (env, jo, jm,
+	        JStringFromNSString(env, cname));
+	      JExceptionClear (env);
 	      if (jc == 0)
 	        {
+	          jc = (*env)->CallObjectMethod (env, jo, jm,
+	            JStringFromNSString(env, cname));
+	          JException (env);
+		}
+#endif
+
+
+
+#if 1
+	      /* Ensure the driver for the database is loaded.
+	       */
+	      cname = [cname stringByReplacingString: @"." withString: @"/"];
+	      if ((*env)->FindClass(env, [cname UTF8String]) == 0)
+	        {
+		  jclass retry;
+
 		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to load driver '%@'",
 		    [self name], cname];
-		  return NO;
+		  retry = (*env)->FindClass(env, [cname UTF8String]);
+		  if (retry != 0)
+		    {
+		      NSLog(@"WORKED ON RETRY");
+		    }
+		  else
+		    {
+		      return NO;
+		    }
 		}
+#endif
 
 	      /* Get the driver manager class.
 	       */
-	      jc = (*env)->FindClass(env, "java.sql.DriverManager");
+	      jc = (*env)->FindClass(env, "java/sql/DriverManager");
 	      if (jc == 0)
 	        {
 		  JExceptionClear (env);
@@ -679,7 +724,7 @@ static NSNull	*null = nil;
 	       */
 	      jm = (*env)->GetStaticMethodID(env, jc, "getConnection",
 		"(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)"
-		"Ljava/sql/Connection");
+		"Ljava/sql/Connection;");
 	      if (jm == 0)
 	        {
 		  JExceptionClear (env);
@@ -690,7 +735,7 @@ static NSNull	*null = nil;
 
 	      /* Get the new connection object
 	       */
-	      jo = (void*)(*env)->CallStaticObjectMethod(env, jc, jm, 
+	      jo = (*env)->CallStaticObjectMethod(env, jc, jm, 
 	        JStringFromNSString(env, url),
 	        JStringFromNSString(env, [self user]),
 	        JStringFromNSString(env, [self password]));
@@ -702,29 +747,9 @@ static NSNull	*null = nil;
 		  return NO;
 		}
 
-	      /* Get the method to set autocommit.
-	       */
-	      jm = (*env)->GetMethodID(env, jo, "setAutoCommit", "(Z)V");
-	      if (jm == 0)
-	        {
-		  JExceptionClear (env);
-		  [self debug: @"Connect to '%@' failed to get commit method",
-		    [self name]];
-		  return NO;
-		}
-	      /* Turn off autocommit
-	       */
-	      (*env)->CallVoidMethod (env, jo, jm, 0);
-	      if (JExceptionClear (env))
-	        {
-		  [self debug: @"Connect to '%@' failed to get change commit",
-		    [self name]];
-		  return NO;
-		}
-
 	      /* Make a reference so it can't be garbage collected.
 	       */
-	      jo = (void*)(*env)->NewGlobalRef(env, jo);
+	      jo = (*env)->NewGlobalRef(env, jo);
 	      if (jo == 0)
 		{
 		  JExceptionClear (env);
@@ -743,37 +768,52 @@ static NSNull	*null = nil;
 		  NS_DURING
 		    {
 		      ji->connection = jo;
+		      jc = (*env)->GetObjectClass(env, ji->connection);
 
-		      ji->commit = (*env)->GetMethodID (env,
-			ji->connection, "commit", "()V");
+		      /* Get the method to set autocommit.
+		       */
+		      jm = (*env)->GetMethodID(env, jc,
+			"setAutoCommit", "(Z)V");
+		      JException (env);
+
+		      /* Turn off autocommit
+		       */
+		      (*env)->CallVoidMethod (env, ji->connection,
+			jm, JNI_FALSE);
+		      JException (env);
+
+		      ji->commit = (*env)->GetMethodID (env, jc,
+			"commit", "()V");
 		      JException(env);
 
-		      ji->rollback = (*env)->GetMethodID (env,
-			ji->connection, "rollback", "()V");
+		      ji->rollback = (*env)->GetMethodID (env, jc,
+			"rollback", "()V");
 		      JException(env);
 
-		      ji->prepare = (*env)->GetMethodID (env,
-			ji->connection, "prepareStatement",
-			"(Ljava/lang/String;)Ljava/sql/PreparedStatement");
+		      ji->prepare = (*env)->GetMethodID (env, jc,
+			"prepareStatement",
+			"(Ljava/lang/String;)Ljava/sql/PreparedStatement;");
 		      JException(env);
 
-		      jm = (*env)->GetMethodID (env, ji->connection,
-			"createStatement", "()Ljava/sql/Statement");
+		      jm = (*env)->GetMethodID (env, jc,
+		        "createStatement",
+			"()Ljava/sql/Statement;");
 		      JException(env);
 
 		      jo = (*env)->CallObjectMethod (env, ji->connection, jm);
 		      JException(env);
 		      ji->statement = (*env)->NewGlobalRef(env, jo);
 		      JException(env);
+		      jc = (*env)->GetObjectClass(env, ji->statement);
 
-		      ji->executeUpdate = (*env)->GetMethodID (env,
-			ji->statement, "executeUpdate",
-			"(Ljava/lang/String;)");
+		      ji->executeUpdate = (*env)->GetMethodID (env, jc,
+			"executeUpdate",
+			"(Ljava/lang/String;)I");
 		      JException(env);
 
-		      ji->executeQuery = (*env)->GetMethodID (env,
-			ji->statement, "executeQuery",
-			"(Ljava/lang/String;)");
+		      ji->executeQuery = (*env)->GetMethodID (env, jc,
+			"executeQuery",
+			"(Ljava/lang/String;)Ljava/sql/ResultSet;");
 		      JException(env);
 		    }
 		  NS_HANDLER
@@ -842,6 +882,8 @@ static NSNull	*null = nil;
 {
   CREATE_AUTORELEASE_POOL(arp);
   NSString	*stmt = [info objectAtIndex: 0];
+  JNIEnv	*env = SQLClientJNIEnv();
+  JInfo		*ji = (JInfo*)extra;
 
   if ([stmt length] == 0)
     {
@@ -852,8 +894,6 @@ static NSNull	*null = nil;
 
   NS_DURING
     {
-      JNIEnv	*env = SQLClientJNIEnv();
-      JInfo	*ji = (JInfo*)extra;
       jmethodID	jm;
       jobject	js;
 
@@ -870,6 +910,7 @@ static NSNull	*null = nil;
       if ([info count] > 1)
         {
 	  unsigned	i;
+	  jclass	jc;
 
 	  stmt = [stmt stringByReplacingString: @"'?'''?'" withString: @"?"];
 
@@ -877,7 +918,9 @@ static NSNull	*null = nil;
 	    JStringFromNSString(env, stmt));
 	  JException(env);
 
-	  jm = (*env)->GetMethodID (env, js, "setBytes", "(I[B)V");
+          jc = (*env)->GetObjectClass(env, js);
+	  JException(env);
+	  jm = (*env)->GetMethodID (env, jc, "setBytes", "(I[B)V");
 	  JException(env);
 
 	  for (i = 1; i < [info count]; i++)
@@ -887,8 +930,7 @@ static NSNull	*null = nil;
 	      JException(env);
 	    }
 
-	  jm = (*env)->GetMethodID (env, js,
-	    "executeUpdate", "()I");
+	  jm = (*env)->GetMethodID (env, jc, "executeUpdate", "()I");
 	  JException(env);
 	  (*env)->CallIntMethod (env, js, jm);
 	}
@@ -898,9 +940,21 @@ static NSNull	*null = nil;
 	    ji->executeUpdate, JStringFromNSString(env, stmt));
 	}
       JException(env);
+      if (_inTransaction == NO)
+        {
+	  // Not in a transaction ... commit at once.
+	  (*env)->CallVoidMethod (env, ji->connection, ji->commit);
+          JExceptionClear (env);
+	}
     }
   NS_HANDLER
     {
+      if (_inTransaction == NO)
+        {
+	  // Not in a transaction ... rollback to clear error state
+	  (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
+	  JExceptionClear (env);
+	}
       if ([self debugging] > 0)
 	{
 	  [self debug: @"Error executing statement:\n%@\n%@",
@@ -1125,9 +1179,9 @@ static unsigned int trim(char *str)
   NS_DURING
     {
       JNIEnv	*env = SQLClientJNIEnv();
-      JInfo	*info = (JInfo*)extra;
+      JInfo	*ji = (JInfo*)extra;
 
-      (*env)->CallVoidMethod (env, info->connection, info->commit);
+      (*env)->CallVoidMethod (env, ji->connection, ji->commit);
       JException(env);
       _inTransaction = NO;
       [lock unlock];		// Locked at start of -commit
@@ -1152,9 +1206,9 @@ static unsigned int trim(char *str)
       NS_DURING
 	{
 	  JNIEnv	*env = SQLClientJNIEnv();
-	  JInfo	*info = (JInfo*)extra;
+	  JInfo		*ji = (JInfo*)extra;
 
-	  (*env)->CallVoidMethod (env, info->connection, info->rollback);
+	  (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
 	  JException(env);
 	  [lock unlock];		// Locked at start of -rollback
 	  [lock unlock];		// Locked by -begin
