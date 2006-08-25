@@ -478,7 +478,7 @@ static NSString *JExceptionClear (JNIEnv *env)
       jmethodID jid = NULL;
       jstring jstr = NULL;
 
-(*env)->ExceptionDescribe (env);
+// (*env)->ExceptionDescribe (env);
 
       // We need to clear the exception before doing anything else. 
       (*env)->ExceptionClear (env);
@@ -560,6 +560,162 @@ static void JException (JNIEnv *env)
   if (text != nil)
     {
       [NSException raise: JDBCException format:  @"%@", text];
+    }
+}
+
+
+static NSDate* NSDateFromNSString (NSString *s)
+{
+  NSDate	*d;
+  char		b[32];
+  BOOL		milliseconds = NO;
+  int		l;
+  int		i;
+
+  strcpy(b, [s UTF8String]);
+  l = strlen(b);
+  for (i = 0; i < l; i++)
+    {
+      if (b[i] == '\0')
+	{
+	  l = i;
+	  break;
+	}
+    }
+  while (l > 0 && isspace(b[l-1]))
+    {
+      l--;
+    }
+  b[l] = '\0';
+
+  if (l == 10)
+    {
+      s = [NSString stringWithUTF8String: b];
+      return [NSCalendarDate dateWithString: s
+			     calendarFormat: @"%Y-%m-%d"
+				     locale: nil];
+    }
+  else
+    {
+      int	e;
+
+      /* If it's a simple date (YYYY-MM-DD) append time for start of day. */
+      if (l == 10)
+	{
+	  strcat(b, " 00:00:00 +0000");
+	  l += 15;
+	}
+
+      i = l;
+      while (i-- > 0)
+	{
+	  if (b[i] == '+' || b[i] == '-')
+	    {
+	      break;
+	    }
+	  if (b[i] == ':' || b[i] == ' ')
+	    {
+	      i = 0;
+	      break;	/* No time zone found */
+	    }
+	}
+      if (i == 0)
+	{
+	  /* A date and time without a timezone ... assume gmt */
+	  strcpy(b + l, " +0000");
+	  i = l + 1;
+	  l += 6;
+	}
+
+      e = i;
+      if (isdigit(b[i-1]))
+	{
+	  /*
+	   * Make space between seconds and timezone.
+	   */
+	  memmove(&b[i+1], &b[i], l - i);
+	  b[i++] = ' ';
+	  b[++l] = '\0';
+	}
+
+      /*
+       * Ensure we have a four digit timezone value.
+       */
+      if (isdigit(b[i+1]) && isdigit(b[i+2]))
+	{
+	  if (b[i+3] == '\0')
+	    {
+	      // Two digit time zone ... append zero minutes
+	      b[l++] = '0';
+	      b[l++] = '0';
+	      b[l] = '\0';
+	    }
+	  else if (b[i+3] == ':')
+	    {
+	      // Zone with colon before minutes ... remove it
+	      b[i+3] = b[i+4];
+	      b[i+4] = b[i+5];
+	      b[--l] = '\0';
+	    }
+	}
+
+      /* FIXME ... horrible kludge for timestamps with fractional
+       * second information. Force it to 3 digit millisecond */
+      while (i-- > 0)
+	{
+	  if (b[i] == '.')
+	    {
+	      milliseconds = YES;
+	      i++;
+	      if (!isdigit(b[i]))
+		{
+		  memmove(&b[i+3], &b[i], e-i);
+		  l += 3;
+		  memcpy(&b[i], "000", 3);
+		}
+	      i++;
+	      if (!isdigit(b[i]))
+		{
+		  memmove(&b[i+2], &b[i], e-i);
+		  l += 2;
+		  memcpy(&b[i], "00", 2);
+		}
+	      i++;
+	      if (!isdigit(b[i]))
+		{
+		  memmove(&b[i+1], &b[i], e-i);
+		  l += 1;
+		  memcpy(&b[i], "0", 1);
+		}
+	      i++;
+	      break;
+	    }
+	}
+      if (i > 0 && i < e)
+	{
+	  memmove(&b[i], &b[e], l - e);
+	  l -= (e - i);
+	}
+      b[l] = '\0';
+      if (l == 0)
+	{
+	  return nil;
+	}
+      
+      s = [NSString stringWithUTF8String: b];
+      if (milliseconds == YES)
+	{
+	  d = [NSCalendarDate dateWithString: s
+			      calendarFormat: @"%Y-%m-%d %H:%M:%S.%F %z"
+				      locale: nil];
+	}
+      else
+	{
+	  d = [NSCalendarDate dateWithString: s
+			      calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
+				      locale: nil];
+	}
+      return d;
     }
 }
 
@@ -724,20 +880,10 @@ static	int	JDBCVARCHAR = 0;
 	      cname = [cname stringByReplacingString: @"." withString: @"/"];
 	      if ((*env)->FindClass(env, [cname UTF8String]) == 0)
 	        {
-		  jclass retry;
-
 		  JExceptionClear (env);
 		  [self debug: @"Connect to '%@' failed to load driver '%@'",
 		    [self name], cname];
-		  retry = (*env)->FindClass(env, [cname UTF8String]);
-		  if (retry != 0)
-		    {
-		      NSLog(@"WORKED ON RETRY");
-		    }
-		  else
-		    {
-		      return NO;
-		    }
+		  return NO;
 		}
 
 	      /* Get the driver manager class.
@@ -938,7 +1084,6 @@ static	int	JDBCVARCHAR = 0;
 	    [self name], stmt];
 	} 
 
-NSLog(@"UPDATE (%@)", stmt);
       if ([info count] > 1)
         {
 	  unsigned	i;
@@ -1063,7 +1208,6 @@ NSLog(@"UPDATE (%@)", stmt);
 	  jmethodID	getBoolean;
 	  jmethodID	getBytes;
 	  jmethodID	getString;
-	  jmethodID	getTimestamp;
 
 	  /* Get the names of each field
 	   */
@@ -1088,16 +1232,7 @@ NSLog(@"UPDATE (%@)", stmt);
 	    {
 	      int	v = (*env)->CallIntMethod (env, metaData, jm, i+1);
 
-NSLog(@"Field %d (%@) type %d", i, keys[i], v);
-	      if (v == JDBCDATE)
-	        {
-		  types[i] = JDBCDATE;
-		}
-	      else if (v == JDBCTIME)
-	        {
-		  types[i] = JDBCTIME;
-		}
-	      else if (v == JDBCTIMESTAMP)
+	      if (v == JDBCDATE || v == JDBCTIME || v == JDBCTIMESTAMP)
 	        {
 		  types[i] = JDBCTIMESTAMP;
 		}
@@ -1129,9 +1264,6 @@ NSLog(@"Field %d (%@) type %d", i, keys[i], v);
 	  JException (env);
 	  getBytes = (*env)->GetMethodID (env, resultClass,
 	    "getBytes", "(I)[B");
-	  JException (env);
-	  getTimestamp = (*env)->GetMethodID (env, resultClass,
-	    "getTimestamp", "(I)Ljava/sql/Timestamp;");
 	  JException (env);
 	  getString = (*env)->GetMethodID (env, resultClass,
 	    "getString", "(I)Ljava/lang/String;");
@@ -1175,53 +1307,19 @@ NSLog(@"Field %d (%@) type %d", i, keys[i], v);
 			}
 		      JException (env);
 		    }
-		  else if (types[j] == JDBCTIMESTAMP
-		    || types[j] == JDBCTIME
-		    || types[j] == JDBCDATE)
+		  else if (types[j] == JDBCTIMESTAMP)
 		    {
-		      jclass	jc;
 		      jobject	jo;
 
 		      jo = (*env)->CallObjectMethod (env, result,
-			getTimestamp, j+1);
+			getString, j+1);
 		      JException (env);
 		      if ((*env)->CallBooleanMethod (env, result,
 			wasNull) == JNI_FALSE)
 			{
-			  long		milli;
-			  NSString	*format;
-
-			  JException (env);
-			  jc = (*env)->GetObjectClass(env, jo);
-			  JException (env);
-			  jm = (*env)->GetMethodID (env, jc, "getTime", "()J");
-			  JException (env);
-			  milli = (*env)->CallLongMethod (env, jo, jm);
-			  JException (env);
-			  v = [NSCalendarDate
-			    dateWithTimeIntervalSince1970: milli];
-			  if (types[j] == JDBCTIMESTAMP)
-			    {
-			      if (milli % 1000 == 0)
-			        {
-				  format = @"%Y-%m-%d %H:%M:%S %z";
-				}
-			      else
-			        {
-				  format = @"%Y-%m-%d %H:%M:%S.%F %z";
-				}
-			    }
-			  else if (types[j] == JDBCTIME)
-			    {
-			      format = @"%H:%M:%S.%F";
-			    }
-			  else
-			    {
-			      format = @"%Y-%m-%d";
-			    }
-			  [v setCalendarFormat: format];
+			  v = NSStringFromJString(env, jo);
+			  v = NSDateFromNSString(v);
 			}
-NSLog(@"DATE: %@", v);
 		      JException (env);
 		    }
 		  else if (types[j] == JDBCBLOB)
