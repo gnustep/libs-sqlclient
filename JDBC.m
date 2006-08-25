@@ -566,21 +566,29 @@ static void JException (JNIEnv *env)
 @interface SQLClientJDBC : SQLClient
 @end
 
-@interface	SQLClientJDBC(Embedded)
-- (NSData*) dataFromBLOB: (const char *)blob;
-- (NSDate*) dbToDateFromBuffer: (char*)b length: (int)l;
-@end
-
 static NSDate	*future = nil;
 static NSNull	*null = nil;
 
-
 @implementation	SQLClientJDBC
+
+static	int	JDBCDATE = 0;
+static	int	JDBCTIME = 0;
+static	int	JDBCTIMESTAMP = 0;
+static	int	JDBCBOOLEAN = 0;
+static	int	JDBCBLOB = 0;
+static	int	JDBCBINARY = 0;
+static	int	JDBCVARBINARY = 0;
+static	int	JDBCLONGVARBINARY = 0;
+static	int	JDBCVARCHAR = 0;
 
 + (void) initialize
 {
   if (future == nil)
     {
+      JNIEnv	*env;
+      jclass	jc;
+      jfieldID	jf;
+
       future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
 			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
 				       locale: nil];
@@ -589,6 +597,55 @@ static NSNull	*null = nil;
       RETAIN(null);
 
       [SQLClientJVM startVirtualMachineWithClassPath: nil libraryPath: nil];
+      env = SQLClientJNIEnv();
+      jc = (*env)->FindClass(env, "java/sql/Types");
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "DATE", "I");
+      JException (env);
+      JDBCDATE = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "TIME", "I");
+      JException (env);
+      JDBCTIME = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "TIMESTAMP", "I");
+      JException (env);
+      JDBCTIMESTAMP = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "BOOLEAN", "I");
+      JException (env);
+      JDBCBOOLEAN = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "BLOB", "I");
+      JException (env);
+      JDBCBLOB = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "BINARY", "I");
+      JException (env);
+      JDBCBINARY = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "VARBINARY", "I");
+      JException (env);
+      JDBCVARBINARY = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "LONGVARBINARY", "I");
+      JException (env);
+      JDBCLONGVARBINARY = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
+      jf = (*env)->GetStaticFieldID(env, jc, "VARCHAR", "I");
+      JException (env);
+      JDBCVARCHAR = (*env)->GetStaticIntField(env, jc, jf);
+      JException (env);
+
     }
 }
 
@@ -662,31 +719,6 @@ static NSNull	*null = nil;
 		  return NO;
 		}
 
-#if 0
-	      jc = (*env)->FindClass(env, "java/lang/ClassLoader");
-	      JException (env);
-	      jm = (*env)->GetStaticMethodID(env, jc,
-	        "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
-	      JException (env);
-	      jo = (*env)->CallStaticObjectMethod(env, jc, jm);
-	      JException (env);
-	      jm = (*env)->GetMethodID(env, jc,
-	        "findClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-	      JException (env);
-	      jc = (*env)->CallObjectMethod (env, jo, jm,
-	        JStringFromNSString(env, cname));
-	      JExceptionClear (env);
-	      if (jc == 0)
-	        {
-	          jc = (*env)->CallObjectMethod (env, jo, jm,
-	            JStringFromNSString(env, cname));
-	          JException (env);
-		}
-#endif
-
-
-
-#if 1
 	      /* Ensure the driver for the database is loaded.
 	       */
 	      cname = [cname stringByReplacingString: @"." withString: @"/"];
@@ -707,7 +739,6 @@ static NSNull	*null = nil;
 		      return NO;
 		    }
 		}
-#endif
 
 	      /* Get the driver manager class.
 	       */
@@ -907,6 +938,7 @@ static NSNull	*null = nil;
 	    [self name], stmt];
 	} 
 
+NSLog(@"UPDATE (%@)", stmt);
       if ([info count] > 1)
         {
 	  unsigned	i;
@@ -944,7 +976,7 @@ static NSNull	*null = nil;
         {
 	  // Not in a transaction ... commit at once.
 	  (*env)->CallVoidMethod (env, ji->connection, ji->commit);
-          JExceptionClear (env);
+          JException (env);
 	}
     }
   NS_HANDLER
@@ -969,36 +1001,12 @@ static NSNull	*null = nil;
   DESTROY(arp);
 }
 
-static unsigned int trim(char *str)
-{
-  char	*start = str;
-
-  while (isspace(*str))
-    {
-      str++;
-    }
-  if (str != start)
-    {
-      strcpy(start, str);
-    }
-  str = start;
-  while (*str != '\0')
-    {
-      str++;
-    }
-  while (str > start && isspace(str[-1]))
-    {
-      *--str = '\0';
-    }
-  return (str - start);
-}
-
 - (NSMutableArray*) backendQuery: (NSString*)stmt
 {
   NSMutableArray	*records = nil;
-#if 0
   CREATE_AUTORELEASE_POOL(arp);
-  PGresult		*result = 0;
+  JNIEnv		*env = SQLClientJNIEnv();
+  JInfo			*ji = (JInfo*)extra;
 
   if ([stmt length] == 0)
     {
@@ -1009,7 +1017,12 @@ static unsigned int trim(char *str)
 
   NS_DURING
     {
-      char	*statement;
+      int	fieldCount;
+      jclass	resultClass;
+      jobject	result;
+      jclass	metaDataClass;
+      jobject	metaData;
+      jmethodID	jm;
 
       /*
        * Ensure we have a working connection.
@@ -1021,45 +1034,114 @@ static unsigned int trim(char *str)
 	    [self name], stmt];
 	} 
 
-      statement = (char*)[stmt UTF8String];
-      result = PQexec(extra, statement);
-      if (result == 0 || PQresultStatus(result) == PGRES_FATAL_ERROR)
-	{
-	  NSString	*str;
-	  const char	*cstr;
+      result = (*env)->CallObjectMethod (env, ji->statement, ji->executeQuery,
+        JStringFromNSString(env, stmt));
+      JException (env);
+      resultClass = (*env)->GetObjectClass(env, result);
+      JException (env);
+      jm = (*env)->GetMethodID (env, resultClass,
+        "getMetaData", "()Ljava/sql/ResultSetMetaData;");
+      JException (env);
+      metaData = (*env)->CallObjectMethod (env, result, jm);
+      JException (env);
+      metaDataClass = (*env)->GetObjectClass(env, metaData);
+      JException (env);
+      jm = (*env)->GetMethodID (env, metaDataClass,
+        "getColumnCount", "()I");
+      JException (env);
+      fieldCount = (*env)->CallIntMethod (env, metaData, jm);
+      JException (env);
 
-	  if (result == 0)
-	    {
-	      cstr = PQerrorMessage(extra);
-	    }
-	  else
-	    {
-	      cstr = PQresultErrorMessage(result);
-	    }
-	  str = [NSString stringWithUTF8String: cstr];
-	  [self backendDisconnect];
-	  [NSException raise: SQLException format: @"%@", str];
-	}
-      if (PQresultStatus(result) == PGRES_TUPLES_OK)
+      if (fieldCount > 0)
 	{
-	  int		recordCount = PQntuples(result);
-	  int		fieldCount = PQnfields(result);
 	  NSString	*keys[fieldCount];
 	  int		types[fieldCount];
-	  int		modifiers[fieldCount];
-	  int		formats[fieldCount];
-	  int		i;
+	  unsigned	i;
+	  jmethodID	next;
+	  jmethodID	wasNull;
+	  jmethodID	getBinaryStream;
+	  jmethodID	getBoolean;
+	  jmethodID	getBytes;
+	  jmethodID	getString;
+	  jmethodID	getTimestamp;
 
+	  /* Get the names of each field
+	   */
+	  jm = (*env)->GetMethodID (env, metaDataClass,
+	    "getColumnName", "(I)Ljava/lang/String;");
+	  JException (env);
 	  for (i = 0; i < fieldCount; i++)
 	    {
-	      keys[i] = [NSString stringWithUTF8String: PQfname(result, i)];
-	      types[i] = PQftype(result, i);
-	      modifiers[i] = PQfmod(result, i);
-	      formats[i] = PQfformat(result, i);
+	      jstring	js = (*env)->CallObjectMethod (env, metaData, jm, i+1);
+
+	      JException (env);
+	      keys[i] = NSStringFromJString (env, js);
 	    }
 
-	  records = [[NSMutableArray alloc] initWithCapacity: recordCount];
-	  for (i = 0; i < recordCount; i++)
+	  /* Get the types of each field.
+	   * We treat most as strings.
+	   */
+	  jm = (*env)->GetMethodID (env, metaDataClass,
+	    "getColumnType", "(I)I");
+	  JException (env);
+	  for (i = 0; i < fieldCount; i++)
+	    {
+	      int	v = (*env)->CallIntMethod (env, metaData, jm, i+1);
+
+NSLog(@"Field %d (%@) type %d", i, keys[i], v);
+	      if (v == JDBCDATE)
+	        {
+		  types[i] = JDBCDATE;
+		}
+	      else if (v == JDBCTIME)
+	        {
+		  types[i] = JDBCTIME;
+		}
+	      else if (v == JDBCTIMESTAMP)
+	        {
+		  types[i] = JDBCTIMESTAMP;
+		}
+	      else if (v == JDBCBOOLEAN)
+	        {
+		  types[i] = JDBCBOOLEAN;
+		}
+	      else if (v == JDBCBLOB || v == JDBCBINARY || v == JDBCVARBINARY
+	        || v == JDBCLONGVARBINARY)
+	        {
+		  types[i] = JDBCBLOB;
+		}
+	      else
+	        {
+		  types[i] = JDBCVARCHAR;
+		}
+	    }
+
+          /* Iterate through the result set
+	   */
+	  wasNull = (*env)->GetMethodID (env, resultClass,
+	    "wasNull", "()Z");
+	  JException (env);
+	  getBinaryStream = (*env)->GetMethodID (env, resultClass,
+	    "getBinaryStream", "(I)Ljava/io/InputStream;");
+	  JException (env);
+	  getBoolean = (*env)->GetMethodID (env, resultClass,
+	    "getBoolean", "(I)Z");
+	  JException (env);
+	  getBytes = (*env)->GetMethodID (env, resultClass,
+	    "getBytes", "(I)[B");
+	  JException (env);
+	  getTimestamp = (*env)->GetMethodID (env, resultClass,
+	    "getTimestamp", "(I)Ljava/sql/Timestamp;");
+	  JException (env);
+	  getString = (*env)->GetMethodID (env, resultClass,
+	    "getString", "(I)Ljava/lang/String;");
+	  JException (env);
+
+	  next = (*env)->GetMethodID (env, resultClass,
+	    "next", "()Z");
+	  JException (env);
+	  records = [[NSMutableArray alloc] initWithCapacity: 100];
+	  while ((*env)->CallBooleanMethod (env, result, next) == JNI_TRUE)
 	    {
 	      SQLRecord	*record;
 	      id	values[fieldCount];
@@ -1067,57 +1149,108 @@ static unsigned int trim(char *str)
 
 	      for (j = 0; j < fieldCount; j++)
 		{
-		  id	v = null;
+		  id		v = null;
 
-		  if (PQgetisnull(result, i, j) == 0)
+		  if (types[j] == JDBCBOOLEAN)
 		    {
-		      char	*p = PQgetvalue(result, i, j);
-		      int	size = PQgetlength(result, i, j);
+		      BOOL	b = NO;
 
-		      if ([self debugging] > 1)
-			{ 
-			  [self debug: @"%@ type:%d mod:%d size: %d\n",
-			    keys[j], types[j], modifiers[j], size];
-			}
-		      if (formats[j] == 0)	// Text
+		      if ((*env)->CallBooleanMethod (env, result,
+			getBoolean, j+1) == JNI_TRUE)
 			{
-			  switch (types[j])
+			  b = YES;
+			}
+		      JException (env);
+		      if ((*env)->CallBooleanMethod (env, result,
+			wasNull) == JNI_FALSE)
+			{
+			  if (b == YES)
 			    {
-			      case 1082:	// Date
-			      case 1083:	// Time
-			      case 1114:	// Timestamp without time zone.
-			      case 1184:	// Timestamp with time zone.
-				v = [self dbToDateFromBuffer: p
-						      length: trim(p)];
-				break;
-
-			      case 16:		// BOOL
-				if (*p == 't')
-				  {
-				    v = @"YES";
-				  }
-				else
-				  {
-				    v = @"NO";
-				  }
-				break;
-
-			      case 17:		// BYTEA
-				v = [self dataFromBLOB: p];
-				break;
-
-			      default:
-				trim(p);
-				v = [NSString stringWithUTF8String: p];
-				break;
+			      v = @"Y";
+			    }
+			  else
+			    {
+			      v = @"N";
 			    }
 			}
-		      else			// Binary
+		      JException (env);
+		    }
+		  else if (types[j] == JDBCTIMESTAMP
+		    || types[j] == JDBCTIME
+		    || types[j] == JDBCDATE)
+		    {
+		      jclass	jc;
+		      jobject	jo;
+
+		      jo = (*env)->CallObjectMethod (env, result,
+			getTimestamp, j+1);
+		      JException (env);
+		      if ((*env)->CallBooleanMethod (env, result,
+			wasNull) == JNI_FALSE)
 			{
-			  NSLog(@"Binary data treated as NSNull "
-			    @"in %@ type:%d mod:%d size:%d\n",
-			    keys[j], types[j], modifiers[j], size);
+			  long		milli;
+			  NSString	*format;
+
+			  JException (env);
+			  jc = (*env)->GetObjectClass(env, jo);
+			  JException (env);
+			  jm = (*env)->GetMethodID (env, jc, "getTime", "()J");
+			  JException (env);
+			  milli = (*env)->CallLongMethod (env, jo, jm);
+			  JException (env);
+			  v = [NSCalendarDate
+			    dateWithTimeIntervalSince1970: milli];
+			  if (types[j] == JDBCTIMESTAMP)
+			    {
+			      if (milli % 1000 == 0)
+			        {
+				  format = @"%Y-%m-%d %H:%M:%S %z";
+				}
+			      else
+			        {
+				  format = @"%Y-%m-%d %H:%M:%S.%F %z";
+				}
+			    }
+			  else if (types[j] == JDBCTIME)
+			    {
+			      format = @"%H:%M:%S.%F";
+			    }
+			  else
+			    {
+			      format = @"%Y-%m-%d";
+			    }
+			  [v setCalendarFormat: format];
 			}
+NSLog(@"DATE: %@", v);
+		      JException (env);
+		    }
+		  else if (types[j] == JDBCBLOB)
+		    {
+		      jbyteArray	jo;
+
+		      jo = (*env)->CallObjectMethod (env, result,
+			getBytes, j+1);
+		      JException (env);
+		      if ((*env)->CallBooleanMethod (env, result,
+			wasNull) == JNI_FALSE)
+			{
+			  v = NSDataFromByteArray(env, jo);
+			}
+		      JException (env);
+		    }
+		  else
+		    {
+		      jobject	jo;
+
+		      jo = (*env)->CallObjectMethod (env, result,
+			getString, j+1);
+		      JException (env);
+		      if ((*env)->CallBooleanMethod (env, result,
+			wasNull) == JNI_FALSE)
+			{
+			  v = NSStringFromJString(env, jo);
+			}
+		      JException (env);
 		    }
 		  values[j] = v;
 		}
@@ -1130,8 +1263,7 @@ static unsigned int trim(char *str)
 	}
       else
 	{
-	  [NSException raise: SQLException format: @"%s",
-	    PQresultErrorMessage(result)];
+	  records = [NSMutableArray array];
 	}
     }
   NS_HANDLER
@@ -1147,10 +1279,6 @@ static unsigned int trim(char *str)
 	  [self debug: @"Error executing statement:\n%@\n%@",
 	    stmt, localException];
 	}
-      if (result != 0)
-	{
-	  PQclear(result);
-	}
       DESTROY(records);
       RETAIN (localException);
       RELEASE (arp);
@@ -1159,12 +1287,23 @@ static unsigned int trim(char *str)
     }
   NS_ENDHANDLER
   DESTROY(arp);
-  if (result != 0)
-    {
-      PQclear(result);
-    }
-#endif
   return AUTORELEASE(records);
+}
+
+- (void) begin
+{
+  [lock lock];
+  if (_inTransaction == NO)
+    {
+      _inTransaction = YES;
+      // Leave us locked so the transaction can't be interfered with
+    }
+  else
+    {
+      [lock unlock];
+      [NSException raise: NSInternalInconsistencyException
+		  format: @"begin used inside transaction"];
+    }
 }
 
 - (void) commit
@@ -1197,6 +1336,73 @@ static unsigned int trim(char *str)
   NS_ENDHANDLER
 }
 
+- (NSString*) quoteString: (NSString *)s
+{
+  static NSCharacterSet	*special = nil;
+  NSMutableString	*m;
+  NSRange		r;
+  unsigned		l;
+
+  if (special == nil)
+    {
+      NSString	*stemp;
+
+      /*
+       * NB. length of C string is 3, so we include a nul character as a
+       * special.
+       */
+      stemp = [[NSString alloc] initWithBytes: "'\\"
+	 			       length: 3
+		 		     encoding: NSASCIIStringEncoding];
+      special = [NSCharacterSet characterSetWithCharactersInString: stemp];
+      RELEASE(stemp);
+      RETAIN(special);
+    }
+
+  /*
+   * Step through string removing nul characters
+   * and escaping quote characters as required.
+   */
+  m = AUTORELEASE([s mutableCopy]);
+  l = [m length];
+  r = NSMakeRange(0, l);
+  r = [m rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
+  while (r.length > 0)
+    {
+      unichar	c = [m characterAtIndex: r.location];
+
+      if (c == 0)
+	{
+	  r.length = 1;
+	  [m replaceCharactersInRange: r withString: @""];
+	  l--;
+	}
+      else if (c == '\\')
+        {
+	  r.length = 0;
+	  [m replaceCharactersInRange: r withString: @"\\"];
+	  l++;
+	  r.location += 2;
+	}
+      else
+        {
+	  r.length = 0;
+	  [m replaceCharactersInRange: r withString: @"'"];
+	  l++;
+	  r.location += 2;
+        }
+      r = NSMakeRange(r.location, l - r.location);
+      r = [m rangeOfCharacterFromSet: special
+			     options: NSLiteralSearch
+			       range: r];
+    }
+
+  /* Add quoting around it.  */
+  [m replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
+  [m appendString: @"'"];
+  return m;
+}
+
 - (void) rollback
 {
   [lock lock];
@@ -1223,328 +1429,10 @@ static unsigned int trim(char *str)
     }
 }
 
-- (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf
-{
-  unsigned		length = 0;
-#if 0
-  const unsigned char	*src = [blob bytes];
-  unsigned		sLen = [blob length];
-  unsigned char		*ptr = (unsigned char*)buf;
-  unsigned		i;
-
-  ptr[length++] = '\'';
-  for (i = 0; i < sLen; i++)
-    {
-      unsigned char	c = src[i];
-
-      if (c < 32 || c > 126)
-	{
-	  ptr[length] = '\\';
-	  ptr[length+1] = '\\';
-	  ptr[length + 4] = (c & 7) + '0';
-	  c >>= 3;
-	  ptr[length + 3] = (c & 7) + '0';
-	  c >>= 3;
-	  ptr[length + 2] = (c & 7) + '0';
-	  length += 5;
-	}
-      else if (c == '\\')
-	{
-	  if (standardEscaping == NO)
-	    {
-	      ptr[length++] = '\\';
-	      ptr[length++] = '\\';
-	    }
-	  ptr[length++] = '\\';
-	  ptr[length++] = '\\';
-	}
-      else if (c == '\'')
-	{
-	  ptr[length++] = '\'';
-	  ptr[length++] = '\'';
-	}
-      else
-	{
-	  ptr[length++] = c;
-	}
-    }
-  ptr[length++] = '\'';
-#endif
-  return length;
-}
-
-- (unsigned) lengthOfEscapedBLOB: (NSData*)blob
-{
-  unsigned int	sLen = [blob length];
-  unsigned int	length = sLen + 2;
-#if 0
-  unsigned char	*src = (unsigned char*)[blob bytes];
-  unsigned int	i;
-
-  for (i = 0; i < sLen; i++)
-    {
-      unsigned char	c = src[i];
-
-      if (c < 32 || c > 126)
-	{
-	  length += 4;
-	}
-      else if (c == '\\')
-	{
-	  if (standardEscaping == NO)
-	    {
-	      length += 2;
-	    }
-	  length += 1;
-	}
-      else if (c == '\'')
-	{
-	  length += 1;
-	}
-    }
-#endif
-  return length;
-}
-
-- (NSData *) dataFromBLOB: (const char *)blob
-{
-  NSMutableData	*md = nil;
-#if 0
-  unsigned	sLen = strlen(blob == 0 ? "" : blob);
-  unsigned	dLen = 0;
-  unsigned char	*dst;
-  unsigned	i;
-
-  for (i = 0; i < sLen; i++)
-    {
-      unsigned	c = blob[i];
-
-      dLen++;
-      if (c == '\\')
-	{
-	  c = blob[++i];
-	  if (c != '\\')
-	    {
-	      i += 2;	// Skip 2 digits octal
-	    }
-	}
-    }
-  md = [NSMutableData dataWithLength: dLen];
-  dst = (unsigned char*)[md mutableBytes];
-
-  dLen = 0;
-  for (i = 0; i < sLen; i++)
-    {
-      unsigned	c = blob[i];
-
-      if (c == '\\')
-	{
-	  c = blob[++i];
-	  if (c != '\\')
-	    {
-	      c = c - '0';
-	      c <<= 3;
-	      c += blob[++i] - '0';
-	      c <<= 3;
-	      c += blob[++i] - '0';
-	    }
-	}
-      dst[dLen++] = c;
-    }
-#endif
-  return md;
-}
-
-- (NSDate*) dbToDateFromBuffer: (char*)b length: (int)l
-{
-  NSDate	*d = nil;
-#if 0
-  char		buf[l+32];	/* Allow space to expand buffer. */
-  BOOL		milliseconds = NO;
-  NSString	*s;
-  int		i;
-
-  memcpy(buf, b, l);
-  b = buf;
-  /*
-   * Find end of string.
-   */
-  for (i = 0; i < l; i++)
-    {
-      if (b[i] == '\0')
-	{
-	  l = i;
-	  break;
-	}
-    }
-  while (l > 0 && isspace(b[l-1]))
-    {
-      l--;
-    }
-  b[l] = '\0';
-
-  if (l == 10)
-    {
-      s = [NSString stringWithUTF8String: b];
-      d = [NSCalendarDate dateWithString: s
-			  calendarFormat: @"%Y-%m-%d"
-				  locale: nil];
-    }
-  else
-    {
-      int	e;
-
-      /* If it's a simple date (YYYY-MM-DD) append time for start of day. */
-      if (l == 10)
-	{
-	  strcat(b, " 00:00:00 +0000");
-	  l += 15;
-	}
-
-      i = l;
-      while (i-- > 0)
-	{
-	  if (b[i] == '+' || b[i] == '-')
-	    {
-	      break;
-	    }
-	  if (b[i] == ':' || b[i] == ' ')
-	    {
-	      i = 0;
-	      break;	/* No time zone found */
-	    }
-	}
-      if (i == 0)
-	{
-	  /* A date and time without a timezone ... assume gmt */
-	  strcpy(b + l, " +0000");
-	  i = l + 1;
-	  l += 6;
-	}
-
-      e = i;
-      if (isdigit(b[i-1]))
-	{
-	  /*
-	   * Make space between seconds and timezone.
-	   */
-	  memmove(&b[i+1], &b[i], l - i);
-	  b[i++] = ' ';
-	  b[++l] = '\0';
-	}
-
-      /*
-       * Ensure we have a four digit timezone value.
-       */
-      if (isdigit(b[i+1]) && isdigit(b[i+2]))
-	{
-	  if (b[i+3] == '\0')
-	    {
-	      // Two digit time zone ... append zero minutes
-	      b[l++] = '0';
-	      b[l++] = '0';
-	      b[l] = '\0';
-	    }
-	  else if (b[i+3] == ':')
-	    {
-	      // Zone with colon before minutes ... remove it
-	      b[i+3] = b[i+4];
-	      b[i+4] = b[i+5];
-	      b[--l] = '\0';
-	    }
-	}
-
-      /* FIXME ... horrible kludge for postgres returning timestamps with
-	 fractional second information. Force it to 3 digit millisecond */
-      while (i-- > 0)
-	{
-	  if (b[i] == '.')
-	    {
-	      milliseconds = YES;
-	      i++;
-	      if (!isdigit(b[i]))
-		{
-		  memmove(&b[i+3], &b[i], e-i);
-		  l += 3;
-		  memcpy(&b[i], "000", 3);
-		}
-	      i++;
-	      if (!isdigit(b[i]))
-		{
-		  memmove(&b[i+2], &b[i], e-i);
-		  l += 2;
-		  memcpy(&b[i], "00", 2);
-		}
-	      i++;
-	      if (!isdigit(b[i]))
-		{
-		  memmove(&b[i+1], &b[i], e-i);
-		  l += 1;
-		  memcpy(&b[i], "0", 1);
-		}
-	      i++;
-	      break;
-	    }
-	}
-      if (i > 0 && i < e)
-	{
-	  memmove(&b[i], &b[e], l - e);
-	  l -= (e - i);
-	}
-      b[l] = '\0';
-      if (l == 0)
-	{
-	  return nil;
-	}
-      
-      s = [NSString stringWithUTF8String: b];
-      if (milliseconds == YES)
-	{
-	  d = [NSCalendarDate dateWithString: s
-			      calendarFormat: @"%Y-%m-%d %H:%M:%S.%F %z"
-				      locale: nil];
-	}
-      else
-	{
-	  d = [NSCalendarDate dateWithString: s
-			      calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
-				      locale: nil];
-	}
-    }
-#endif
-  return d;
-}
-
 - (void) dealloc
 {
   [self backendDisconnect];
   [super dealloc];
-}
-
-- (NSString*) quoteString: (NSString *)s
-{
-#if 0
-  NSData	*d = [s dataUsingEncoding: NSUTF8StringEncoding];
-  unsigned	l = [d length];
-  unsigned char	*to = NSZoneMalloc(NSDefaultMallocZone(), (l * 2) + 3);
-
-#ifdef	HAVE_PQESCAPESTRINGCONN
-  int		err;
-
-  [self backendConnect];
-  l = PQescapeStringConn(extra, (char*)(to + 1), [d bytes], l, &err);
-#else
-  l = PQescapeString(to + 1, [d bytes], l);
-#endif
-  to[0] = '\'';
-  to[l + 1] = '\'';
-  s = [[NSString alloc] initWithBytesNoCopy: to
-				     length: l + 2
-				   encoding: NSUTF8StringEncoding
-			       freeWhenDone: YES];
-  s = AUTORELEASE(s);
-#endif
-  return s;
 }
 
 @end
