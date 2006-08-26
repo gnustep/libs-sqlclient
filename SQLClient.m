@@ -53,16 +53,237 @@
 
 #include	"SQLClient.h"
 
+static NSNull	*null = nil;
+static Class	NSStringClass = 0;
+static Class	NSArrayClass = 0;
+static Class	NSDateClass = 0;
+static Class	NSSetClass = 0;
+
+@interface	SQLClientPool : NSObject
+{
+  unsigned	pool;
+  NSString	*name;
+  NSString	*serv;
+  NSString	*user;
+  NSString	*pass;
+  NSString	*path;
+  NSHashTable	*idle;
+  NSHashTable	*used;
+}
+- (BOOL) isSingle;
+- (BOOL) makeIdle: (SQLClient*)c;
+- (BOOL) makeUsed: (SQLClient*)c;
+- (void) setConfiguration: (NSDictionary*)o;
+@end
+
+@implementation	SQLClientPool
+- (void) dealloc
+{
+  if (idle != 0)
+    {
+      NSFreeHashTable(idle);
+      idle = 0;
+    }
+  if (used != 0)
+    {
+      NSFreeHashTable(used);
+      used = 0;
+    }
+  DESTROY(name);
+  DESTROY(serv);
+  DESTROY(user);
+  DESTROY(pass);
+  DESTROY(path);
+  [super dealloc];
+}
+
+- (id) initWithConfiguration: (NSDictionary*)config
+			name: (NSString*)reference
+{
+  name = [reference copy];
+  idle = NSCreateHashTable(NSNonRetainedObjectHashCallBacks, 16);
+  used = NSCreateHashTable(NSNonRetainedObjectHashCallBacks, 16);
+  [self setConfiguration: config];
+  return self;
+}
+
+- (BOOL) isSingle
+{
+  if (pool == 1)
+    {
+      return YES;
+    }
+  return NO;
+}
+
+- (BOOL) makeIdle: (SQLClient*)c
+{
+  if (NSHashGet(idle, (void*)c) == (void*)c)
+    {
+      return YES;				// Already idle
+    }
+  if (NSHashGet(used, (void*)c) == (void*)c)
+    {
+      NSHashRemove(used, (void*)c);
+    }
+  if (NSCountHashTable(idle) + NSCountHashTable(used) < pool)
+    {
+      NSHashInsert(idle, (void*)c);
+      return YES;
+    }
+  return NO;
+}
+
+- (BOOL) makeUsed: (SQLClient*)c
+{
+  if (NSHashGet(used, (void*)c) == (void*)c)
+    {
+      return YES;				// Already used
+    }
+  if (NSHashGet(idle, (void*)c) == (void*)c)
+    {
+      NSHashRemove(idle, (void*)c);
+    }
+  if (NSCountHashTable(idle) + NSCountHashTable(used) < pool)
+    {
+      NSHashInsert(used, (void*)c);
+      return YES;
+    }
+  return NO;
+}
+
+- (void) setConfiguration: (NSDictionary*)o
+{
+  NSDictionary	*d;
+  NSString	*s;
+  BOOL		change = NO;
+  int		capacity;
+
+  /*
+   * get dictionary containing config info for this client by name.
+   */
+  d = [o objectForKey: @"SQLClientReferences"];
+  if ([d isKindOfClass: [NSDictionary class]] == NO)
+    {
+      d = nil;
+    }
+  d = [d objectForKey: name];
+  if ([d isKindOfClass: [NSDictionary class]] == NO)
+    {
+      d = nil;
+    }
+
+  s = [d objectForKey: @"ServerType"];
+  if ([s isKindOfClass: NSStringClass] == NO)
+    {
+      s = @"Postgres";
+    }
+  if (s != serv && [s isEqual: serv] == NO)
+    {
+      ASSIGNCOPY(serv, s);
+      change = YES;
+    }
+
+  s = [d objectForKey: @"Database"];
+  if ([s isKindOfClass: NSStringClass] == NO)
+    {
+      s = [o objectForKey: @"Database"];
+      if ([s isKindOfClass: NSStringClass] == NO)
+	{
+	  s = nil;
+	}
+    }
+  if (s != path && [s isEqual: path] == NO)
+    {
+      ASSIGNCOPY(path, s);
+      change = YES;
+    }
+
+  s = [d objectForKey: @"User"];
+  if ([s isKindOfClass: NSStringClass] == NO)
+    {
+      s = [o objectForKey: @"User"];
+      if ([s isKindOfClass: NSStringClass] == NO)
+	{
+	  s = @"";
+	}
+    }
+  if (s != user && [s isEqual: user] == NO)
+    {
+      ASSIGNCOPY(user, s);
+      change = YES;
+    }
+
+  s = [d objectForKey: @"Password"];
+  if ([s isKindOfClass: NSStringClass] == NO)
+    {
+      s = [o objectForKey: @"Password"];
+      if ([s isKindOfClass: NSStringClass] == NO)
+	{
+	  s = @"";
+	}
+    }
+  if (s != pass && [s isEqual: pass] == NO)
+    {
+      ASSIGNCOPY(pass, s);
+      change = YES;
+    }
+
+  s = [d objectForKey: @"Password"];
+  if ([s isKindOfClass: NSStringClass] == NO)
+    {
+      s = @"1";
+    }
+  capacity = [s intValue];
+  if (capacity < 1) capacity = 1;
+  if (capacity > 100) capacity = 100;
+
+  if (change == YES)
+    {
+      NSResetHashTable(idle);
+      NSResetHashTable(used);
+    }
+  if (pool > capacity)
+    {
+      unsigned	ic = NSCountHashTable(idle);
+      unsigned	uc = NSCountHashTable(used);
+
+      if (ic + uc > capacity)
+        {
+	  NSHashEnumerator	e = NSEnumerateHashTable(idle);
+	  void			*c;
+
+	  while (ic + uc > capacity
+	    && (c = NSNextHashEnumeratorItem(&e)) != nil)
+	    {
+	      NSHashRemove(idle, c);
+	      ic--;
+	    }
+	  NSEndHashTableEnumeration(&e);
+	  if (uc > capacity)
+	    {
+	      NSHashEnumerator	e = NSEnumerateHashTable(used);
+	      void		*c;
+
+	      while (uc > capacity
+		&& (c = NSNextHashEnumeratorItem(&e)) != nil)
+		{
+		  NSHashRemove(used, c);
+		  uc--;
+		}
+	      NSEndHashTableEnumeration(&e);
+	    }
+        }
+    }
+  pool = capacity;
+}
+
+@end
+
+
 typedef	struct {
   @defs(SQLTransaction);
 } *TDefs;
-
-static NSNull	*null = nil;
-
-static Class		NSStringClass = 0;
-static Class		NSArrayClass = 0;
-static Class		NSDateClass = 0;
-static Class		NSSetClass = 0;
 
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
