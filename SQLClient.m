@@ -838,14 +838,14 @@ static unsigned int	maxConnections = 8;
 {
   NSNotificationCenter	*nc;
 
-  nc = [NSNotificationCenter defaultCenter];
-  [nc removeObserver: self];
   if (_name != nil)
     {
       [clientsMapLock lock];
       NSMapRemove(clientsMap, (void*)_name);
       [clientsMapLock unlock];
     }
+  nc = [NSNotificationCenter defaultCenter];
+  [nc removeObserver: self];
   [self disconnect];
   DESTROY(lock);
   DESTROY(_client);
@@ -1244,6 +1244,23 @@ static unsigned int	maxConnections = 8;
   [m replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
   [m appendString: @"'"];
   return m;
+}
+
+- (void) release
+{
+  /* We lock the table while checking, to prevent
+   * another thread from grabbing this object while we are
+   * checking it.
+   * If we are going to deallocate the object, we first remove
+   * it from the table so that no other thread will find it
+   * and try to use it while it is being deallocated.
+   */
+  [clientsMapLock lock];
+  if (NSDecrementExtraRefCountWasZero(self))
+    {
+      [self dealloc];
+    }
+  [clientsMapLock unlock];
 }
 
 - (void) rollback
