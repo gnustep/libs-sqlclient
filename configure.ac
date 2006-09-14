@@ -54,7 +54,7 @@ AC_CHECK_HEADERS(jni.h)
 if test "$ac_cv_header_jni_h" = "yes"; then
   INCD="$INCD -I$JAVA_HOME/include"
   JDBC=yes
-  JDBC_VM_LIBS="-ljava -ljvm -lhpi"
+  JDBC_VM_LIBS="-ljvm"
   jre_lib="$JAVA_HOME/jre/lib"
   case "$GNUSTEP_HOST_CPU" in
     ix86)	JAVA_CPU=i386;;
@@ -62,7 +62,7 @@ if test "$ac_cv_header_jni_h" = "yes"; then
     *)		JAVA_CPU=i386;;
   esac
   jre_cpu="$jre_lib/$JAVA_CPU"
-  JDBC_VM_LIBDIRS="-L$jre_cpu -L$jre_cpu/native_threads -L$jre_cpu/classic -L$jre_cpu/server"
+  JDBC_VM_LIBDIRS="-L$jre_cpu/server"
 else
   JDBC=
   JDBC_VM_LIBS=
