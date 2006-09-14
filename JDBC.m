@@ -817,25 +817,29 @@ static	int	JDBCVARCHAR = 0;
       jclass	jc;
       jmethodID	jm;
 
-      if (ji->statement != 0)
-        {
-          jc = (*env)->GetObjectClass(env, ji->statement);
-	  jm = (*env)->GetMethodID (env, jc, "close", "()V");
-	  if (jm == 0) JExceptionClear(env);
-	  else (*env)->CallVoidMethod (env, ji->statement, jm);
-	  if (jm == 0) JExceptionClear(env);
-	  (*env)->DeleteGlobalRef (env, ji->statement);
-	  if (jm == 0) JExceptionClear(env);
-	}
-      if (ji->connection != 0)
-        {
-          jc = (*env)->GetObjectClass(env, ji->connection);
-	  jm = (*env)->GetMethodID (env, jc, "close", "()V");
-	  if (jm == 0) JExceptionClear(env);
-	  else (*env)->CallVoidMethod (env, ji->connection, jm);
-	  if (jm == 0) JExceptionClear(env);
-	  (*env)->DeleteGlobalRef (env, ji->connection);
-	  if (jm == 0) JExceptionClear(env);
+      if ((*env)->PushLocalFrame (env, 16) >= 0)
+	{
+	  if (ji->statement != 0)
+	    {
+	      jc = (*env)->GetObjectClass(env, ji->statement);
+	      jm = (*env)->GetMethodID (env, jc, "close", "()V");
+	      if (jm == 0) JExceptionClear(env);
+	      else (*env)->CallVoidMethod (env, ji->statement, jm);
+	      if (jm == 0) JExceptionClear(env);
+	      (*env)->DeleteGlobalRef (env, ji->statement);
+	      if (jm == 0) JExceptionClear(env);
+	    }
+	  if (ji->connection != 0)
+	    {
+	      jc = (*env)->GetObjectClass(env, ji->connection);
+	      jm = (*env)->GetMethodID (env, jc, "close", "()V");
+	      if (jm == 0) JExceptionClear(env);
+	      else (*env)->CallVoidMethod (env, ji->connection, jm);
+	      if (jm == 0) JExceptionClear(env);
+	      (*env)->DeleteGlobalRef (env, ji->connection);
+	      if (jm == 0) JExceptionClear(env);
+	    }
+	  (*env)->PopLocalFrame (env, NULL);
 	}
       NSZoneFree(NSDefaultMallocZone(), extra);
       extra = 0;
@@ -886,12 +890,21 @@ static	int	JDBCVARCHAR = 0;
 		  return NO;
 		}
 
+	      if ((*env)->PushLocalFrame (env, 32) < 0)
+	        {
+		  JExceptionClear (env);
+		  [self debug: @"Connect to '%@' failed memory allocation '%@'",
+		    [self name], cname];
+		  return NO;
+		}
+
 	      /* Get the driver manager class.
 	       */
 	      jc = (*env)->FindClass(env, "java/sql/DriverManager");
 	      if (jc == 0)
 	        {
 		  JExceptionClear (env);
+		  (*env)->PopLocalFrame (env, NULL);
 		  [self debug: @"Connect to '%@' failed to load DriverManager",
 		    [self name]];
 		  return NO;
@@ -905,6 +918,7 @@ static	int	JDBCVARCHAR = 0;
 	      if (jm == 0)
 	        {
 		  JExceptionClear (env);
+		  (*env)->PopLocalFrame (env, NULL);
 		  [self debug: @"Connect to '%@' failed to get connect method",
 		    [self name]];
 		  return NO;
@@ -919,6 +933,7 @@ static	int	JDBCVARCHAR = 0;
 	      if (jo == 0)
 	        {
 		  JExceptionClear (env);
+		  (*env)->PopLocalFrame (env, NULL);
 		  [self debug: @"Connect to '%@' failed to get connection",
 		    [self name]];
 		  return NO;
@@ -930,6 +945,7 @@ static	int	JDBCVARCHAR = 0;
 	      if (jo == 0)
 		{
 		  JExceptionClear (env);
+		  (*env)->PopLocalFrame (env, NULL);
 		  [self debug: @"Connect to '%@' failed to get global ref",
 		    [self name]];
 		  return NO;
@@ -992,9 +1008,11 @@ static	int	JDBCVARCHAR = 0;
 			"executeQuery",
 			"(Ljava/lang/String;)Ljava/sql/ResultSet;");
 		      JException(env);
+		      (*env)->PopLocalFrame (env, NULL);
 		    }
 		  NS_HANDLER
 		    {
+		      (*env)->PopLocalFrame (env, NULL);
 		      [self _backendDisconnect];
 		      [self debug: @"Connect to '%@' using '%@' problem: %@",
 			[self name], [self database], localException];
@@ -1069,6 +1087,14 @@ static	int	JDBCVARCHAR = 0;
 		  format: @"Statement produced null string"];
     }
 
+  if ((*env)->PushLocalFrame (env, 32) < 0)
+    {
+      JExceptionClear(env);
+      RELEASE (arp);
+      [NSException raise: NSInternalInconsistencyException
+		  format: @"No java memory for execute"];
+    }
+
   NS_DURING
     {
       jmethodID	jm;
@@ -1123,19 +1149,24 @@ static	int	JDBCVARCHAR = 0;
 	  (*env)->CallVoidMethod (env, ji->connection, ji->commit);
           JException (env);
 	}
+      (*env)->PopLocalFrame (env, NULL);
     }
   NS_HANDLER
     {
-      if (_inTransaction == NO)
-        {
-	  // Not in a transaction ... rollback to clear error state
-	  (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
-	  JExceptionClear (env);
-	}
-      if ([self debugging] > 0)
+      if (connected == YES)
 	{
-	  [self debug: @"Error executing statement:\n%@\n%@",
-	    stmt, localException];
+	  if (_inTransaction == NO)
+	    {
+	      // Not in a transaction ... rollback to clear error state
+	      (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
+	      JExceptionClear (env);
+	    }
+	  (*env)->PopLocalFrame (env, NULL);
+	  if ([self debugging] > 0)
+	    {
+	      [self debug: @"Error executing statement:\n%@\n%@",
+		stmt, localException];
+	    }
 	}
       RETAIN (localException);
       RELEASE (arp);
@@ -1158,6 +1189,14 @@ static	int	JDBCVARCHAR = 0;
       RELEASE (arp);
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
+    }
+
+  if ((*env)->PushLocalFrame (env, 32) < 0)
+    {
+      JExceptionClear(env);
+      RELEASE (arp);
+      [NSException raise: NSInternalInconsistencyException
+		  format: @"No java memory for query"];
     }
 
   NS_DURING
@@ -1279,79 +1318,96 @@ static	int	JDBCVARCHAR = 0;
 	      id	values[fieldCount];
 	      int	j;
 
-	      for (j = 0; j < fieldCount; j++)
+	      if ((*env)->PushLocalFrame (env, fieldCount * 2) < 0)
 		{
-		  id		v = null;
-
-		  if (types[j] == JDBCBOOLEAN)
-		    {
-		      BOOL	b = NO;
-
-		      if ((*env)->CallBooleanMethod (env, result,
-			getBoolean, j+1) == JNI_TRUE)
-			{
-			  b = YES;
-			}
-		      JException (env);
-		      if ((*env)->CallBooleanMethod (env, result,
-			wasNull) == JNI_FALSE)
-			{
-			  if (b == YES)
-			    {
-			      v = @"Y";
-			    }
-			  else
-			    {
-			      v = @"N";
-			    }
-			}
-		      JException (env);
-		    }
-		  else if (types[j] == JDBCTIMESTAMP)
-		    {
-		      jobject	jo;
-
-		      jo = (*env)->CallObjectMethod (env, result,
-			getString, j+1);
-		      JException (env);
-		      if ((*env)->CallBooleanMethod (env, result,
-			wasNull) == JNI_FALSE)
-			{
-			  v = NSStringFromJString(env, jo);
-			  v = NSDateFromNSString(v);
-			}
-		      JException (env);
-		    }
-		  else if (types[j] == JDBCBLOB)
-		    {
-		      jbyteArray	jo;
-
-		      jo = (*env)->CallObjectMethod (env, result,
-			getBytes, j+1);
-		      JException (env);
-		      if ((*env)->CallBooleanMethod (env, result,
-			wasNull) == JNI_FALSE)
-			{
-			  v = NSDataFromByteArray(env, jo);
-			}
-		      JException (env);
-		    }
-		  else
-		    {
-		      jobject	jo;
-
-		      jo = (*env)->CallObjectMethod (env, result,
-			getString, j+1);
-		      JException (env);
-		      if ((*env)->CallBooleanMethod (env, result,
-			wasNull) == JNI_FALSE)
-			{
-			  v = NSStringFromJString(env, jo);
-			}
-		      JException (env);
-		    }
-		  values[j] = v;
+		  JExceptionClear(env);
+		  RELEASE (arp);
+		  [NSException raise: NSInternalInconsistencyException
+			      format: @"No java memory for query"];
 		}
+	      NS_DURING
+		{
+		  for (j = 0; j < fieldCount; j++)
+		    {
+		      id		v = null;
+
+		      if (types[j] == JDBCBOOLEAN)
+			{
+			  BOOL	b = NO;
+
+			  if ((*env)->CallBooleanMethod (env, result,
+			    getBoolean, j+1) == JNI_TRUE)
+			    {
+			      b = YES;
+			    }
+			  JException (env);
+			  if ((*env)->CallBooleanMethod (env, result,
+			    wasNull) == JNI_FALSE)
+			    {
+			      if (b == YES)
+				{
+				  v = @"Y";
+				}
+			      else
+				{
+				  v = @"N";
+				}
+			    }
+			  JException (env);
+			}
+		      else if (types[j] == JDBCTIMESTAMP)
+			{
+			  jobject	jo;
+
+			  jo = (*env)->CallObjectMethod (env, result,
+			    getString, j+1);
+			  JException (env);
+			  if ((*env)->CallBooleanMethod (env, result,
+			    wasNull) == JNI_FALSE)
+			    {
+			      v = NSStringFromJString(env, jo);
+			      v = NSDateFromNSString(v);
+			    }
+			  JException (env);
+			}
+		      else if (types[j] == JDBCBLOB)
+			{
+			  jbyteArray	jo;
+
+			  jo = (*env)->CallObjectMethod (env, result,
+			    getBytes, j+1);
+			  JException (env);
+			  if ((*env)->CallBooleanMethod (env, result,
+			    wasNull) == JNI_FALSE)
+			    {
+			      v = NSDataFromByteArray(env, jo);
+			    }
+			  JException (env);
+			}
+		      else
+			{
+			  jobject	jo;
+
+			  jo = (*env)->CallObjectMethod (env, result,
+			    getString, j+1);
+			  JException (env);
+			  if ((*env)->CallBooleanMethod (env, result,
+			    wasNull) == JNI_FALSE)
+			    {
+			      v = NSStringFromJString(env, jo);
+			    }
+			  JException (env);
+			}
+		      values[j] = v;
+		    }
+		  (*env)->PopLocalFrame (env, NULL);
+		}
+	      NS_HANDLER
+	        {
+		  (*env)->PopLocalFrame (env, NULL);
+		  [localException raise];
+		}
+	      NS_ENDHANDLER
 	      record = [SQLRecord newWithValues: values
 					   keys: keys
 					  count: fieldCount];
@@ -1363,19 +1419,24 @@ static	int	JDBCVARCHAR = 0;
 	{
 	  records = [NSMutableArray array];
 	}
+      (*env)->PopLocalFrame (env, NULL);
     }
   NS_HANDLER
     {
       NSString	*n = [localException name];
 
-      if ([n isEqual: SQLConnectionException] == YES) 
+      if (connected == YES)
 	{
-	  [self backendDisconnect];
-	}
-      if ([self debugging] > 0)
-	{
-	  [self debug: @"Error executing statement:\n%@\n%@",
-	    stmt, localException];
+	  (*env)->PopLocalFrame (env, NULL);
+	  if ([n isEqual: SQLConnectionException] == YES) 
+	    {
+	      [self backendDisconnect];
+	    }
+	  if ([self debugging] > 0)
+	    {
+	      [self debug: @"Error executing statement:\n%@\n%@",
+		stmt, localException];
+	    }
 	}
       DESTROY(records);
       RETAIN (localException);
