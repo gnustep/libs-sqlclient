@@ -1,3 +1,13 @@
+2006-10-02 Nicola Pero <nicola@localhost.localdomain>
+
+	* configure.ac: Do not read gnustep configuration which is never
+	used.
+	* configure.ac: Added --disable-jdbc-bundle,
+	--disable-mysql-bundle, --disable-sqllite-bundle,
+	--disable-postgres-bundle flags to be able to turn some bundles
+	off (regardless of config results).
+	* configure: Regenerated.
+
 2006-10-01 Graham J Lee <graham.lee@operatelecom.com>
 
         * configure.ac:  Fix to use GNUSTEP_CONFIG_FILE environment variable.

@@ -7,15 +7,6 @@ if test -z "$GNUSTEP_MAKEFILES"; then
   AC_MSG_ERROR([You must have the gnustep-make package installed and set up the GNUSTEP_MAKEFILES environment variable to contain the path to the makefiles directory before configuring!])
 fi
 
-# This is for backwards compatibility with older gnustep releases,
-# which have no GNUSTEP_CONFIG_FILE -- but it can be dropped in a year
-# or so ;-) -- NB: We could do better here, like checking the
-# GNUSTEP_MAKE_VERSION or emitting a warning if no config file is
-# found etc.
-if test -n "${GNUSTEP_CONFIG_FILE:=`grep '^GNUSTEP_CONFIG_FILE *=' $GNUSTEP_MAKEFILES/config.make | sed -e 's/GNUSTEP_CONFIG_FILE *= *\(.*\)/\1/'`}"; then
-  . "$GNUSTEP_CONFIG_FILE"
-fi
-
 #--------------------------------------------------------------------
 AC_ARG_WITH(additional-include,
   [  --with-additional-include=flags  specify additional include dirs to use],
@@ -35,7 +26,6 @@ if test "$additional_lib" != "no"; then
   LIBD="$LIBD $additional_lib"
 fi
 
-echo "Postgres development support"
 AC_ARG_WITH(postgres-dir,
   [  --with-postgres-dir=PATH  specify postgres installation dir],
   postgres_topdir="$withval", postgres_topdir="no")
@@ -46,6 +36,26 @@ if test "$postgres_topdir" != "no"; then
   LIBD="$LIBD -L$postgres_topdir/lib"
 fi
 
+
+AC_MSG_CHECKING([if Jdbc support was manually disabled])
+AC_ARG_ENABLE(jdbc-bundle, [
+--disable-jdbc-bundle
+   Disable creating the Jdbc bundle.
+   Use this option to force the Jdbc bundle not to be built
+   even if the Jdbc libraries look like being present.
+], 
+  ac_cv_jdbc_bundle=$enableval,
+  ac_cv_jdbc_bundle="yes")
+
+if test "$ac_cv_jdbc_bundle" = "no"; then
+  AC_MSG_RESULT([yes: disabled from the command-line])
+  JDBC=
+else
+  AC_MSG_RESULT([no: build if possible])
+
+# FIXME - check for -ljvm: on my machine I have a jni.h (from GCC),
+# but no -ljvm, so this config code erroneously decides to compile the
+# JDBC bundle, and that fails. :-(
 CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include"
 AC_CHECK_HEADERS(jni.h)
 if test "$ac_cv_header_jni_h" = "yes"; then
@@ -72,6 +82,25 @@ AC_SUBST(JDBC)
 AC_SUBST(JDBC_VM_LIBS)
 AC_SUBST(JDBC_VM_LIBDIRS)
 
+fi
+
+
+AC_MSG_CHECKING([if Mysql support was manually disabled])
+AC_ARG_ENABLE(mysql-bundle, [
+--disable-mysql-bundle
+   Disable creating the Mysql bundle.
+   Use this option to force the Mysql bundle not to be built
+   even if the Mysql libraries look like being present.
+], 
+  ac_cv_mysql_bundle=$enableval,
+  ac_cv_mysql_bundle="yes")
+
+if test "$ac_cv_mysql_bundle" = "no"; then
+  AC_MSG_RESULT([yes: disabled from the command-line])
+  MYSQL=
+else
+  AC_MSG_RESULT([no: build if possible])
+
 AC_CHECK_HEADERS(mysql/mysql.h)
 if test "$ac_cv_header_mysql_mysql_h" = "yes"; then
   MYSQL=yes
@@ -91,6 +120,25 @@ if test "$MYSQL" = "yes"; then
   fi
 fi
 AC_SUBST(MYSQL)
+
+fi
+
+
+AC_MSG_CHECKING([if Sqllite support was manually disabled])
+AC_ARG_ENABLE(sqllite-bundle, [
+--disable-sqllite-bundle
+   Disable creating the Sqllite bundle.
+   Use this option to force the Sqllite bundle not to be built
+   even if the Sqllite libraries look like being present.
+], 
+  ac_cv_sqllite_bundle=$enableval,
+  ac_cv_sqllite_bundle="yes")
+
+if test "$ac_cv_sqllite_bundle" = "no"; then
+  AC_MSG_RESULT([yes: disabled from the command-line])
+  SQLLITE=
+else
+  AC_MSG_RESULT([no: build if possible])
 
 AC_CHECK_HEADERS(sqlite3.h)
 if test "$ac_cv_header_sqlite3_h" = "yes"; then
@@ -112,6 +160,25 @@ if test "$SQLITE" = "yes"; then
 fi
 AC_SUBST(SQLITE)
 
+fi
+
+AC_MSG_CHECKING([if Postgres support was manually disabled])
+AC_ARG_ENABLE(postgres-bundle, [
+--disable-postgres-bundle
+   Disable creating the Postgres bundle.
+   Use this option to force the Postgres bundle not to be built
+   even if the Postgres libraries look like being present.
+], 
+  ac_cv_postgres_bundle=$enableval,
+  ac_cv_postgres_bundle="yes")
+
+if test "$ac_cv_postgres_bundle" = "no"; then
+  AC_MSG_RESULT([yes: disabled from the command-line])
+  POSTGRES=
+else
+  AC_MSG_RESULT([no: build if possible])
+
+# Start POSTGRES checks
 POSTGRES=
 
 if test "$POSTGRES" = ""; then
@@ -239,6 +306,9 @@ if test "$POSTGRES" = "yes"; then
       echo "to point to the postgres version you wish to use."
       echo "********************************************************"
   fi
+fi
+
+# End POSTGRES checks
 fi
 
 AC_SUBST(POSTGRES)
