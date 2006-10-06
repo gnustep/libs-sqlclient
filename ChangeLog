@@ -1,4 +1,9 @@
-2006-10-02 Nicola Pero <nicola@localhost.localdomain>
+2006-10-06 Nicola Pero <nicola.pero@meta-innovation.com>
+
+	* GNUmakefile.wrapper.objc.preamble (ADDITIONAL_LIB_DIRS): Added 
+	variable so that the wrapper compiles before the library is installed.
+
+2006-10-02 Nicola Pero <nicola.pero@meta-innovation.com>
 
 	* configure.ac: Do not read gnustep configuration which is never
 	used.
