@@ -55,10 +55,6 @@ if test "$ac_cv_jdbc_bundle" = "no"; then
 else
   AC_MSG_RESULT([no: build if possible])
 
-# FIXME - check for -ljvm: on my machine I have a jni.h (from GCC),
-# but no -ljvm, so this config code erroneously decides to compile the
-# JDBC bundle, and that fails. :-(
-
 # Get likely subdirectory for system specific java include
 case "$GNUSTEP_HOST_OS" in
   bsdi*)	_JNI_SUBDIR="bsdos";;
@@ -77,7 +73,18 @@ AC_CHECK_HEADERS(jni.h)
 if test "$ac_cv_header_jni_h" = "yes"; then
   JDBC_VM_LIBS="-ljvm"
   jre_lib="$JAVA_HOME/jre/lib"
-  case "$GNUSTEP_HOST_CPU" in
+  # If on a 32/64bit system and compiling for the 64bit model
+  # adjust the cpu type to be the 64bit version
+  case "$CFLAGS" in
+    *-m64*)
+      if test "$GNUSTEP_HOST_CPU" = "ix86"; then 
+        _CPU="x86_64"
+      else
+        _CPU="$GNUSTEP_HOST_CPU"
+      fi;;
+    *) _CPU="$GNUSTEP_HOST_CPU";;
+  esac
+  case "$_CPU" in
     ix86)	JAVA_CPU=i386;;
     x86_64)	JAVA_CPU=amd64;;
     sparc)	JAVA_CPU=sparc;;
