@@ -65,8 +65,8 @@ ECPG_libs_PRINCIPAL_CLASS = SQLClientECPG_libs
 endif
 TEST_TOOL_NAME += testECPG
 testECPG_OBJC_FILES = testECPG.m
-testECPG_TOOL_LIBS += -lSQLClient
 testECPG_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
+testECPG_TOOL_LIBS += -lSQLClient -lPerformance
 endif
 
 ifneq ($(POSTGRES),)
@@ -92,7 +92,7 @@ endif
 TEST_TOOL_NAME += testPostgres
 testPostgres_OBJC_FILES = testPostgres.m
 testPostgres_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
-testPostgres_TOOL_LIBS += -lSQLClient
+testPostgres_TOOL_LIBS += -lSQLClient -lPerformance
 endif
 
 ifneq ($(JDBC),)
@@ -118,7 +118,7 @@ endif
 TEST_TOOL_NAME += testJDBC
 testJDBC_OBJC_FILES = testJDBC.m
 testJDBC_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
-testJDBC_TOOL_LIBS += -lSQLClient
+testJDBC_TOOL_LIBS += -lSQLClient -lPerformance
 endif
 
 ifneq ($(MYSQL),)
@@ -144,7 +144,7 @@ endif
 TEST_TOOL_NAME += testMySQL
 testMySQL_OBJC_FILES = testMySQL.m
 testMySQL_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
-testMySQL_TOOL_LIBS += -lSQLClient
+testMySQL_TOOL_LIBS += -lSQLClient -lPerformance
 endif
 
 ifneq ($(SQLITE),)
@@ -170,7 +170,7 @@ endif
 TEST_TOOL_NAME += testSQLite
 testSQLite_OBJC_FILES = testSQLite.m
 testSQLite_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
-testSQLite_TOOL_LIBS += -lSQLClient
+testSQLite_TOOL_LIBS += -lSQLClient -lPerformance
 endif
 
 ifneq ($(ORACLE_HOME),)
