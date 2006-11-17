@@ -5,6 +5,8 @@ AC_CONFIG_HEADER(config.h)
 
 if test -z "$GNUSTEP_MAKEFILES"; then
   AC_MSG_ERROR([You must have the gnustep-make package installed and set up the GNUSTEP_MAKEFILES environment variable to contain the path to the makefiles directory before configuring!])
+else
+  . $GNUSTEP_MAKEFILES/GNUstep.sh
 fi
 
 #--------------------------------------------------------------------
@@ -56,20 +58,46 @@ else
 # FIXME - check for -ljvm: on my machine I have a jni.h (from GCC),
 # but no -ljvm, so this config code erroneously decides to compile the
 # JDBC bundle, and that fails. :-(
-CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include"
+
+# Get likely subdirectory for system specific java include
+case "$GNUSTEP_HOST_OS" in
+  bsdi*)	_JNI_SUBDIR="bsdos";;
+  linux*)	_JNI_SUBDIR="linux";;
+  osf*)		_JNI_SUBDIR="alpha";;
+  solaris*)	_JNI_SUBDIR="solaris";;
+  mingw*)	_JNI_SUBDIR="win32";;
+  cygwin*)	_JNI_SUBDIR="win32";;
+  *)		_JNI_SUBDIR="genunix";;
+esac
+
+save_CFLAGS="$CFLAGS"
+save_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include -I$JAVA_HOME/include/$_JNI_SUBDIR"
 AC_CHECK_HEADERS(jni.h)
 if test "$ac_cv_header_jni_h" = "yes"; then
-  INCD="$INCD -I$JAVA_HOME/include"
-  JDBC=yes
   JDBC_VM_LIBS="-ljvm"
   jre_lib="$JAVA_HOME/jre/lib"
   case "$GNUSTEP_HOST_CPU" in
     ix86)	JAVA_CPU=i386;;
     x86_64)	JAVA_CPU=amd64;;
+    sparc)	JAVA_CPU=sparc;;
     *)		JAVA_CPU=i386;;
   esac
   jre_cpu="$jre_lib/$JAVA_CPU"
   JDBC_VM_LIBDIRS="-L$jre_cpu/server"
+  CFLAGS="$CFLAGS $JDBC_VM_LIBDIRS"
+  AC_CHECK_LIB(jvm,JNI_CreateJavaVM)
+  if test "$ac_cv_lib_jvm_JNI_CreateJavaVM" = "yes"; then
+    INCD="$INCD -I$JAVA_HOME/include -I$JAVA_HOME/include/$_JNI_SUBDIR"
+    JDBC=yes
+  else
+    JDBC=
+    JDBC_VM_LIBS=
+    JDBC_VM_LIBDIRS=
+    echo "**********************************************"
+    echo "Unable to locate jvm library (is it installed)"
+    echo "**********************************************"
+  fi
 else
   JDBC=
   JDBC_VM_LIBS=
@@ -81,6 +109,8 @@ fi
 AC_SUBST(JDBC)
 AC_SUBST(JDBC_VM_LIBS)
 AC_SUBST(JDBC_VM_LIBDIRS)
+CFLAGS="$save_CFLAGS"
+CPPFLAGS="$save_CPPFLAGS"
 
 fi
 
