@@ -66,6 +66,10 @@ case "$GNUSTEP_HOST_OS" in
   *)		_JNI_SUBDIR="genunix";;
 esac
 
+AC_ARG_WITH(jre-architecture,
+  [  --with-jre-architecture=value  specify cpu architecture for jre],
+  jre_architecture="$withval", jre_architecture="")
+
 save_CFLAGS="$CFLAGS"
 save_CPPFLAGS="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include -I$JAVA_HOME/include/$_JNI_SUBDIR"
@@ -73,23 +77,30 @@ AC_CHECK_HEADERS(jni.h)
 if test "$ac_cv_header_jni_h" = "yes"; then
   JDBC_VM_LIBS="-ljvm"
   jre_lib="$JAVA_HOME/jre/lib"
-  # If on a 32/64bit system and compiling for the 64bit model
-  # adjust the cpu type to be the 64bit version
-  case "$CFLAGS" in
-    *-m64*)
-      if test "$GNUSTEP_HOST_CPU" = "ix86"; then 
-        _CPU="x86_64"
-      else
-        _CPU="$GNUSTEP_HOST_CPU"
-      fi;;
-    *) _CPU="$GNUSTEP_HOST_CPU";;
-  esac
-  case "$_CPU" in
-    ix86)	JAVA_CPU=i386;;
-    x86_64)	JAVA_CPU=amd64;;
-    sparc)	JAVA_CPU=sparc;;
-    *)		JAVA_CPU=i386;;
-  esac
+
+  if test "$jre_architecture" = ""; then
+
+    # If on a 32/64bit system and compiling for the 64bit model
+    # adjust the cpu type to be the 64bit version
+    case "$CFLAGS" in
+      *-m64*)
+	if test "$GNUSTEP_HOST_CPU" = "ix86"; then 
+	  _CPU="x86_64"
+	else
+	  _CPU="$GNUSTEP_HOST_CPU"
+	fi;;
+      *) _CPU="$GNUSTEP_HOST_CPU";;
+    esac
+    case "$_CPU" in
+      ix86)	JAVA_CPU=i386;;
+      x86_64)	JAVA_CPU=amd64;;
+      sparc)	JAVA_CPU=sparc;;
+      *)	JAVA_CPU=i386;;
+    esac
+  else
+    JAVA_CPU="$jre_architecture"
+  fi
+
   jre_cpu="$jre_lib/$JAVA_CPU"
   JDBC_VM_LIBDIRS="-L$jre_cpu/server"
   CFLAGS="$CFLAGS $JDBC_VM_LIBDIRS"
