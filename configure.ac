@@ -70,6 +70,7 @@ AC_ARG_WITH(jre-architecture,
   [  --with-jre-architecture=value  specify cpu architecture for jre],
   jre_architecture="$withval", jre_architecture="")
 
+save_LIBS="$LIBS"
 save_CFLAGS="$CFLAGS"
 save_CPPFLAGS="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS -I$JAVA_HOME/include -I$JAVA_HOME/include/$_JNI_SUBDIR"
@@ -127,6 +128,7 @@ fi
 AC_SUBST(JDBC)
 AC_SUBST(JDBC_VM_LIBS)
 AC_SUBST(JDBC_VM_LIBDIRS)
+LIBS="$save_LIBS"
 CFLAGS="$save_CFLAGS"
 CPPFLAGS="$save_CPPFLAGS"
 
