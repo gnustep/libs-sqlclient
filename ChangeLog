@@ -1,3 +1,9 @@
+2006-12-24 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* JDBC.m: Don't store pointer to jni information in local variable
+	until after we have opened the connection to the database, or we
+	may be using a null pointer and generate a crash.
+
 2006-12-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* configure.ac: save/restore LIBS after jdbc check so that other

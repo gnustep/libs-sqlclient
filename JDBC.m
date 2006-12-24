@@ -1089,7 +1089,7 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
   CREATE_AUTORELEASE_POOL(arp);
   NSString	*stmt = [info objectAtIndex: 0];
   JNIEnv	*env = SQLClientJNIEnv();
-  JInfo		*ji = (JInfo*)extra;
+  JInfo		*ji;
 
   if ([stmt length] == 0)
     {
@@ -1120,6 +1120,8 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
 	    format: @"Unable to connect to '%@' to execute statement %@",
 	    [self name], stmt];
 	} 
+
+      ji = (JInfo*)extra;
 
       if ([info count] > 1)
         {
@@ -1168,6 +1170,7 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
 	{
 	  if (_inTransaction == NO)
 	    {
+	      ji = (JInfo*)extra;
 	      // Not in a transaction ... rollback to clear error state
 	      (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
 	      JExceptionClear (env);
@@ -1193,7 +1196,7 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
   NSMutableArray	*records = nil;
   CREATE_AUTORELEASE_POOL(arp);
   JNIEnv		*env = SQLClientJNIEnv();
-  JInfo			*ji = (JInfo*)extra;
+  JInfo			*ji;
 
   if ([stmt length] == 0)
     {
@@ -1228,6 +1231,8 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
 	    format: @"Unable to connect to '%@' to run query %@",
 	    [self name], stmt];
 	} 
+
+      ji = (JInfo*)extra;
 
       result = (*env)->CallObjectMethod (env, ji->statement, ji->executeQuery,
         JStringFromNSString(env, stmt));
