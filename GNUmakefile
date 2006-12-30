@@ -3,7 +3,7 @@ include $(GNUSTEP_MAKEFILES)/common.make
 -include config.make
 
 PACKAGE_NAME = SQLClient
-PACKAGE_VERSION = 1.3.0
+PACKAGE_VERSION = 1.4.0
 CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
 CVS_TAG_NAME = SQLClient
 SVN_BASE_URL=svn+ssh://svn.gna.org/svn/gnustep/libs
@@ -14,7 +14,7 @@ TEST_TOOL_NAME=
 LIBRARY_NAME=SQLClient
 DOCUMENT_NAME=SQLClient
 
-SQLClient_INTERFACE_VERSION=1.3
+SQLClient_INTERFACE_VERSION=1.4
 
 SQLClient_OBJC_FILES = SQLClient.m
 SQLClient_LIBRARIES_DEPEND_UPON = -lPerformance
