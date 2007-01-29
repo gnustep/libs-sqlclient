@@ -938,21 +938,16 @@ static	int	JDBCVARCHAR = 0;
 
 	      /* Get the new connection object
 	       */
-#if 0
-	      jo = (*env)->CallStaticObjectMethod(env, jc, jm, 
-	        JStringFromNSString(env, url),
-	        JStringFromNSString(env, [self user]),
-	        JStringFromNSString(env, [self password]));
-#else
-jobject js1 = JStringFromNSString(env, url);
-jobject js2 = JStringFromNSString(env, [self user]);
-jobject js3 = JStringFromNSString(env, [self password]);
-NSLog(@"CONNECT '%@', '%@', '%@'",
-  NSStringFromJString(env, js1),
-  NSStringFromJString(env, js2),
-  NSStringFromJString(env, js3));
+	      jobject js1 = JStringFromNSString(env, url);
+	      jobject js2 = JStringFromNSString(env, [self user]);
+	      jobject js3 = JStringFromNSString(env, [self password]);
+/*
+	      NSLog(@"CONNECT '%@', '%@', '%@'",
+		NSStringFromJString(env, js1),
+		NSStringFromJString(env, js2),
+		NSStringFromJString(env, js3));
+ */
 	      jo = (*env)->CallStaticObjectMethod(env, jc, jm, js1, js2, js3);
-#endif
 	      if (jo == 0)
 	        {
 		  JExceptionClear (env);
@@ -1798,7 +1793,7 @@ static id	marker = @"End of statement data";
 	{
 	  if (wrapped == YES)
 	    {
-	      (*env)->CallVoidMethod (env, ji->connection, ji->commit);
+	      (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
 	      JException(env);
 	    }
 	  (*env)->PopLocalFrame (env, NULL);
