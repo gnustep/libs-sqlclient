@@ -167,6 +167,7 @@ main()
     }
   else
     {
+      SQLTransaction	*t;
       NSString	*oddChars;
       NSString	*nonLatin;
       id	r0;
@@ -274,6 +275,59 @@ main()
 	      NSLog(@"Retrieved odd chars does not match saved string");
 	    }
 	}
+
+      [db execute: @"create table xxx ( "
+	@"k char(40), "
+	@"char1 char(1), "
+	@"boolval BOOL, "
+	@"intval int, "
+	@"when1 timestamp with time zone, "
+	@"when2 timestamp, "
+	@"b bytea"
+	@")",
+	nil];
+      t = [db transaction];
+      [t add: @"insert into xxx "
+	@"(k, char1, boolval, intval, when1, when2, b) "
+	@"values (",
+	[db quote: oddChars],
+	@", ",
+	[db quote: nonLatin],
+	@",TRUE, "
+	@"0, ",
+	[NSDate date], @", ",
+	[NSDate date], @", ",
+	[db quote: nil],
+	@")",
+	nil];
+      [t add: @"insert into xxx "
+	@"(k, char1, boolval, intval, when1, when2, b) "
+	@"values (",
+	[db quote: oddChars],
+	@", ",
+	[db quote: nonLatin],
+	@",TRUE, "
+	@"1, ",
+	[NSDate date], @", ",
+	[NSDate date], @", ",
+	[db quote: nil],
+	@")",
+	nil];
+      [t add: @"insert into xxx "
+	@"(k, char1, boolval, intval, when1, when2, b) "
+	@"values (",
+	[db quote: oddChars],
+	@", ",
+	[db quote: nonLatin],
+	@",TRUE, "
+	@"2, ",
+	[NSDate date], @", ",
+	[NSDate date], @", ",
+	[db quote: nil],
+	@")",
+	nil];
+      [t execute];
+      [db execute: @"drop table xxx", nil];
 
       NSLog(@"Records - %@", [GSCache class]);
     }

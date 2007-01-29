@@ -42,11 +42,17 @@
 #include	<Foundation/NSUserDefaults.h>
 #include	<Foundation/NSValue.h>
 
+#include        <Performance/GSTicker.h>
+
 #include	"config.h"
 #include	"SQLClient.h"
 
 @interface	_JDBCTransaction : SQLTransaction
 @end
+
+typedef struct {
+  @defs(SQLClient);
+} *CDefs;
 
 typedef struct {
   @defs(_JDBCTransaction);
@@ -67,6 +73,9 @@ typedef struct {
   jobject	statement;
   jmethodID	executeUpdate;
   jmethodID	executeQuery;
+  jmethodID	addBatch;
+  jmethodID	clearBatch;
+  jmethodID	executeBatch;
 } JInfo;
 
 
@@ -1027,6 +1036,36 @@ static	int	JDBCVARCHAR = 0;
 			"(Ljava/lang/String;)Ljava/sql/ResultSet;");
 		      JException(env);
 		      (*env)->PopLocalFrame (env, NULL);
+
+		      jc = (*env)->GetObjectClass(env, ji->connection);
+		      jm = (*env)->GetMethodID (env, jc,
+			"getMetaData", "()Ljava/sql/DatabaseMetaData;");
+		      JException(env);
+		      jo = (*env)->CallObjectMethod (env, ji->connection, jm);
+		      JException(env);
+		      jc = (*env)->GetObjectClass(env, jo);
+		      jm = (*env)->GetMethodID (env, jc,
+			"supportsBatchUpdates", "()Z");
+		      JException(env);
+		      if ((*env)->CallBooleanMethod (env, jo, jm) == JNI_TRUE)
+		        {
+			  jc = (*env)->GetObjectClass(env, ji->statement);
+			  ji->addBatch = (*env)->GetMethodID (env, jc,
+			    "addBatch", "(Ljava/lang/String;)V");
+			  JException(env);
+			  ji->clearBatch = (*env)->GetMethodID (env, jc,
+			    "clearBatch", "()V");
+			  JException(env);
+			  ji->executeBatch = (*env)->GetMethodID (env, jc,
+			    "executeBatch", "()[I");
+			  JException(env);
+			}
+		      else
+		        {
+			  ji->addBatch = 0;
+			  ji->clearBatch = 0;
+			  ji->executeBatch = 0;
+			}
 		    }
 		  NS_HANDLER
 		    {
@@ -1698,6 +1737,7 @@ static id	marker = @"End of statement data";
     {
       CREATE_AUTORELEASE_POOL(arp);
       BOOL	wrapped = NO;
+      BOOL	batched = NO;
       JNIEnv	*env;
       JInfo	*ji;
 
@@ -1725,59 +1765,116 @@ static id	marker = @"End of statement data";
       NS_DURING
 	{
 	  NSMutableArray	*statements = [_info objectAtIndex: 0];
-	  unsigned		statement = 0;
+	  unsigned		numberOfStatements = [statements count];
+	  unsigned		statement;
 	  unsigned		pos = 1;
+	  NSTimeInterval	_duration = [_db durationLogging];
+	  NSTimeInterval	start = 0.0;
+
+	  if (_duration >= 0)
+	    {
+	      start = GSTickerTimeNow();
+	    }
 
 	  if ([_db isInTransaction] == NO)
 	    {
 	      wrapped = YES;
 	    }
 
-	  while (statement < [statements count])
+	  if (numberOfStatements > 1 && ji->addBatch != 0
+	    && [_info count] == numberOfStatements + 1)
 	    {
-	      NSString	*stmt = [statements objectAtIndex: statement++];
-	      jmethodID	jm;
-	      jobject	js;
+	      jintArray	ja;
+	      jint	*array;
 
-	      if ([_info objectAtIndex: pos] == marker)
-	        {
-		  pos++;	// Step past end of statement data.
-		  (*env)->CallIntMethod (env, ji->statement,
-		    ji->executeUpdate, JStringFromNSString(env, stmt));
-		}
-	      else
+	      /* We have multiple statements without arguments ... so this
+	       * is batchable.
+	       */
+	      for (statement = 0; statement < numberOfStatements; statement++)
 		{
-		  NSData	*data;
-		  int		i = 1;
-		  jclass	jc;
+		  NSString	*stmt = [statements objectAtIndex: statement++];
+		  jobject	js;
 
-		  stmt = [stmt stringByReplacingString: @"'?'''?'"
-					    withString: @"?"];
-
-		  js = (*env)->CallObjectMethod
-		    (env, ji->connection, ji->prepare,
-		    JStringFromNSString(env, stmt));
+		  js = (*env)->CallObjectMethod(env, ji->statement,
+		    ji->addBatch, JStringFromNSString(env, stmt));
 		  JException(env);
-
-		  jc = (*env)->GetObjectClass(env, js);
-		  JException(env);
-		  jm = (*env)->GetMethodID (env, jc, "setBytes", "(I[B)V");
-		  JException(env);
-
-		  /* Get data arguements for statement.
-		   */
-		  while ((data = [_info objectAtIndex: pos++]) != marker)
-		    {
-		      (*env)->CallIntMethod (env, js, jm, i++,
-			ByteArrayFromNSData(env, data));
-		      JException(env);
-		    }
-
-		  jm = (*env)->GetMethodID (env, jc, "executeUpdate", "()I");
-		  JException(env);
-		  (*env)->CallIntMethod (env, js, jm);
+		  batched = YES;
 		}
+	      ja = (*env)->CallObjectMethod(env, ji->statement,
+		ji->executeBatch);
 	      JException(env);
+	      array = (*env)->GetIntArrayElements(env, ja, 0);
+	      for (statement = 0; statement < numberOfStatements; statement++)
+		{
+		  if (array[statement] < 0 && array[statement] != -2)
+		    {
+		      break;
+		    }
+		}
+	      (*env)->ReleaseIntArrayElements(env, ja, array, 0);
+
+	      batched = NO;
+	      (*env)->CallVoidMethod(env, ji->statement, ji->clearBatch);
+	      JException(env);
+
+	      if (statement != numberOfStatements)
+	        {
+		  [NSException raise: NSGenericException
+			      format: @"Problem with statement %d in batch",
+		    statement];
+		}
+	    }
+	  else
+	    {
+	      /* Not batchable ... execute as a transaction without
+	       * batching :-(
+	       */
+	      for (statement = 0; statement < numberOfStatements; statement++)
+		{
+		  NSString	*stmt = [statements objectAtIndex: statement];
+		  jmethodID	jm;
+		  jobject	js;
+
+		  if ([_info objectAtIndex: pos] == marker)
+		    {
+		      pos++;	// Step past end of statement data.
+		      (*env)->CallIntMethod (env, ji->statement,
+			ji->executeUpdate, JStringFromNSString(env, stmt));
+		    }
+		  else
+		    {
+		      NSData	*data;
+		      int	i = 1;
+		      jclass	jc;
+
+		      stmt = [stmt stringByReplacingString: @"'?'''?'"
+						withString: @"?"];
+
+		      js = (*env)->CallObjectMethod
+			(env, ji->connection, ji->prepare,
+			JStringFromNSString(env, stmt));
+		      JException(env);
+
+		      jc = (*env)->GetObjectClass(env, js);
+		      JException(env);
+		      jm = (*env)->GetMethodID (env, jc, "setBytes", "(I[B)V");
+		      JException(env);
+
+		      /* Get data arguments for statement.
+		       */
+		      while ((data = [_info objectAtIndex: pos++]) != marker)
+			{
+			  (*env)->CallIntMethod (env, js, jm, i++,
+			    ByteArrayFromNSData(env, data));
+			  JException(env);
+			}
+
+		      jm = (*env)->GetMethodID(env, jc, "executeUpdate", "()I");
+		      JException(env);
+		      (*env)->CallIntMethod (env, js, jm);
+		    }
+		  JException(env);
+		}
 	    }
 
 	  if (wrapped == YES)
@@ -1788,12 +1885,30 @@ static id	marker = @"End of statement data";
 	    }
 
 	  (*env)->PopLocalFrame (env, NULL);
+
+	  ((CDefs)_db)->_lastOperation = GSTickerTimeNow();
+	  if (_duration >= 0)
+	    {
+	      NSTimeInterval	d;
+
+	      d = ((CDefs)_db)->_lastOperation - start;
+	      if (d >= _duration)
+		{
+		  [_db debug: @"Duration %g for transaction %@",
+		    d, statements];
+		}
+	    }
 	}
       NS_HANDLER
 	{
 	  if (wrapped == YES)
 	    {
 	      (*env)->CallVoidMethod (env, ji->connection, ji->rollback);
+	      JException(env);
+	    }
+	  if (batched == YES)
+	    {
+	      (*env)->CallVoidMethod(env, ji->statement, ji->clearBatch);
 	      JException(env);
 	    }
 	  (*env)->PopLocalFrame (env, NULL);

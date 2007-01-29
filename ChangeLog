@@ -1,5 +1,12 @@
 2007-01-29 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* JDBC.m: Add JDBC2.0 batching for when all statements in a
+	transaction are simple (ie no NSData arguments) and the batch
+	API is supported by the driver.
+	* testJDBC.m: Add simple transaction/batch test.
+
+2007-01-29 Richard Frith-Macdonald  <rfm@gnu.org>
+
 	* JDBC.m: Add support for SQLTransaction class to batch JDBC
 	operations.
 
