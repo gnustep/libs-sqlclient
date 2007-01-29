@@ -1,3 +1,8 @@
+2007-01-29 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* JDBC.m: Add support for SQLTransaction class to batch JDBC
+	operations.
+
 2006-12-24 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* JDBC.m: Don't store pointer to jni information in local variable

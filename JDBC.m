@@ -45,6 +45,13 @@
 #include	"config.h"
 #include	"SQLClient.h"
 
+@interface	_JDBCTransaction : SQLTransaction
+@end
+
+typedef struct {
+  @defs(_JDBCTransaction);
+} *TDefs;
+
 #include	<jni.h>
 
 static NSString	*JDBCException = @"SQLClientJDBCException";
@@ -846,6 +853,11 @@ static	int	JDBCVARCHAR = 0;
     }
 }
 
+- (JInfo*) _backendExtra
+{
+  return (JInfo*)extra;
+}
+
 - (BOOL) backendConnect
 {
   if (extra == 0)
@@ -1511,6 +1523,12 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
   NS_ENDHANDLER
 }
 
+- (void) dealloc
+{
+  [self backendDisconnect];
+  [super dealloc];
+}
+
 - (NSString*) quoteString: (NSString *)s
 {
   static NSCharacterSet	*special = nil;
@@ -1604,11 +1622,194 @@ NSLog(@"CONNECT '%@', '%@', '%@'",
     }
 }
 
-- (void) dealloc
+- (SQLTransaction*) transaction
 {
-  [self backendDisconnect];
-  [super dealloc];
+  TDefs	transaction;
+
+  transaction = (TDefs)NSAllocateObject([_JDBCTransaction class], 0,
+    NSDefaultMallocZone());
+ 
+  transaction->_db = RETAIN(self);
+  transaction->_info = [NSMutableArray new];
+  return AUTORELEASE((SQLTransaction*)transaction);
+}
+@end
+
+@implementation	_JDBCTransaction
+
+// Marker for the end of data owned by a statement
+static id	marker = @"End of statement data";
+
+- (NSString*) description
+{
+  return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
+    [super description],
+    (_count == 0 ? (id)@"" : (id)[_info objectAtIndex: 0]), _db];
+}
+
+- (void) _addInfo: (NSArray*)info
+{
+  if (_count == 0)
+    {
+      id		o = [info objectAtIndex: 0];
+      NSMutableArray	*ma;
+
+      if ([o isKindOfClass: [NSString class]] == YES)
+        {
+	  ma = [[NSMutableArray alloc] initWithObjects: &o count: 1];
+	}
+      else
+        {
+          ma = [(NSArray*)o mutableCopy];
+	}
+      [_info addObjectsFromArray: info];
+      [_info replaceObjectAtIndex: 0 withObject: ma];
+      RELEASE(ma);
+    }
+  else
+    {
+      unsigned		c = [info count];
+      unsigned		i = 1;
+      id		o = [info objectAtIndex: 0];
+      NSMutableArray	*ma = [_info objectAtIndex: 0];
+
+      if ([o isKindOfClass: [NSString class]] == YES)
+        {
+	  [ma addObject: (NSString*)o];
+	}
+      else
+        {
+          [ma addObjectsFromArray: (NSArray*)o];
+	}
+      while (i < c)
+	{
+	  [_info addObject: [info objectAtIndex: i++]];
+	}
+    }
+
+  /* If the info item being added is a simple statement rather than the
+   * content of another transaction, we must add an end-of-statement marker.
+   */
+  if ([info lastObject] != marker)
+    {
+      [_info addObject: marker];
+    }
+  _count++;
+}
+
+- (void) execute
+{
+  if (_count > 0)
+    {
+      CREATE_AUTORELEASE_POOL(arp);
+      BOOL	wrapped = NO;
+      JNIEnv	*env;
+      JInfo	*ji;
+
+      /*
+       * Ensure we have a working connection.
+       */
+      if ([_db backendConnect] == NO)
+	{
+	  [NSException raise: SQLException
+	    format: @"Unable to connect to '%@' to execute transaction %@",
+	    [_db name], self];
+	} 
+
+      env = SQLClientJNIEnv();
+      if ((*env)->PushLocalFrame (env, 32) < 0)
+	{
+	  JExceptionClear(env);
+	  RELEASE (arp);
+	  [NSException raise: NSInternalInconsistencyException
+		      format: @"No java memory for execute"];
+	}
+
+      ji = [(SQLClientJDBC*)_db _backendExtra];
+
+      NS_DURING
+	{
+	  NSMutableArray	*statements = [_info objectAtIndex: 0];
+	  unsigned		statement = 0;
+	  unsigned		pos = 1;
+
+	  if ([_db isInTransaction] == NO)
+	    {
+	      wrapped = YES;
+	    }
+
+	  while (statement < [statements count])
+	    {
+	      NSString	*stmt = [statements objectAtIndex: statement++];
+	      jmethodID	jm;
+	      jobject	js;
+
+	      if ([_info objectAtIndex: pos] == marker)
+	        {
+		  pos++;	// Step past end of statement data.
+		  (*env)->CallIntMethod (env, ji->statement,
+		    ji->executeUpdate, JStringFromNSString(env, stmt));
+		}
+	      else
+		{
+		  NSData	*data;
+		  int		i = 1;
+		  jclass	jc;
+
+		  stmt = [stmt stringByReplacingString: @"'?'''?'"
+					    withString: @"?"];
+
+		  js = (*env)->CallObjectMethod
+		    (env, ji->connection, ji->prepare,
+		    JStringFromNSString(env, stmt));
+		  JException(env);
+
+		  jc = (*env)->GetObjectClass(env, js);
+		  JException(env);
+		  jm = (*env)->GetMethodID (env, jc, "setBytes", "(I[B)V");
+		  JException(env);
+
+		  /* Get data arguements for statement.
+		   */
+		  while ((data = [_info objectAtIndex: pos++]) != marker)
+		    {
+		      (*env)->CallIntMethod (env, js, jm, i++,
+			ByteArrayFromNSData(env, data));
+		      JException(env);
+		    }
+
+		  jm = (*env)->GetMethodID (env, jc, "executeUpdate", "()I");
+		  JException(env);
+		  (*env)->CallIntMethod (env, js, jm);
+		}
+	      JException(env);
+	    }
+
+	  if (wrapped == YES)
+	    {
+	      wrapped = NO;
+	      (*env)->CallVoidMethod (env, ji->connection, ji->commit);
+	      JException(env);
+	    }
+
+	  (*env)->PopLocalFrame (env, NULL);
+	}
+      NS_HANDLER
+	{
+	  if (wrapped == YES)
+	    {
+	      (*env)->CallVoidMethod (env, ji->connection, ji->commit);
+	      JException(env);
+	    }
+	  (*env)->PopLocalFrame (env, NULL);
+	  [localException raise];
+	}
+      NS_ENDHANDLER
+
+      RELEASE(arp);
+    }
 }
 
 @end
+
 
