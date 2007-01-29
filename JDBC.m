@@ -1786,13 +1786,14 @@ static id	marker = @"End of statement data";
 	    {
 	      jintArray	ja;
 	      jint	*array;
+	      int	status = 0;
 
 	      /* We have multiple statements without arguments ... so this
 	       * is batchable.
 	       */
 	      for (statement = 0; statement < numberOfStatements; statement++)
 		{
-		  NSString	*stmt = [statements objectAtIndex: statement++];
+		  NSString	*stmt = [statements objectAtIndex: statement];
 		  jobject	js;
 
 		  js = (*env)->CallObjectMethod(env, ji->statement,
@@ -1806,7 +1807,8 @@ static id	marker = @"End of statement data";
 	      array = (*env)->GetIntArrayElements(env, ja, 0);
 	      for (statement = 0; statement < numberOfStatements; statement++)
 		{
-		  if (array[statement] < 0 && array[statement] != -2)
+		  status = array[statement];
+		  if (status < 0 && status != -2)
 		    {
 		      break;
 		    }
@@ -1820,8 +1822,8 @@ static id	marker = @"End of statement data";
 	      if (statement != numberOfStatements)
 	        {
 		  [NSException raise: NSGenericException
-			      format: @"Problem with statement %d in batch",
-		    statement];
+		    format: @"Statement %d error %d in batch with %@",
+		    statement, status, [statements objectAtIndex: statement]];
 		}
 	    }
 	  else
