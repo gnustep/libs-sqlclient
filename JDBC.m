@@ -895,8 +895,8 @@ static	int	JDBCVARCHAR = 0;
 	      env = SQLClientJNIEnv();
 	      if (env == 0)
 	        {
-		  [self debug: @"Connect to '%@' failed to set up Java runtime",
-		    [self name]];
+		  NSLog(@"Connect to '%@' failed to set up Java runtime",
+		    [self name]);
 		  return NO;
 		}
 
@@ -906,8 +906,10 @@ static	int	JDBCVARCHAR = 0;
 	      if ((*env)->FindClass(env, [cname UTF8String]) == 0)
 	        {
 		  JExceptionClear (env);
-		  [self debug: @"Connect to '%@' failed to load driver '%@'",
-		    [self name], cname];
+		  NSLog(@"Connect to '%@' failed to load driver '%@'.\n"
+		    @"Perhaps you need to set your CLASSPATH environment "
+		    @"variable to point to the location of your JDBC library.",
+		    [self name], cname);
 		  return NO;
 		}
 
@@ -926,8 +928,10 @@ static	int	JDBCVARCHAR = 0;
 	        {
 		  JExceptionClear (env);
 		  (*env)->PopLocalFrame (env, NULL);
-		  [self debug: @"Connect to '%@' failed to load DriverManager",
-		    [self name]];
+		  NSLog(@"Connect to '%@' failed to load DriverManager\n"
+		    @"Perhaps you need to set your CLASSPATH environment "
+		    @"variable to point to the location of your JDBC library.",
+		    [self name]);
 		  return NO;
 		}
 
