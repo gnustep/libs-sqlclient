@@ -1241,7 +1241,7 @@ static	int	JDBCVARCHAR = 0;
   DESTROY(arp);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt
+- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
 {
   NSMutableArray	*records = nil;
   CREATE_AUTORELEASE_POOL(arp);
@@ -1474,9 +1474,9 @@ static	int	JDBCVARCHAR = 0;
 		  [localException raise];
 		}
 	      NS_ENDHANDLER
-	      record = [SQLRecord newWithValues: values
-					   keys: keys
-					  count: fieldCount];
+	      record = [rClass newWithValues: values
+					keys: keys
+				       count: fieldCount];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }

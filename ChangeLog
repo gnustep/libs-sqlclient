@@ -1,3 +1,20 @@
+2007-03-08 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* MySQL.m:
+	* ECPG.pgm:
+	* Postgres.m:
+	* Oracle.pm:
+	* SQLite.m:
+	* JDBC.m:
+	Add KVC support for SQLRecord.  Make SQLRecord into a class cluster
+	with a single concrete implementation for now.  Extend API to allow
+	specifying of an alternative SQLRecord subclass when doing a query
+	so that query results can be efficiently stored into custom subclasses
+	rather than having to first be retrieved into an SQLRecord and then
+	copied.
+
 2007-02-14  Nicola Pero <nicola.pero@meta-innovation.com>
 
 	* GNUmakefile (BUNDLE_INSTALL_DIR): Set using GNUSTEP_BUNDLES,

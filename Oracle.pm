@@ -326,7 +326,7 @@ static unsigned int trim(char *str)
   return (str - start);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt
+- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
 {
   EXEC SQL BEGIN DECLARE SECTION;
   int	count;
@@ -597,9 +597,9 @@ static unsigned int trim(char *str)
 		  keys[index - 1] = [NSString stringWithUTF8String:
 						fieldName];
 		}
-	      record = [SQLRecord newWithValues: values
-				  keys: keys
-				  count: count];
+	      record = [rClass newWithValues: values
+					keys: keys
+				       count: count];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }

@@ -285,6 +285,9 @@ typedef	struct {
   @defs(SQLTransaction);
 } *TDefs;
 
+@class	_SQLRecord;
+static Class rClass = 0;
+
 @implementation	SQLRecord
 + (id) allocWithZone: (NSZone*)aZone
 {
@@ -298,16 +301,226 @@ typedef	struct {
   if (null == nil)
     {
       null = [NSNull new];
+      rClass = [_SQLRecord class];
     }
 }
 
 + (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
 {
+  return [rClass newWithValues: v keys: k count: c];
+}
+
+- (NSArray*) allKeys
+{
+  unsigned	count = [self count];
+  id		buf[count];
+
+  while (count-- > 0)
+    {
+      buf[count] = [self keyAtIndex: count];
+    }
+  return [NSArray arrayWithObjects: buf count: count];
+}
+
+- (id) copyWithZone: (NSZone*)z
+{
+  return RETAIN(self);
+}
+
+- (unsigned int) count
+{
+  [self subclassResponsibility: _cmd];
+  return 0;
+}
+
+- (NSMutableDictionary*) dictionary
+{
+  unsigned		count = [self count];
+  id			keys[count];
+  id			vals[count];
+
+  [self getKeys: keys];
+  [self getObjects: vals];
+  return [NSMutableDictionary dictionaryWithObjects: vals
+					    forKeys: keys
+					      count: count];
+}
+
+- (void) getKeys: (id*)buf
+{
+  unsigned	i = [self count];
+
+  while (i-- > 0)
+    {
+      buf[i] = [self keyAtIndex: i];
+    }
+}
+
+- (void) getObjects: (id*)buf
+{
+  unsigned	i = [self count];
+
+  while (i-- > 0)
+    {
+      buf[i] = [self objectAtIndex: i];
+    }
+}
+
+- (id) init
+{
+  NSLog(@"Illegal attempt to -init an SQLRecord");
+  DESTROY(self);
+  return self;
+}
+
+- (NSString*) keyAtIndex: (unsigned int)pos
+{
+  return [self subclassResponsibility: _cmd];
+}
+
+- (id) objectAtIndex: (unsigned int)pos
+{
+  return [self subclassResponsibility: _cmd];
+}
+
+- (id) objectForKey: (NSString*)key
+{
+  unsigned	count = [self count];
+  unsigned	pos;
+  id		keys[count];
+
+  [self getKeys: keys];
+  for (pos = 0; pos < count; pos++)
+    {
+      if ([key isEqualToString: keys[pos]] == YES)
+        {
+	  break;
+	}
+    }
+  if (pos == count)
+    {
+      for (pos = 0; pos < count; pos++)
+	{
+	  if ([key caseInsensitiveCompare: keys[pos]] == NSOrderedSame)
+	    {
+	      break;
+	    }
+	}
+    }
+
+  if (pos == count)
+    {
+      return nil;
+    }
+  else
+    {
+      return [self objectAtIndex: pos];
+    }
+}
+
+- (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject
+{
+  [self subclassResponsibility: _cmd];
+}
+
+- (void) setObject: (id)anObject forKey: (NSString*)aKey
+{
+  unsigned	count = [self count];
+  unsigned	pos;
+  id		keys[count];
+
+  if (anObject == nil)
+    {
+      anObject = null;
+    }
+  [self getKeys: keys];
+  for (pos = 0; pos < count; pos++)
+    {
+      if ([aKey isEqualToString: keys[pos]] == YES)
+        {
+	  break;
+	}
+    }
+  if (pos == count)
+    {
+      for (pos = 0; pos < count; pos++)
+	{
+	  if ([aKey caseInsensitiveCompare: keys[pos]] == NSOrderedSame)
+	    {
+	      break;
+	    }
+	}
+    }
+
+  if (pos == count)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"Bad key (%@) in -setObject:forKey:", aKey];
+    }
+  else
+    {
+      [self replaceObjectAtIndex: pos withObject: anObject];
+    }
+}
+
+- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+{
+  if ([exclude member: self] != nil)
+    {
+      return 0;
+    }
+  else
+    {
+      unsigned	size = [super sizeInBytes: exclude];
+      unsigned	pos;
+      unsigned	count = [self count];
+      id	vals[count];
+
+      [self getObjects: vals];
+      for (pos = 0; pos < count; pos++)
+	{
+	  size += [vals[pos] sizeInBytes: exclude];
+	}
+      return size;
+    }
+}
+
+@end
+
+@implementation	SQLRecord (KVC)
+- (void) setValue: (id)aValue forKey: (NSString*)aKey
+{
+  [self setObject: aValue forKey: aKey];
+}
+- (id) valueForKey: (NSString*)aKey
+{
+  id	v = [self objectForKey: aKey];
+
+  if (v == nil)
+    {
+      v = [super valueForKey: aKey];
+    }
+  return v;
+}
+@end
+
+
+@interface	_SQLRecord : SQLRecord
+{
+  unsigned	count;
+}
+@end
+
+@implementation	_SQLRecord
+
++ (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
+{
   id		*ptr;
-  SQLRecord	*r;
+  _SQLRecord	*r;
   unsigned	pos;
 
-  r = (SQLRecord*)NSAllocateObject(self, c*2*sizeof(id), NSDefaultMallocZone());
+  r = (_SQLRecord*)NSAllocateObject(self,
+    c*2*sizeof(id), NSDefaultMallocZone());
   r->count = c;
   ptr = ((void*)&(r->count)) + sizeof(r->count);
   for (pos = 0; pos < c; pos++)
@@ -372,6 +585,19 @@ typedef	struct {
   return d;
 }
 
+- (void) getKeys: (id*)buf
+{
+  id		*ptr;
+  unsigned	pos;
+
+  ptr = ((void*)&count) + sizeof(count);
+  ptr += count;	// Step past objects to keys.
+  for (pos = 0; pos < count; pos++)
+    {
+      buf[pos] = ptr[pos];
+    }
+}
+
 - (void) getObjects: (id*)buf
 {
   id		*ptr;
@@ -389,6 +615,20 @@ typedef	struct {
   NSLog(@"Illegal attempt to -init an SQLRecord");
   DESTROY(self);
   return self;
+}
+
+- (id) keyAtIndex: (unsigned int)pos
+{
+  id	*ptr;
+
+  if (pos >= count)
+    {
+      [NSException raise: NSRangeException
+		  format: @"Array index too large"];
+    }
+  ptr = ((void*)&count) + sizeof(count);
+  ptr += count;
+  return ptr[pos];
 }
 
 - (id) objectAtIndex: (unsigned int)pos
@@ -425,6 +665,24 @@ typedef	struct {
 	}
     }
   return nil;
+}
+
+- (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject
+{
+  id		*ptr;
+
+  if (index >= count)
+    {
+      [NSException raise: NSRangeException
+		  format: @"Array index too large"];
+    }
+  if (anObject == nil)
+    {
+      anObject = null;
+    }
+  ptr = ((void*)&count) + sizeof(count);
+  ptr += index;
+  ASSIGN(*ptr, anObject);
 }
 
 - (void) setObject: (id)anObject forKey: (NSString*)aKey
@@ -643,10 +901,7 @@ static unsigned int	maxConnections = 8;
 + (void) initialize
 {
   GSTickerTimeNow();
-  if (null == nil)
-    {
-      null = [NSNull new];
-    }
+  [SQLRecord class];	// Force initialisation
   if (clientsMap == 0)
     {
       clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
@@ -768,6 +1023,30 @@ static unsigned int	maxConnections = 8;
       [NSException raise: NSInternalInconsistencyException
 		  format: @"begin used inside transaction"];
     }
+}
+
+- (NSString*) buildQuery: (NSString*)stmt, ...
+{
+  va_list	ap;
+  NSString	*sql = nil;
+
+  /*
+   * First check validity and concatenate parts of the query.
+   */
+  va_start (ap, stmt);
+  sql = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
+
+  return sql;
+}
+
+- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
+{
+  NSString	*sql = nil;
+
+  sql = [[self _substitute: stmt with: values] objectAtIndex: 0];
+
+  return sql;
 }
 
 - (NSString*) clientName
@@ -1448,8 +1727,18 @@ static unsigned int	maxConnections = 8;
 
 - (NSMutableArray*) simpleQuery: (NSString*)stmt
 {
+  return [self simpleQuery: stmt recordClass: rClass];
+}
+
+- (NSMutableArray*) simpleQuery: (NSString*)stmt recordClass: (Class)cls
+{
   NSMutableArray	*result = nil;
 
+  if (cls == 0)
+    {
+      [NSException raise: NSInvalidArgumentException
+        format: @"nil class passed to simpleQuery:recordClass:"];
+    }
   [lock lock];
   NS_DURING
     {
@@ -1459,7 +1748,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  start = GSTickerTimeNow();
 	}
-      result = [self backendQuery: stmt];
+      result = [self backendQuery: stmt recordClass: cls];
       _lastOperation = GSTickerTimeNow();
       if (_duration >= 0)
 	{
@@ -1514,6 +1803,11 @@ static unsigned int	maxConnections = 8;
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt
+{
+  return [self backendQuery: stmt recordClass: rClass];
+}
+
+- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)cls
 {
   [NSException raise: NSInternalInconsistencyException
 	      format: @"Called -%@ without backend bundle loaded",
@@ -2126,10 +2420,23 @@ static unsigned int	maxConnections = 8;
   return [self cache: seconds simpleQuery: stmt];
 }
 
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt
+- (NSMutableArray*) cache: (int)seconds
+	      simpleQuery: (NSString*)stmt
+{
+  return [self cache: seconds simpleQuery: stmt recordClass: rClass];
+}
+
+- (NSMutableArray*) cache: (int)seconds
+	      simpleQuery: (NSString*)stmt
+	      recordClass: (Class)cls
 {
   NSMutableArray	*result = nil;
 
+  if (cls == 0)
+    {
+      [NSException raise: NSInvalidArgumentException
+        format: @"nil class passed to cache:simpleQuery:recordClass:"];
+    }
   [lock lock];
   NS_DURING
     {
@@ -2148,7 +2455,7 @@ static unsigned int	maxConnections = 8;
 
       if (result == nil)
 	{
-	  result = toCache = [self backendQuery: stmt];
+	  result = toCache = [self backendQuery: stmt recordClass: cls];
 	  _lastOperation = GSTickerTimeNow();
 	  if (_duration >= 0)
 	    {

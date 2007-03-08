@@ -188,15 +188,17 @@
 @class	SQLTransaction;
 
 /**
- * An enhanced array to represent a record returned from a query.
+ * <p>An enhanced array to represent a record returned from a query.
  * You should <em>NOT</em> try to create instances of this class
  * except via the +newWithValues:keys:count: method.
+ * </p>
+ * <p>NB. SQLRecord is the abstract base class of a class cluster.
+ * If you wish to subclass it you must implement the primitive methods
+ * +newWithValues:keys:count: -count -keyAtIndex: -objectAtIndex:
+ * and -replaceObjectAtIndex:withObject:
+ * </p>
  */
 @interface SQLRecord : NSArray
-{
-@private
-  unsigned int	count;
-}
 
 /**
  * Create a new SQLRecord containing the specified fields.<br />
@@ -213,21 +215,48 @@
 - (NSArray*) allKeys;
 
 /**
+ * Returns the number of items in the record.<br />
+ * Subclasses must implement this method.
+ */
+- (unsigned) count;
+
+/**
  * Return the record as a mutable dictionary with the keys as the
  * record field names standardised to be lowercase strings.
  */
 - (NSMutableDictionary*) dictionary;
 
 /**
+ * Optimised mechanism for retrieving all keys in order.
+ */
+- (void) getKeys: (id*)buf;
+
+/**
  * Optimised mechanism for retrieving all objects.
  */
 - (void) getObjects: (id*)buf;
+
+/** <override-subclass />
+ * Returns the key at the specified indes.<br />
+ */
+- (NSString*) keyAtIndex: (unsigned)index;
+
+/** <override-subclass />
+ * Returns the object at the specified indes.<br />
+ */
+- (id) objectAtIndex: (unsigned)index;
 
 /**
  * Returns the value of the named field.<br />
  * The field name is case insensitive.
  */
 - (id) objectForKey: (NSString*)key;
+
+/**
+ * Replaces the value at the specified index.<br />
+ * Subclasses must implement this method.
+ */
+- (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject;
 
 /**
  * Replaces the value of the named field.<br />
@@ -401,6 +430,49 @@ extern unsigned	SQLClientTimeTick();
 - (void) begin;
 
 /**
+ * <p>Build an sql query string using the supplied arguments.
+ * </p>
+ * <p>This method has at least one argument, the string starting the
+ * query to be executed (which must have the prefix 'select ').
+ * </p>
+ * <p>Additional arguments are a nil terminated list which also be strings,
+ * and these are appended to the statement.<br />
+ * Any string arguments are assumed to have been quoted appropriately
+ * already, but non-string arguments are automatically quoted using the
+ * -quote: method.
+ * </p>
+ * <example>
+ *   sql = [db buildQuery: @"SELECT Name FROM ", table, nil];
+ * </example>
+ * <p>Upon error, an exception is raised.
+ * </p>
+ * <p>The method returns a string containing sql suitable for passing to
+ * the -simpleQuery:recordClass: or -cache:simpleQuery:recordClass: methods.
+ * </p>
+ */
+- (NSString*) buildQuery: (NSString*)stmt,...;
+
+/**
+ * Takes the query statement and substitutes in values from
+ * the dictionary where markup of the format {key} is found.<br />
+ * Returns the resulting query string.
+ * <example>
+ *   sql = [db buildQuery: @"SELECT Name FROM {Table} WHERE ID = {ID}"
+ *                   with: values];
+ * </example>
+ * <p>Any non-string values in the dictionary will be replaced by
+ * the results of the -quote: method.<br />
+ * The markup format may also be {key?default} where <em>default</em>
+ * is a string to be used if there is no value for the <em>key</em>
+ * in the dictionary.
+ * </p>
+ * <p>The method returns a string containing sql suitable for passing to
+ * the -simpleQuery:recordClass: or -cache:simpleQuery:recordClass: methods.
+ * </p>
+ */
+- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
+
+/**
  * Return the client name for this instance.<br />
  * Normally this is useful only for debugging/reporting purposes, but
  * if you are using multiple instances of this class in your application,
@@ -548,14 +620,8 @@ extern unsigned	SQLClientTimeTick();
 /**
  * <p>Perform arbitrary query <em>which returns values.</em>
  * </p>
- * <p>This method has at least one argument, the string starting the
- * statement to be executed (which must have the prefix 'select ').
- * </p>
- * <p>Additional arguments are a nil terminated list which also be strings,
- * and these are appended to the statement.<br />
- * Any string arguments are assumed to have been quoted appropriately
- * already, but non-string arguments are automatically quoted using the
- * -quote: method.
+ * <p>This method handles its arguments in the same way as the -buildQuery:,...
+ * method and returns the result of the query.
  * </p>
  * <example>
  *   result = [db query: @"SELECT Name FROM ", table, nil];
@@ -579,8 +645,8 @@ extern unsigned	SQLClientTimeTick();
 
 /**
  * Takes the query statement and substitutes in values from
- * the dictionary where markup of the format {key} is found.<br />
- * Passes the result to the -query:,... method to execute.
+ * the dictionary (in the same manner as the -buildQuery:with: method)
+ * then executes the query and returns the response.<br />
  * <example>
  *   result = [db query: @"SELECT Name FROM {Table} WHERE ID = {ID}"
  *                 with: values];
@@ -702,11 +768,16 @@ extern unsigned	SQLClientTimeTick();
 - (void) simpleExecute: (NSArray*)info;
 
 /**
- * Calls -backendQuery: in a safe manner.<br />
+ * Calls -simpleQuery:recordClass: with the default record class.
+ */
+- (NSMutableArray*) simpleQuery: (NSString*)stmt;
+
+/**
+ * Calls -backendQuery:recordClass: in a safe manner.<br />
  * Handles locking.<br />
  * Maintains -lastOperation date.
  */
-- (NSMutableArray*) simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) simpleQuery: (NSString*)stmt recordClass: (Class)cls;
 
 /**
  * Return the database user for this instance (or nil).
@@ -802,7 +873,8 @@ extern unsigned	SQLClientTimeTick();
  * <p>Perform arbitrary query <em>which returns values.</em>
  * </p>
  * <example>
- *   result = [db backendQuery: @"SELECT Name FROM Table"];
+ *   result = [db backendQuery: @"SELECT Name FROM Table"
+ *                 recordClass: [SQLRecord class]];
  * </example>
  * <p>Upon error, an exception is raised.
  * </p>
@@ -821,6 +893,16 @@ extern unsigned	SQLClientTimeTick();
  * <p>Application code must <em>not</em> call this method directly, it is
  * for internal use only.
  * </p>
+ * <p>The cls argument specifies a subclass of [SQLRecord] to be used to
+ * create the records produced by the query.<br />
+ * This is provided as a performance optimisation when you want to store
+ * data directly into a special class of your own.
+ * </p>
+ */
+- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)cls;
+
+/**
+ * Calls -backendQuery:recordClass: with the default record class.
  */
 - (NSMutableArray*) backendQuery: (NSString*)stmt;
 
@@ -1016,6 +1098,11 @@ extern unsigned	SQLClientTimeTick();
 		     with: (NSDictionary*)values;
 
 /**
+ * Calls -cache:simpleQuery:recordClass: with the default record class.
+ */
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+
+/**
  * If the result of the query is already cached and is still valid,
  * return it. Otherwise, perform the query and cache the result
  * giving it the specified lifetime in seconds.<br />
@@ -1026,7 +1113,9 @@ extern unsigned	SQLClientTimeTick();
  * Handles locking.<br />
  * Maintains -lastOperation date.
  */
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) cache: (int)seconds
+	      simpleQuery: (NSString*)stmt
+	      recordClass: (Class)cls;
 
 /**
  * Sets the cache to be used by the receiver for storing the results of

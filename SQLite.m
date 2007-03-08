@@ -194,7 +194,7 @@
   DESTROY(arp);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt
+- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
 {
   CREATE_AUTORELEASE_POOL(arp);
   NSMutableArray	*records = [[NSMutableArray alloc] init];
@@ -281,9 +281,9 @@
 		    }
 		}
 
-	      record = [SQLRecord newWithValues: values
-					   keys: keys
-					  count: columns];
+	      record = [rClass newWithValues: values
+				        keys: keys
+				       count: columns];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }

@@ -363,7 +363,7 @@ static unsigned int trim(char *str)
   return (str - start);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt
+- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
 {
   CREATE_AUTORELEASE_POOL(arp);
   PGresult		*result = 0;
@@ -490,9 +490,9 @@ static unsigned int trim(char *str)
 		    }
 		  values[j] = v;
 		}
-	      record = [SQLRecord newWithValues: values
-					   keys: keys
-					  count: fieldCount];
+	      record = [rClass newWithValues: values
+					keys: keys
+				       count: fieldCount];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }
