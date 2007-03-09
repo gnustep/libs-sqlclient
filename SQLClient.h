@@ -192,10 +192,16 @@
  * You should <em>NOT</em> try to create instances of this class
  * except via the +newWithValues:keys:count: method.
  * </p>
- * <p>NB. SQLRecord is the abstract base class of a class cluster.
+ * <p>SQLRecord is the abstract base class of a class cluster.
  * If you wish to subclass it you must implement the primitive methods
  * +newWithValues:keys:count: -count -keyAtIndex: -objectAtIndex:
  * and -replaceObjectAtIndex:withObject:
+ * </p>
+ * <p>NB. You do not need to use SQLRecord (or a subclass of it), all you
+ * actually need to supply is a class which responds to the
+ * +newWithValues:keys:count: method that the system uses to create
+ * new records ... none of the other methods of the SQLRecord class
+ * are used internally by the SQLClient system.
  * </p>
  */
 @interface SQLRecord : NSArray
@@ -775,7 +781,9 @@ extern unsigned	SQLClientTimeTick();
 /**
  * Calls -backendQuery:recordClass: in a safe manner.<br />
  * Handles locking.<br />
- * Maintains -lastOperation date.
+ * Maintains -lastOperation date.<br />
+ * The value of cls must be a class which responds to the
+ * [SQLRecord+newWithValues:keys:count:] method.
  */
 - (NSMutableArray*) simpleQuery: (NSString*)stmt recordClass: (Class)cls;
 
@@ -893,10 +901,12 @@ extern unsigned	SQLClientTimeTick();
  * <p>Application code must <em>not</em> call this method directly, it is
  * for internal use only.
  * </p>
- * <p>The cls argument specifies a subclass of [SQLRecord] to be used to
+ * <p>The cls argument specifies a class of to be used to
  * create the records produced by the query.<br />
  * This is provided as a performance optimisation when you want to store
- * data directly into a special class of your own.
+ * data directly into a special class of your own.<br />
+ * The class must respond to the [SQLRecord +newWithValues:keys:count:]
+ * method.
  * </p>
  */
 - (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)cls;
@@ -1111,7 +1121,9 @@ extern unsigned	SQLClientTimeTick();
  * set the lifetime of the results.<br />
  * If seconds is zero, the cache for this query is emptied.<br />
  * Handles locking.<br />
- * Maintains -lastOperation date.
+ * Maintains -lastOperation date.<br />
+ * The value of cls must be a class which responds to the
+ * [SQLRecord+newWithValues:keys:count:] method.
  */
 - (NSMutableArray*) cache: (int)seconds
 	      simpleQuery: (NSString*)stmt
