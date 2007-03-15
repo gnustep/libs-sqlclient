@@ -285,7 +285,7 @@ typedef	struct {
   @defs(SQLTransaction);
 } *TDefs;
 
-@class	_SQLRecord;
+@class	_ConcreteSQLRecord;
 static Class rClass = 0;
 
 @implementation	SQLRecord
@@ -301,7 +301,7 @@ static Class rClass = 0;
   if (null == nil)
     {
       null = [NSNull new];
-      rClass = [_SQLRecord class];
+      rClass = [_ConcreteSQLRecord class];
     }
 }
 
@@ -505,21 +505,21 @@ static Class rClass = 0;
 @end
 
 
-@interface	_SQLRecord : SQLRecord
+@interface	_ConcreteSQLRecord : SQLRecord
 {
   unsigned	count;
 }
 @end
 
-@implementation	_SQLRecord
+@implementation	_ConcreteSQLRecord
 
 + (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
 {
   id		*ptr;
-  _SQLRecord	*r;
+  _ConcreteSQLRecord	*r;
   unsigned	pos;
 
-  r = (_SQLRecord*)NSAllocateObject(self,
+  r = (_ConcreteSQLRecord*)NSAllocateObject(self,
     c*2*sizeof(id), NSDefaultMallocZone());
   r->count = c;
   ptr = ((void*)&(r->count)) + sizeof(r->count);
