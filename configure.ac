@@ -309,6 +309,22 @@ if test "$ECPG" = ""; then
 fi
 
 if test "$POSTGRES" = ""; then
+  AC_CHECK_HEADERS(/usr/local/pgsql/include/libpq-fe.h)
+  CPPFLAGS="$save_CPPFLAGS"
+  if test "$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/pgsql/include"
+    POSTGRES=yes
+  fi
+fi
+if test "$ECPG" = ""; then
+  AC_CHECK_HEADERS(/usr/local/pgsql/include/ecpglib.h)
+  if test "$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = "yes"; then
+    INCD="$INCD -I/usr/local/pgsql/include"
+    ECPG=yes
+  fi
+fi
+
+if test "$POSTGRES" = ""; then
   echo "**************************************************************"
   echo "Unable to locate libpq (postgres) headers (are they installed)"
   echo "**************************************************************"
@@ -328,6 +344,11 @@ if test "$POSTGRES" = "yes"; then
     if test -d /usr/local/lib/pgsql ; then
       CPPFLAGS="$CPPFLAGS -L/usr/local/lib/pgsql"
       LIBD="$LIBD -L/usr/local/lib/pgsql"
+    else
+      if test -d /usr/local/pgsql/lib ; then
+        CPPFLAGS="$CPPFLAGS -L/usr/local/pgsql/lib"
+        LIBD="$LIBD -L/usr/local/pgsql/lib"
+      fi
     fi
   fi
  
