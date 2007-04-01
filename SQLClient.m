@@ -25,33 +25,43 @@
    $Date$ $Revision$
    */ 
 
-#include	<Foundation/NSArray.h>
-#include	<Foundation/NSString.h>
-#include	<Foundation/NSData.h>
-#include	<Foundation/NSDate.h>
-#include	<Foundation/NSCalendarDate.h>
-#include	<Foundation/NSCharacterSet.h>
-#include	<Foundation/NSException.h>
-#include	<Foundation/NSProcessInfo.h>
-#include	<Foundation/NSNotification.h>
-#include	<Foundation/NSUserDefaults.h>
-#include	<Foundation/NSHashTable.h>
-#include	<Foundation/NSMapTable.h>
-#include	<Foundation/NSBundle.h>
-#include	<Foundation/NSLock.h>
-#include	<Foundation/NSAutoreleasePool.h>
-#include	<Foundation/NSValue.h>
-#include	<Foundation/NSNull.h>
-#include	<Foundation/NSDebug.h>
-#include	<Foundation/NSPathUtilities.h>
-#include	<Foundation/NSSet.h>
-#include	<Foundation/NSTimer.h>
+#import	<Foundation/NSArray.h>
+#import	<Foundation/NSAutoreleasePool.h>
+#import	<Foundation/NSBundle.h>
+#import	<Foundation/NSCalendarDate.h>
+#import	<Foundation/NSCharacterSet.h>
+#import	<Foundation/NSData.h>
+#import	<Foundation/NSDate.h>
+#import	<Foundation/NSDebug.h>
+#import	<Foundation/NSDictionary.h>
+#import	<Foundation/NSEnumerator.h>
+#import	<Foundation/NSException.h>
+#import	<Foundation/NSHashTable.h>
+#import	<Foundation/NSKeyValueCoding.h>
+#import	<Foundation/NSLock.h>
+#import	<Foundation/NSMapTable.h>
+#import	<Foundation/NSNotification.h>
+#import	<Foundation/NSNull.h>
+#import	<Foundation/NSPathUtilities.h>
+#import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSSet.h>
+#import	<Foundation/NSString.h>
+#import	<Foundation/NSTimer.h>
+#import	<Foundation/NSUserDefaults.h>
+#import	<Foundation/NSValue.h>
 
-#include	<GNUstepBase/GSLock.h>
-#include	<Performance/GSCache.h>
-#include	<Performance/GSTicker.h>
+#import	<Performance/GSCache.h>
+#import	<Performance/GSTicker.h>
 
 #include	"SQLClient.h"
+
+#if	defined(GNUSTEP_BASE_LIBRARY)
+#include	<GNUstepBase/GSLock.h>
+#define	SUBCLASS_RESPONSIBILITY	[self subclassResponsibility: _cmd];
+#else
+#define	GSLazyRecursiveLock	NSRecursiveLock
+#define	SUBCLASS_RESPONSIBILITY	
+#endif
 
 static NSNull	*null = nil;
 static Class	NSStringClass = 0;
@@ -329,7 +339,7 @@ static Class rClass = 0;
 
 - (unsigned int) count
 {
-  [self subclassResponsibility: _cmd];
+  SUBCLASS_RESPONSIBILITY
   return 0;
 }
 
@@ -375,12 +385,14 @@ static Class rClass = 0;
 
 - (NSString*) keyAtIndex: (unsigned int)pos
 {
-  return [self subclassResponsibility: _cmd];
+  SUBCLASS_RESPONSIBILITY
+  return nil;
 }
 
 - (id) objectAtIndex: (unsigned int)pos
 {
-  return [self subclassResponsibility: _cmd];
+  SUBCLASS_RESPONSIBILITY
+  return nil;
 }
 
 - (id) objectForKey: (NSString*)key
@@ -420,7 +432,7 @@ static Class rClass = 0;
 
 - (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject
 {
-  [self subclassResponsibility: _cmd];
+  SUBCLASS_RESPONSIBILITY
 }
 
 - (void) setObject: (id)anObject forKey: (NSString*)aKey

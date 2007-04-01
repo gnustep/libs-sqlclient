@@ -25,24 +25,24 @@
    $Date: 2006-06-04 10:19:28 +0100 (Sun, 04 Jun 2006) $ $Revision: 23028 $
    */ 
 
-#include	<Foundation/NSAutoreleasePool.h>
-#include	<Foundation/NSCalendarDate.h>
-#include	<Foundation/NSCharacterSet.h>
-#include	<Foundation/NSData.h>
-#include	<Foundation/NSDate.h>
-#include	<Foundation/NSException.h>
-#include	<Foundation/NSLock.h>
-#include	<Foundation/NSMapTable.h>
-#include	<Foundation/NSNotification.h>
-#include	<Foundation/NSNotification.h>
-#include	<Foundation/NSNull.h>
-#include	<Foundation/NSProcessInfo.h>
-#include	<Foundation/NSString.h>
-#include	<Foundation/NSThread.h>
-#include	<Foundation/NSUserDefaults.h>
-#include	<Foundation/NSValue.h>
+#import	<Foundation/NSAutoreleasePool.h>
+#import	<Foundation/NSCalendarDate.h>
+#import	<Foundation/NSCharacterSet.h>
+#import	<Foundation/NSData.h>
+#import	<Foundation/NSDate.h>
+#import	<Foundation/NSException.h>
+#import	<Foundation/NSLock.h>
+#import	<Foundation/NSMapTable.h>
+#import	<Foundation/NSNotification.h>
+#import	<Foundation/NSNotification.h>
+#import	<Foundation/NSNull.h>
+#import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSString.h>
+#import	<Foundation/NSThread.h>
+#import	<Foundation/NSUserDefaults.h>
+#import	<Foundation/NSValue.h>
 
-#include        <Performance/GSTicker.h>
+#import        <Performance/GSTicker.h>
 
 #include	"config.h"
 #include	"SQLClient.h"

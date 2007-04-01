@@ -23,9 +23,9 @@
    $Date: 2006-05-25 12:34:03 +0100 (Thu, 25 May 2006) $ $Revision: 22982 $
    */ 
 
-#include	<Foundation/Foundation.h>
-#include	<Performance/GSCache.h>
-#include	"SQLClient.h"
+#import	<Foundation/Foundation.h>
+#import	<Performance/GSCache.h>
+#import	"SQLClient.h"
 
 int
 main()

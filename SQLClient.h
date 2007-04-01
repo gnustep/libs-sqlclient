@@ -174,10 +174,10 @@
 #ifndef	INCLUDED_SQLClient_H
 #define	INCLUDED_SQLClient_H
 
-#include	<Foundation/NSObject.h>
-#include	<Foundation/NSArray.h>
+#import	<Foundation/NSObject.h>
+#import	<Foundation/NSArray.h>
 
-#include	<GNUstepBase/GNUstep.h>
+#import	<GNUstepBase/GNUstep.h>
 
 @class	GSCache;
 @class	NSData;

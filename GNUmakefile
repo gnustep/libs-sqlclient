@@ -38,7 +38,7 @@ BUNDLE_INSTALL_DIR=$(GNUSTEP_BUNDLES)/SQLClient
 
 ifeq ($(LINKSQLCLIENT),)
   LINKSQLCLIENT=0
-  ifeq ($(APPLE),1)
+  ifeq ($(findstring darwin, $(GNUSTEP_TARGET_OS)), darwin)
     LINKSQLCLIENT=1
   endif
 endif

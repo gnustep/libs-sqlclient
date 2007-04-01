@@ -24,19 +24,19 @@
 
    $Date$ $Revision$
    */ 
-#include	<Foundation/NSString.h>
-#include	<Foundation/NSData.h>
-#include	<Foundation/NSDate.h>
-#include	<Foundation/NSCalendarDate.h>
-#include	<Foundation/NSException.h>
-#include	<Foundation/NSProcessInfo.h>
-#include	<Foundation/NSNotification.h>
-#include	<Foundation/NSUserDefaults.h>
-#include	<Foundation/NSMapTable.h>
-#include	<Foundation/NSLock.h>
-#include	<Foundation/NSNull.h>
-#include	<Foundation/NSValue.h>
-#include	<Foundation/NSAutoreleasePool.h>
+#import	<Foundation/NSString.h>
+#import	<Foundation/NSData.h>
+#import	<Foundation/NSDate.h>
+#import	<Foundation/NSCalendarDate.h>
+#import	<Foundation/NSException.h>
+#import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSNotification.h>
+#import	<Foundation/NSUserDefaults.h>
+#import	<Foundation/NSMapTable.h>
+#import	<Foundation/NSLock.h>
+#import	<Foundation/NSNull.h>
+#import	<Foundation/NSValue.h>
+#import	<Foundation/NSAutoreleasePool.h>
 
 #include	"config.h"
 #include	"SQLClient.h"

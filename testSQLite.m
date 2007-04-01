@@ -23,8 +23,8 @@
    $Date$ $Revision$
    */ 
 
-#include	<Foundation/Foundation.h>
-#include	"SQLClient.h"
+#import	<Foundation/Foundation.h>
+#import	"SQLClient.h"
 
 int
 main()

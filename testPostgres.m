@@ -23,9 +23,9 @@
    $Date$ $Revision$
    */ 
 
-#include	<Foundation/Foundation.h>
-#include	<Performance/GSCache.h>
-#include	"SQLClient.h"
+#import	<Foundation/Foundation.h>
+#import	<Performance/GSCache.h>
+#import	"SQLClient.h"
 
 int
 main()
