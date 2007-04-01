@@ -465,13 +465,10 @@ static Class rClass = 0;
 
 - (unsigned) sizeInBytes: (NSMutableSet*)exclude
 {
-  if ([exclude member: self] != nil)
+  unsigned	size = [super sizeInBytes: exclude];
+
+  if (size > 0)
     {
-      return 0;
-    }
-  else
-    {
-      unsigned	size = [super sizeInBytes: exclude];
       unsigned	pos;
       unsigned	count = [self count];
       id	vals[count];
@@ -481,8 +478,8 @@ static Class rClass = 0;
 	{
 	  size += [vals[pos] sizeInBytes: exclude];
 	}
-      return size;
     }
+  return size;
 }
 
 @end
