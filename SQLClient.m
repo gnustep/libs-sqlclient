@@ -1076,12 +1076,14 @@ static unsigned int	maxConnections = 8;
     {
       [self simpleExecute: commitStatement];
       _inTransaction = NO;
+      [_statements removeAllObjects];
       [lock unlock];		// Locked at start of -commit
       [lock unlock];		// Locked by -begin
     }
   NS_HANDLER
     {
       _inTransaction = NO;
+      [_statements removeAllObjects];
       [lock unlock];		// Locked at start of -commit
       [lock unlock];		// Locked by -begin
       [localException raise];
@@ -1557,6 +1559,7 @@ static unsigned int	maxConnections = 8;
   if (_inTransaction == YES)
     {
       _inTransaction = NO;
+      [_statements removeAllObjects];
       NS_DURING
 	{
 	  [self simpleExecute: rollbackStatement];
@@ -1716,14 +1719,14 @@ static unsigned int	maxConnections = 8;
 		}
 	    }
 	}
-      if (_inTransaction == NO || isCommit || isRollback)
+      if (_inTransaction == NO)
 	{
 	  [_statements removeAllObjects];
 	}
     }
   NS_HANDLER
     {
-      if (_inTransaction == NO || isCommit || isRollback)
+      if (_inTransaction == NO)
 	{
 	  [_statements removeAllObjects];
 	}
