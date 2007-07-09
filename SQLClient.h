@@ -77,6 +77,10 @@
         Support for standalone web applications ... eg to allow data to be
 	added to the database by people posting web forms to the application.
       </item>
+      <item>
+        Supports notification of connection to and disconnection from the
+        database server.
+      </item>
     </list>
   </section>
   <section>
@@ -186,6 +190,18 @@
 @class	NSRecursiveLock;
 @class	NSString;
 @class	SQLTransaction;
+
+/**
+ * Notification sent when an instance becomes connected to the database
+ * server.  The notification object is the instance connected.
+ */
+NSString        *SQLClientDidConnectNotification;
+
+/**
+ * Notification sent when an instance becomes disconnected from the database
+ * server.  The notification object is the instance disconnected.
+ */
+NSString        *SQLClientDidDisconnectNotification;
 
 /**
  * <p>An enhanced array to represent a record returned from a query.
@@ -972,6 +988,16 @@ extern unsigned	SQLClientTimeTick();
 @interface	SQLClient(Convenience)
 
 /**
+ * Returns a transaction object configured to handle batching and
+ * execute part of a batch of statements if execution of the whole
+ * fails.<br />
+ * If stopOnFailure is YES than execution of the transaction will
+ * stop with the first statement to fail, otherwise it will execute
+ * all the statements it can, skipping any failued statements.
+ */
+- (SQLTransaction*) batch: (BOOL)stopOnFailure;
+
+/**
  * Executes a query (like the -query:,... method) and checks the result
  * (raising an exception if the query did not contain a single record)
  * and returns the resulting record.
@@ -998,6 +1024,7 @@ extern unsigned	SQLClientTimeTick();
  * use the receiver as the database connection to perform transactions.
  */
 - (SQLTransaction*) transaction;
+
 @end
 
 
@@ -1154,11 +1181,13 @@ extern unsigned	SQLClientTimeTick();
  * database operations should be.   If you have multiple threads, you
  * should create multiple SQLTransaction instances, at least one per thread.
  */
-@interface	SQLTransaction : NSObject
+@interface	SQLTransaction : NSObject <NSCopying>
 {
   SQLClient		*_db;
   NSMutableArray	*_info;
   unsigned		_count;
+  BOOL                  _batch;
+  BOOL                  _stop;
 }
 
 /**
@@ -1176,7 +1205,7 @@ extern unsigned	SQLClientTimeTick();
 - (void) add: (NSString*)stmt with: (NSDictionary*)values;
 
 /**
- * Appends all the statements from the other transaction to the receiver.<br />
+ * Appends a copy of the other transaction to the receiver.<br />
  * This provides a convenient way of merging transactions which have been
  * built by different code modules, in order to have them all executed
  * together in a single operation (for efficiency etc).<br />
@@ -1187,6 +1216,11 @@ extern unsigned	SQLClientTimeTick();
  * connection (SQLClient instance).
  */
 - (void) append: (SQLTransaction*)other;
+
+/**
+ * Make a copy of the receiver.
+ */
+- (id) copyWithZone: (NSZone*)z;
 
 /**
  * Returns the number of statements in this transaction.
@@ -1217,6 +1251,24 @@ extern unsigned	SQLClientTimeTick();
  * </p>
  */
 - (void) execute;
+
+/**
+ * <p>This is similar to the -execute method, but may allow partial
+ * execution of the transaction if appropriate:
+ * </p>
+ * <p>If the transaction was created using the [SQLClient-batch:] method and
+ * the transaction as a whole fails, individual statements are retried.<br />
+ * The stopOnFailure flag for the batch creation indicates whether the
+ * retries are stopped at the first statement to fail, or continue (skipping
+ * any failed statements).
+ * </p>
+ * <p>If the transaction has had transactions appended to it, those
+ * subsidiary transactions may succeed or fail atomically depending
+ * on their individual attributes.
+ * </p>
+ * The method returns the number of statements which actually succeeded.
+ */
+- (unsigned) executeBatch;
 
 /**
  * Resets the transaction, removing all previously added statements.

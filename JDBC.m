@@ -1675,64 +1675,39 @@ static	int	JDBCVARCHAR = 0;
 
 @implementation	_JDBCTransaction
 
-// Marker for the end of data owned by a statement
-static id	marker = @"End of statement data";
-
-- (NSString*) description
+- (BOOL) _batchable: (NSArray*)a
 {
-  return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
-    [super description],
-    (_count == 0 ? (id)@"" : (id)[_info objectAtIndex: 0]), _db];
+  unsigned      c = [a count];
+  unsigned      i;
+
+  for (i = 0; i < c; i++)
+    {
+      if ([[a objectAtIndex: i] count] > 1)
+        {
+          return NO;
+        }
+    }
+  return YES;
 }
 
-- (void) _addInfo: (NSArray*)info
+- (void) _merge: (NSMutableArray*)a
 {
-  if (_count == 0)
-    {
-      id		o = [info objectAtIndex: 0];
-      NSMutableArray	*ma;
+  unsigned      c = [_info count];
+  unsigned      i;
 
-      if ([o isKindOfClass: [NSString class]] == YES)
+  for (i = 0; i < c; i++)
+    {
+      id        o = [_info objectAtIndex: i];
+
+      if ([o isKindOfClass: [NSArray class]] == YES)
         {
-	  ma = [[NSMutableArray alloc] initWithObjects: &o count: 1];
-	}
+          [a addObject: o];
+        }
       else
         {
-          ma = [(NSArray*)o mutableCopy];
-	}
-      [_info addObjectsFromArray: info];
-      [_info replaceObjectAtIndex: 0 withObject: ma];
-      RELEASE(ma);
+          [(_JDBCTransaction*)o _merge: a];
+        }
     }
-  else
-    {
-      unsigned		c = [info count];
-      unsigned		i = 1;
-      id		o = [info objectAtIndex: 0];
-      NSMutableArray	*ma = [_info objectAtIndex: 0];
-
-      if ([o isKindOfClass: [NSString class]] == YES)
-        {
-	  [ma addObject: (NSString*)o];
-	}
-      else
-        {
-          [ma addObjectsFromArray: (NSArray*)o];
-	}
-      while (i < c)
-	{
-	  [_info addObject: [info objectAtIndex: i++]];
-	}
-    }
-
-  /* If the info item being added is a simple statement rather than the
-   * content of another transaction, we must add an end-of-statement marker.
-   */
-  if ([info lastObject] != marker)
-    {
-      [_info addObject: marker];
-    }
-  _count++;
 }
 
 - (void) execute
@@ -1768,12 +1743,15 @@ static id	marker = @"End of statement data";
 
       NS_DURING
 	{
-	  NSMutableArray	*statements = [_info objectAtIndex: 0];
-	  unsigned		numberOfStatements = [statements count];
+	  NSMutableArray	*statements;
+	  unsigned		numberOfStatements;
 	  unsigned		statement;
-	  unsigned		pos = 1;
 	  NSTimeInterval	_duration = [_db durationLogging];
 	  NSTimeInterval	start = 0.0;
+
+          statements = [NSMutableArray arrayWithCapacity: 100];
+          [self _merge: statements];
+	  numberOfStatements = [statements count];
 
 	  if (_duration >= 0)
 	    {
@@ -1786,15 +1764,12 @@ static id	marker = @"End of statement data";
 	    }
 
 	  if (numberOfStatements > 1 && ji->addBatch != 0
-	    && [_info count] == numberOfStatements + 1)
+	    && [self _batchable: statements] == YES)
 	    {
 	      jintArray	ja;
 	      jint	*array;
 	      int	status = 0;
 
-	      /* We have multiple statements without arguments ... so this
-	       * is batchable.
-	       */
 	      for (statement = 0; statement < numberOfStatements; statement++)
 		{
 		  NSString	*stmt = [statements objectAtIndex: statement];
@@ -1837,20 +1812,20 @@ static id	marker = @"End of statement data";
 	       */
 	      for (statement = 0; statement < numberOfStatements; statement++)
 		{
-		  NSString	*stmt = [statements objectAtIndex: statement];
+                  NSArray       *info = [statements objectAtIndex: statement];
+		  NSString	*stmt = [info objectAtIndex: 0];
+                  unsigned      c = [info count];
 		  jmethodID	jm;
 		  jobject	js;
 
-		  if ([_info objectAtIndex: pos] == marker)
+		  if (c == 1)
 		    {
-		      pos++;	// Step past end of statement data.
 		      (*env)->CallIntMethod (env, ji->statement,
 			ji->executeUpdate, JStringFromNSString(env, stmt));
 		    }
 		  else
 		    {
-		      NSData	*data;
-		      int	i = 1;
+		      unsigned	i;
 		      jclass	jc;
 
 		      stmt = [stmt stringByReplacingString: @"'?'''?'"
@@ -1868,9 +1843,12 @@ static id	marker = @"End of statement data";
 
 		      /* Get data arguments for statement.
 		       */
-		      while ((data = [_info objectAtIndex: pos++]) != marker)
-			{
-			  (*env)->CallIntMethod (env, js, jm, i++,
+                      for (i = 1; i < c; i++)
+                        {
+                          NSData	*data;
+
+                          data = [info objectAtIndex: i];
+			  (*env)->CallIntMethod (env, js, jm, i,
 			    ByteArrayFromNSData(env, data));
 			  JException(env);
 			}

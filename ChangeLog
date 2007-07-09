@@ -1,7 +1,14 @@
+2007-07-09 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.m: Post notifications upon connect and disconnect.
+
 2007-07-07 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fix error causing loss of some debug output when an
 	exception occurs in a transaction.
+	Rewrite transaction code to support execution with automatic retry of
+	statements when batching.
+	* JDBC.m: Update for new transaction code
 
 2007-04-01 Richard Frith-Macdonald  <rfm@gnu.org>
 

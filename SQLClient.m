@@ -63,6 +63,12 @@
 #define	SUBCLASS_RESPONSIBILITY	
 #endif
 
+NSString        *SQLClientDidConnectNotification
+ = @"SQLClientDidConnectNotification";
+
+NSString        *SQLClientDidDisconnectNotification
+ = @"SQLClientDidDisconnectNotification";
+
 static NSNull	*null = nil;
 static Class	NSStringClass = 0;
 static Class	NSArrayClass = 0;
@@ -1110,6 +1116,12 @@ static unsigned int	maxConnections = 8;
 	  NS_ENDHANDLER
 	}
       [lock unlock];
+      if (connected == YES)
+        {
+          [[NSNotificationCenter defaultCenter]
+            postNotificationName: SQLClientDidConnectNotification
+            object: self];
+        }
     }
   return connected;
 }
@@ -1190,6 +1202,9 @@ static unsigned int	maxConnections = 8;
 	  NS_ENDHANDLER
 	}
       [lock unlock];
+      [[NSNotificationCenter defaultCenter]
+        postNotificationName: SQLClientDidDisconnectNotification
+        object: self];
     }
 }
 
@@ -1659,6 +1674,7 @@ static unsigned int	maxConnections = 8;
 
   [lock lock];
   statement = [info objectAtIndex: 0];
+
   if ([statement isEqualToString: commitString])
     {
       isCommit = YES;
@@ -2292,6 +2308,20 @@ static unsigned int	maxConnections = 8;
 
 @implementation	SQLClient(Convenience)
 
+- (SQLTransaction*) batch: (BOOL)stopOnFailure
+{
+  TDefs	transaction;
+
+  transaction = (TDefs)NSAllocateObject([SQLTransaction class], 0,
+    NSDefaultMallocZone());
+ 
+  transaction->_db = RETAIN(self);
+  transaction->_info = [NSMutableArray new];
+  transaction->_batch = YES;
+  transaction->_stop = stopOnFailure;
+  return AUTORELEASE((SQLTransaction*)transaction);
+}
+
 - (SQLRecord*) queryRecord: (NSString*)stmt, ...
 {
   va_list	ap;
@@ -2539,52 +2569,40 @@ static unsigned int	maxConnections = 8;
     (_count == 0 ? (id)@"" : (id)[_info objectAtIndex: 0]), _db];
 }
 
-- (void) _addInfo: (NSArray*)info
-{
-  if (_count == 0)
-    {
-      NSMutableString	*ms = [[info objectAtIndex: 0] mutableCopy];
-
-      [_info addObjectsFromArray: info];
-      [_info replaceObjectAtIndex: 0 withObject: ms];
-      RELEASE(ms);
-    }
-  else
-    {
-      NSMutableString	*ms = [_info objectAtIndex: 0];
-      unsigned		c = [info count];
-      unsigned		i = 1;
-
-      [ms appendString: @";"];
-      [ms appendString: [info objectAtIndex: 0]];
-      while (i < c)
-	{
-	  [_info addObject: [info objectAtIndex: i++]];
-	}
-    }
-  _count++;
-}
-
 - (void) add: (NSString*)stmt,...
 {
   va_list       ap;
 
   va_start (ap, stmt);
-  [self _addInfo: [_db _prepare: stmt args: ap]];
+  [_info addObject: [_db _prepare: stmt args: ap]];
+  _count++;
   va_end (ap);
 }
 
 - (void) add: (NSString*)stmt with: (NSDictionary*)values
 {
-  [self _addInfo: [_db _substitute: stmt with: values]];
+  [_info addObject: [_db _substitute: stmt with: values]];
+  _count++;
 }
 
 - (void) append: (SQLTransaction*)other
 {
   if (other != nil && other->_count > 0)
     {
-      [self _addInfo: other->_info];
+      other = [other copy];
+      [_info addObject: other];
+      _count += other->_count;
+      RELEASE(other);
     }
+}
+
+- (id) copyWithZone: (NSZone*)z
+{
+  SQLTransaction        *c;
+
+  c = (SQLTransaction*)NSCopyObject(self, 0, z);
+  c->_info = [c->_info mutableCopy];
+  return c;
 }
 
 - (SQLClient*) db
@@ -2592,48 +2610,168 @@ static unsigned int	maxConnections = 8;
   return _db;
 }
 
+- (void) _addSQL: (NSMutableString*)sql andArgs: (NSMutableArray*)args
+{
+  unsigned      count = [_info count];
+  unsigned      index;
+
+  for (index = 0; index < count; index++)
+    {
+      id        o = [_info objectAtIndex: index];
+
+      if ([o isKindOfClass: NSArrayClass] == YES)
+        {
+          unsigned      c = [(NSArray*)o count];
+
+          if (c > 0)
+            {
+              unsigned  i;
+
+              [sql appendString: [(NSArray*)o objectAtIndex: 0]];
+              [sql appendString: @";"];
+              for (i = 1; i < c; i++)
+                {
+                  [args addObject: [(NSArray*)o objectAtIndex: i]];
+                }
+            }
+        }
+      else
+        {
+          [(SQLTransaction*)o _addSQL: sql andArgs: args];
+        }
+    }
+}
+
+- (void) _countLength: (unsigned*)length andArgs: (unsigned*)args
+{
+  unsigned      count = [_info count];
+  unsigned      index;
+
+  for (index = 0; index < count; index++)
+    {
+      id        o = [_info objectAtIndex: index];
+
+      if ([o isKindOfClass: NSArrayClass] == YES)
+        {
+          unsigned      c = [(NSArray*)o count];
+
+          if (c > 0)
+            {
+              length += [[(NSArray*)o objectAtIndex: 0] length] + 1;
+              args += c - 1;
+            }
+        }
+      else
+        {
+          [(SQLTransaction*)o _countLength: length andArgs: args];
+        }
+    }
+}
 
 - (void) execute
 {
   if (_count > 0)
     {
-      BOOL		wrapped = NO;
-      NSMutableString	*sql = [_info objectAtIndex: 0];
+      NSMutableArray    *info = nil;
 
       NS_DURING
 	{
-	  if (_count > 1 && [_db isInTransaction] == NO)
-	    {
-	      wrapped = YES;
-	      [sql replaceCharactersInRange: NSMakeRange(0, 0)
-				 withString: @"begin;"];
-	      [sql replaceCharactersInRange: NSMakeRange([sql length], 0)
-				 withString: @";commit"];
-	    }
-	  [_db simpleExecute: _info];
-	  if (wrapped == YES)
-	    {
-	      wrapped = NO;
-	      [sql replaceCharactersInRange: NSMakeRange([sql length] - 7, 7)
-				 withString: @""];
-	      [sql replaceCharactersInRange: NSMakeRange(0, 6)
-				 withString: @""];
-	    }
+          NSMutableString   *sql;
+          unsigned          sqlSize = 0;
+          unsigned          argCount = 0;
+
+          [self _countLength: &sqlSize andArgs: &argCount];
+
+          /* Allocate and initialise the transaction statement.
+           */
+          info = [[NSMutableArray alloc] initWithCapacity: argCount + 1];
+          sql = [[NSMutableString alloc] initWithCapacity: sqlSize + 13];
+          [info addObject: sql];
+          RELEASE(sql);
+          if ([_db isInTransaction] == NO)
+            {
+              [sql appendString: @"begin;"];
+            }
+
+          [self _addSQL: sql andArgs: info];
+
+          if ([_db isInTransaction] == NO)
+            {
+              [sql appendString: @"commit;"];
+            }
+
+          [_db simpleExecute: info];
 	}
       NS_HANDLER
 	{
-	  if (wrapped == YES)
-	    {
-	      [sql replaceCharactersInRange: NSMakeRange([sql length] - 7, 7)
-				 withString: @""];
-	      [sql replaceCharactersInRange: NSMakeRange(0, 6)
-				 withString: @""];
-	    }
+          RELEASE(info);
 	  [localException raise];
 	}
       NS_ENDHANDLER
     }
 }
+
+- (unsigned) executeBatch
+{
+  unsigned      executed = 0;
+
+  if (_count > 0)
+    {
+      NS_DURING
+        {
+          [self execute];
+          executed = _count;
+        }
+      NS_HANDLER
+        {
+          if (_batch == YES)
+            {
+              unsigned  count = [_info count];
+              unsigned  i;
+
+              for (i = 0; i < count; i++)
+                {
+                  BOOL      success = NO;
+
+                  NS_DURING
+                    {
+                      id        o = [_info objectAtIndex: i];
+
+                      if ([o isKindOfClass: NSArrayClass] == YES)
+                        {
+                          [_db simpleExecute: (NSArray*)o];
+                          executed++;
+                          success = YES;
+                        }
+                      else
+                        {
+                          unsigned      result;
+
+                          result = [(SQLTransaction*)o executeBatch];
+                          executed += result;
+                          if (result == [(SQLTransaction*)o count])
+                            {
+                              success = YES;
+                            }
+                        }
+                    }
+                  NS_HANDLER
+                    {
+                      success = NO;
+                    }
+                  NS_ENDHANDLER
+                  if (success == NO && _stop == YES)
+                    {
+                      break;
+                    }
+                }
+            }
+        }
+      NS_ENDHANDLER
+    }
+  return executed;
+}
+
 - (void) reset
 {
   [_info removeAllObjects];
