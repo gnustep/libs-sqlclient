@@ -2601,6 +2601,7 @@ static unsigned int	maxConnections = 8;
   SQLTransaction        *c;
 
   c = (SQLTransaction*)NSCopyObject(self, 0, z);
+  c->_db = RETAIN(c->_db);
   c->_info = [c->_info mutableCopy];
   return c;
 }

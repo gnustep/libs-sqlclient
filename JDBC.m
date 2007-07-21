@@ -1515,6 +1515,20 @@ static	int	JDBCVARCHAR = 0;
   return AUTORELEASE(records);
 }
 
+- (SQLTransaction*) batch: (BOOL)stopOnFailure
+{
+  TDefs	transaction;
+
+  transaction = (TDefs)NSAllocateObject([_JDBCTransaction class], 0,
+    NSDefaultMallocZone());
+ 
+  transaction->_db = RETAIN(self);
+  transaction->_info = [NSMutableArray new];
+  transaction->_batch = YES;
+  transaction->_stop = stopOnFailure;
+  return AUTORELEASE((SQLTransaction*)transaction);
+}
+
 - (void) begin
 {
   [lock lock];

@@ -1,3 +1,8 @@
+2007-07-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.m: Fix retasin bug copying transactions.
+	* JDBC.m: Update for new batch code
+
 2007-07-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.m: Post notifications upon connect and disconnect.
