@@ -195,13 +195,13 @@
  * Notification sent when an instance becomes connected to the database
  * server.  The notification object is the instance connected.
  */
-NSString        *SQLClientDidConnectNotification;
+extern NSString * const SQLClientDidConnectNotification;
 
 /**
  * Notification sent when an instance becomes disconnected from the database
  * server.  The notification object is the instance disconnected.
  */
-NSString        *SQLClientDidDisconnectNotification;
+extern NSString * const SQLClientDidDisconnectNotification;
 
 /**
  * <p>An enhanced array to represent a record returned from a query.

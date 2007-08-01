@@ -63,10 +63,10 @@
 #define	SUBCLASS_RESPONSIBILITY	
 #endif
 
-NSString        *SQLClientDidConnectNotification
+NSString * const SQLClientDidConnectNotification
  = @"SQLClientDidConnectNotification";
 
-NSString        *SQLClientDidDisconnectNotification
+NSString * const SQLClientDidDisconnectNotification
  = @"SQLClientDidDisconnectNotification";
 
 static NSNull	*null = nil;
@@ -1118,9 +1118,11 @@ static unsigned int	maxConnections = 8;
       [lock unlock];
       if (connected == YES)
         {
-          [[NSNotificationCenter defaultCenter]
-            postNotificationName: SQLClientDidConnectNotification
-            object: self];
+          NSNotificationCenter  *nc;
+
+          nc = [NSNotificationCenter defaultCenter];
+          [nc postNotificationName: SQLClientDidConnectNotification
+                            object: self];
         }
     }
   return connected;
@@ -1187,6 +1189,8 @@ static unsigned int	maxConnections = 8;
 {
   if (connected == YES)
     {
+      NSNotificationCenter  *nc;
+
       [lock lock];
       if (connected == YES)
 	{
@@ -1202,9 +1206,9 @@ static unsigned int	maxConnections = 8;
 	  NS_ENDHANDLER
 	}
       [lock unlock];
-      [[NSNotificationCenter defaultCenter]
-        postNotificationName: SQLClientDidDisconnectNotification
-        object: self];
+      nc = [NSNotificationCenter defaultCenter];
+      [nc postNotificationName: SQLClientDidDisconnectNotification
+                        object: self];
     }
 }
 
