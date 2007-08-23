@@ -185,11 +185,10 @@ connectQuote(NSString *str)
 	    }
 	  else
 	    {
-#ifdef	HAVE_PQESCAPESTRINGCONN
-	      char	buf[8];
-	      int	err;
+	      const char	*p;
 
-	      if (PQescapeStringConn(connection, buf, "\\", 1, &err) == 1)
+	      p = PQparameterStatus(connection, "standard_conforming_strings");
+              if (p != 0 && strcmp(p, "on") == 0)
 		{
 		  standardEscaping = YES;
 		}
@@ -197,7 +196,7 @@ connectQuote(NSString *str)
 		{
 		  standardEscaping = NO;
 		}
-#endif
+
 	      connected = YES;
 	      if ([self debugging] > 0)
 		{
@@ -544,40 +543,72 @@ static unsigned int trim(char *str)
   unsigned		i;
 
   ptr[length++] = '\'';
-  for (i = 0; i < sLen; i++)
+  if (YES == standardEscaping)
     {
-      unsigned char	c = src[i];
+      for (i = 0; i < sLen; i++)
+        {
+          unsigned char	c = src[i];
 
-      if (c < 32 || c > 126)
-	{
-	  ptr[length] = '\\';
-	  ptr[length+1] = '\\';
-	  ptr[length + 4] = (c & 7) + '0';
-	  c >>= 3;
-	  ptr[length + 3] = (c & 7) + '0';
-	  c >>= 3;
-	  ptr[length + 2] = (c & 7) + '0';
-	  length += 5;
-	}
-      else if (c == '\\')
-	{
-	  if (standardEscaping == NO)
-	    {
-	      ptr[length++] = '\\';
-	      ptr[length++] = '\\';
-	    }
-	  ptr[length++] = '\\';
-	  ptr[length++] = '\\';
-	}
-      else if (c == '\'')
-	{
-	  ptr[length++] = '\'';
-	  ptr[length++] = '\'';
-	}
-      else
-	{
-	  ptr[length++] = c;
-	}
+          if (c < 32 || c > 126)
+            {
+              ptr[length] = '\\';
+              ptr[length + 3] = (c & 7) + '0';
+              c >>= 3;
+              ptr[length + 2] = (c & 7) + '0';
+              c >>= 3;
+              ptr[length + 1] = (c & 7) + '0';
+              length += 4;
+            }
+          else if (c == '\\')
+            {
+              ptr[length++] = '\\';
+              ptr[length++] = '\\';
+            }
+          else if (c == '\'')
+            {
+              ptr[length++] = '\'';
+              ptr[length++] = '\'';
+            }
+          else
+            {
+              ptr[length++] = c;
+            }
+        }
+    }
+  else
+    {
+      for (i = 0; i < sLen; i++)
+        {
+          unsigned char	c = src[i];
+
+          if (c < 32 || c > 126)
+            {
+              ptr[length] = '\\';
+              ptr[length+1] = '\\';
+              ptr[length + 4] = (c & 7) + '0';
+              c >>= 3;
+              ptr[length + 3] = (c & 7) + '0';
+              c >>= 3;
+              ptr[length + 2] = (c & 7) + '0';
+              length += 5;
+            }
+          else if (c == '\\')
+            {
+              ptr[length++] = '\\';
+              ptr[length++] = '\\';
+              ptr[length++] = '\\';
+              ptr[length++] = '\\';
+            }
+          else if (c == '\'')
+            {
+              ptr[length++] = '\'';
+              ptr[length++] = '\'';
+            }
+          else
+            {
+              ptr[length++] = c;
+            }
+        }
     }
   ptr[length++] = '\'';
   return length;
@@ -590,26 +621,45 @@ static unsigned int trim(char *str)
   unsigned int	length = sLen + 2;
   unsigned int	i;
 
-  for (i = 0; i < sLen; i++)
+  if (YES == standardEscaping)
     {
-      unsigned char	c = src[i];
+      for (i = 0; i < sLen; i++)
+        {
+          unsigned char	c = src[i];
 
-      if (c < 32 || c > 126)
-	{
-	  length += 4;
-	}
-      else if (c == '\\')
-	{
-	  if (standardEscaping == NO)
-	    {
-	      length += 2;
-	    }
-	  length += 1;
-	}
-      else if (c == '\'')
-	{
-	  length += 1;
-	}
+          if (c < 32 || c > 126)
+            {
+              length += 3;
+            }
+          else if (c == '\\')
+            {
+              length += 1;
+            }
+          else if (c == '\'')
+            {
+              length += 1;
+            }
+        }
+    }
+  else
+    {
+      for (i = 0; i < sLen; i++)
+        {
+          unsigned char	c = src[i];
+
+          if (c < 32 || c > 126)
+            {
+              length += 4;
+            }
+          else if (c == '\\')
+            {
+              length += 3;
+            }
+          else if (c == '\'')
+            {
+              length += 1;
+            }
+        }
     }
   return length;
 }
