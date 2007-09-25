@@ -389,13 +389,13 @@ static Class rClass = 0;
   return self;
 }
 
-- (NSString*) keyAtIndex: (unsigned int)pos
+- (NSString*) keyAtIndex: (unsigned)index
 {
   SUBCLASS_RESPONSIBILITY
   return nil;
 }
 
-- (id) objectAtIndex: (unsigned int)pos
+- (id) objectAtIndex: (unsigned)index
 {
   SUBCLASS_RESPONSIBILITY
   return nil;
