@@ -55,12 +55,12 @@
 
 typedef struct	{
   PGconn	*_connection;
-  BOOL		_standardEscaping;
+  BOOL		_escapeStrings;         /* Can we use E'...' syntax?    */
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
 #define	connection		(cInfo->_connection)
-#define	standardEscaping	(cInfo->_standardEscaping)
+#define	escapeStrings	        (cInfo->_escapeStrings)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -188,14 +188,14 @@ connectQuote(NSString *str)
 	      const char	*p;
 
 	      p = PQparameterStatus(connection, "standard_conforming_strings");
-              if (p != 0 && strcmp(p, "on") == 0)
-		{
-		  standardEscaping = YES;
-		}
-	      else
-		{
-		  standardEscaping = NO;
-		}
+              if (p != 0)
+                {
+                  escapeStrings = YES;
+                }
+              else
+                {
+                  escapeStrings = NO;
+                }
 
 	      connected = YES;
 	      if ([self debugging] > 0)
@@ -542,72 +542,36 @@ static unsigned int trim(char *str)
   unsigned		length = 0;
   unsigned		i;
 
-  ptr[length++] = '\'';
-  if (YES == standardEscaping)
+  if (YES == escapeStrings)
     {
-      for (i = 0; i < sLen; i++)
-        {
-          unsigned char	c = src[i];
-
-          if (c < 32 || c > 126)
-            {
-              ptr[length] = '\\';
-              ptr[length + 3] = (c & 7) + '0';
-              c >>= 3;
-              ptr[length + 2] = (c & 7) + '0';
-              c >>= 3;
-              ptr[length + 1] = (c & 7) + '0';
-              length += 4;
-            }
-          else if (c == '\\')
-            {
-              ptr[length++] = '\\';
-              ptr[length++] = '\\';
-            }
-          else if (c == '\'')
-            {
-              ptr[length++] = '\'';
-              ptr[length++] = '\'';
-            }
-          else
-            {
-              ptr[length++] = c;
-            }
-        }
+      ptr[length++] = 'E';
     }
-  else
+  ptr[length++] = '\'';
+  for (i = 0; i < sLen; i++)
     {
-      for (i = 0; i < sLen; i++)
-        {
-          unsigned char	c = src[i];
+      unsigned char	c = src[i];
 
-          if (c < 32 || c > 126)
-            {
-              ptr[length] = '\\';
-              ptr[length+1] = '\\';
-              ptr[length + 4] = (c & 7) + '0';
-              c >>= 3;
-              ptr[length + 3] = (c & 7) + '0';
-              c >>= 3;
-              ptr[length + 2] = (c & 7) + '0';
-              length += 5;
-            }
-          else if (c == '\\')
-            {
-              ptr[length++] = '\\';
-              ptr[length++] = '\\';
-              ptr[length++] = '\\';
-              ptr[length++] = '\\';
-            }
-          else if (c == '\'')
-            {
-              ptr[length++] = '\'';
-              ptr[length++] = '\'';
-            }
-          else
-            {
-              ptr[length++] = c;
-            }
+      if (c < 32 || c > 126 || c == '\'')
+        {
+          ptr[length] = '\\';
+          ptr[length+1] = '\\';
+          ptr[length + 4] = (c & 7) + '0';
+          c >>= 3;
+          ptr[length + 3] = (c & 7) + '0';
+          c >>= 3;
+          ptr[length + 2] = (c & 7) + '0';
+          length += 5;
+        }
+      else if (c == '\\')
+        {
+          ptr[length++] = '\\';
+          ptr[length++] = '\\';
+          ptr[length++] = '\\';
+          ptr[length++] = '\\';
+        }
+      else
+        {
+          ptr[length++] = c;
         }
     }
   ptr[length++] = '\'';
@@ -621,44 +585,21 @@ static unsigned int trim(char *str)
   unsigned int	length = sLen + 2;
   unsigned int	i;
 
-  if (YES == standardEscaping)
+  if (YES == escapeStrings)
     {
-      for (i = 0; i < sLen; i++)
-        {
-          unsigned char	c = src[i];
-
-          if (c < 32 || c > 126)
-            {
-              length += 3;
-            }
-          else if (c == '\\')
-            {
-              length += 1;
-            }
-          else if (c == '\'')
-            {
-              length += 1;
-            }
-        }
+      length++;         // Allow for leading 'E'
     }
-  else
+  for (i = 0; i < sLen; i++)
     {
-      for (i = 0; i < sLen; i++)
-        {
-          unsigned char	c = src[i];
+      unsigned char	c = src[i];
 
-          if (c < 32 || c > 126)
-            {
-              length += 4;
-            }
-          else if (c == '\\')
-            {
-              length += 3;
-            }
-          else if (c == '\'')
-            {
-              length += 1;
-            }
+      if (c < 32 || c > 126 || c == '\'')
+        {
+          length += 4;
+        }
+      else if (c == '\\')
+        {
+          length += 3;
         }
     }
   return length;
