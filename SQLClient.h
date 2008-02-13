@@ -182,6 +182,7 @@
 @class	GSCache;
 @class	NSData;
 @class	NSDate;
+@class	NSMutableDictionary;
 @class	NSMutableSet;
 @class	NSRecursiveLock;
 @class	NSString;
