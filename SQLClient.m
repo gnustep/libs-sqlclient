@@ -2706,6 +2706,7 @@ static unsigned int	maxConnections = 8;
             }
 
           [_db simpleExecute: info];
+          DESTROY(info);
 	}
       NS_HANDLER
 	{
