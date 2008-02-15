@@ -632,7 +632,7 @@ static Class rClass = 0;
   return self;
 }
 
-- (id) keyAtIndex: (unsigned int)pos
+- (NSString*) keyAtIndex: (unsigned int)pos
 {
   id	*ptr;
 
