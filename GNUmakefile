@@ -26,6 +26,8 @@ JAVA_WRAPPER_NAME = SQLClient
 
 SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
 
+SQLClient_NEEDS_GUI = NO
+
 BUNDLE_NAME=
 
 BUNDLE_INSTALL_DIR=$(GNUSTEP_BUNDLES)/SQLClient
@@ -50,23 +52,27 @@ ECPG_OBJC_FILES = ECPG.m
 ECPG_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_BUNDLE_LIBS += -lSQLClient -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
+ECPG_NEEDS_GUI = NO
 else
 BUNDLE_NAME += ECPG
 ECPG_OBJC_FILES = ECPG.m
 ECPG_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_BUNDLE_LIBS += -lecpg
 ECPG_PRINCIPAL_CLASS = SQLClientECPG
+ECPG_NEEDS_GUI = NO
 BUNDLE_NAME += ECPG_libs
 ECPG_libs_OBJC_FILES = ECPG.m
 ECPG_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lecpg
 ECPG_libs_PRINCIPAL_CLASS = SQLClientECPG_libs
+ECPG_libs_NEEDS_GUI = NO
 endif
 TEST_TOOL_NAME += testECPG
 testECPG_OBJC_FILES = testECPG.m
 testECPG_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testECPG_TOOL_LIBS += -lSQLClient -lPerformance
+testECPG_NEEDS_GUI = NO
 endif
 
 ifneq ($(POSTGRES),)
@@ -76,23 +82,27 @@ Postgres_OBJC_FILES = Postgres.m
 Postgres_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_BUNDLE_LIBS += -lSQLClient -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
+Postgres_NEEDS_GUI = NO
 else
 BUNDLE_NAME += Postgres
 Postgres_OBJC_FILES = Postgres.m
 Postgres_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_BUNDLE_LIBS += -lpq
 Postgres_PRINCIPAL_CLASS = SQLClientPostgres
+Postgres_NEEDS_GUI = NO
 BUNDLE_NAME += Postgres_libs
 Postgres_libs_OBJC_FILES = Postgres.m
 Postgres_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lpq
 Postgres_libs_PRINCIPAL_CLASS = SQLClientPostgres_libs
+Postgres_libs_NEEDS_GUI = NO
 endif
 TEST_TOOL_NAME += testPostgres
 testPostgres_OBJC_FILES = testPostgres.m
 testPostgres_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testPostgres_TOOL_LIBS += -lSQLClient -lPerformance
+testPostgres_NEEDS_GUI = NO
 endif
 
 ifneq ($(JDBC),)
@@ -102,23 +112,27 @@ JDBC_OBJC_FILES = JDBC.m
 JDBC_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR) $(JDBC_VM_LIBDIRS)
 JDBC_BUNDLE_LIBS += -lSQLClient $(JDBC_VM_LIBS)
 JDBC_PRINCIPAL_CLASS = SQLClientJDBC
+JDBC_NEEDS_GUI = NO
 else
 BUNDLE_NAME += JDBC
 JDBC_OBJC_FILES = JDBC.m
 JDBC_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR) $(JDBC_VM_LIBDIRS)
 JDBC_BUNDLE_LIBS += $(JDBC_VM_LIBS)
 JDBC_PRINCIPAL_CLASS = SQLClientJDBC
+JDBC_NEEDS_GUI = NO
 BUNDLE_NAME += JDBC_libs
 JDBC_libs_OBJC_FILES = JDBC.m
 JDBC_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR) $(JDBC_VM_LIBDIRS)
 JDBC_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc $(JDBC_VM_LIBS)
 JDBC_libs_PRINCIPAL_CLASS = SQLClientJDBC_libs
+JDBC_libs_NEEDS_GUI = NO
 endif
 TEST_TOOL_NAME += testJDBC
 testJDBC_OBJC_FILES = testJDBC.m
 testJDBC_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testJDBC_TOOL_LIBS += -lSQLClient -lPerformance
+testJDBC_NEEDS_GUI = NO
 endif
 
 ifneq ($(MYSQL),)
@@ -128,23 +142,27 @@ MySQL_OBJC_FILES = MySQL.m
 MySQL_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_BUNDLE_LIBS += -lSQLClient -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
+MySQL_NEEDS_GUI = NO
 else
 BUNDLE_NAME += MySQL
 MySQL_OBJC_FILES = MySQL.m
 MySQL_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_BUNDLE_LIBS += -lmysqlclient
 MySQL_PRINCIPAL_CLASS = SQLClientMySQL
+MySQL_NEEDS_GUI = NO
 BUNDLE_NAME += MySQL_libs
 MySQL_libs_OBJC_FILES = MySQL.m
 MySQL_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lmysqlclient
 MySQL_libs_PRINCIPAL_CLASS = SQLClientMySQL_libs
+MySQL_libs_NEEDS_GUI = NO
 endif
 TEST_TOOL_NAME += testMySQL
 testMySQL_OBJC_FILES = testMySQL.m
 testMySQL_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testMySQL_TOOL_LIBS += -lSQLClient -lPerformance
+testMySQL_NEEDS_GUI = NO
 endif
 
 ifneq ($(SQLITE),)
@@ -154,23 +172,27 @@ SQLite_OBJC_FILES = SQLite.m
 SQLite_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_BUNDLE_LIBS += -lSQLClient -lsqlite3
 SQLite_PRINCIPAL_CLASS = SQLClientSQLite
+SQLite_NEEDS_GUI = NO
 else
 BUNDLE_NAME += SQLite
 SQLite_OBJC_FILES = SQLite.m
 SQLite_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_BUNDLE_LIBS += -lsqlite3
 SQLite_PRINCIPAL_CLASS = SQLClientSQLite
+SQLite_NEEDS_GUI = NO
 BUNDLE_NAME += SQLite_libs
 SQLite_libs_OBJC_FILES = SQLite.m
 SQLite_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
 -lgnustep-base -lobjc -lsqlite3
 SQLite_libs_PRINCIPAL_CLASS = SQLClientSQLite_libs
+SQLite_libs_NEEDS_GUI = NO
 endif
 TEST_TOOL_NAME += testSQLite
 testSQLite_OBJC_FILES = testSQLite.m
 testSQLite_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR)
 testSQLite_TOOL_LIBS += -lSQLClient -lPerformance
+testSQLite_NEEDS_GUI = NO
 endif
 
 ifneq ($(ORACLE_HOME),)
@@ -182,6 +204,7 @@ Oracle_BUNDLE_LIBS += -lclntsh \
                       $(shell cat $(ORACLE_HOME)/lib/sysliblist) \
                       -ldl -lm
 Oracle_PRINCIPAL_CLASS = SQLClientOracle
+Oracle_NEEDS_GUI = NO
 BUNDLE_NAME += Oracle_libs
 Oracle_libs_OBJC_FILES = Oracle.m
 Oracle_libs_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./$(GNUSTEP_OBJ_DIR) \
@@ -191,6 +214,7 @@ Oracle_libs_BUNDLE_LIBS += -lclntsh \
                       $(shell cat $(ORACLE_HOME)/lib/sysliblist) \
                       -ldl -lm
 Oracle_libs_PRINCIPAL_CLASS = SQLClientOracle_libs
+Oracle_libs_NEEDS_GUI = NO
 endif
 
 -include GNUmakefile.preamble
