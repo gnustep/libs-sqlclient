@@ -190,6 +190,7 @@
 @class	NSMutableSet;
 @class	NSRecursiveLock;
 @class	NSString;
+@class	NSThread;
 @class	SQLTransaction;
 
 /**
@@ -377,6 +378,7 @@ extern unsigned	SQLClientTimeTick();
   NSTimeInterval	_duration;
   unsigned int		_debugging;	/** The current debugging level */
   GSCache		*_cache;	/** The cache for query results */
+  NSThread		*_cacheThread;	/** Thread for cache queries */
 }
 
 /**
@@ -1097,7 +1099,7 @@ extern unsigned	SQLClientTimeTick();
 @end
 
 /**
- * This category porovides methods for caching the results of queries
+ * This category provides methods for caching the results of queries
  * in order to reduce the number of client-server trips and the database
  * load produced by an application which needs update its information
  * from the database frequently.
@@ -1106,30 +1108,20 @@ extern unsigned	SQLClientTimeTick();
 
 /**
  * Returns the cache used by the receiver for storing the results of
- * requests made through it.
+ * requests made through it.  Creates a new cache if necessary.
  */
 - (GSCache*) cache;
 
 /**
- * If the result of the query is already cached and is still valid,
- * return it. Otherwise, perform the query and cache the result
- * giving it the specified lifetime in seconds.<br />
- * If seconds is negative, the query is performed irrespective of
- * whether it is already cached, and its absolute value is used to
- * set the lifetime of the results.<br />
- * If seconds is zero, the cache for this query is emptied.
+ * Calls -cache:simpleQuery:recordClass: with the default record class and
+ * wth a query string formed from stmt and the following values (if any).
  */
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...;
 
 /**
- * If the result of the query is already cached and is still valid,
- * return it. Otherwise, perform the query and cache the result
- * giving it the specified lifetime in seconds.<br />
- * If seconds is negative, the query is performed irrespective of
- * whether it is already cached, and its absolute value is used to
- * set the lifetime of the results.<br />
- * If seconds is zero, the cache for this query is emptied.
+ * Calls -cache:simpleQuery:recordClass: with the default record class and
+ * wth a query string formed from stmt and values.
  */
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt
@@ -1141,7 +1133,7 @@ extern unsigned	SQLClientTimeTick();
 - (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
 
 /**
- * If the result of the query is already cached and is still valid,
+ * If the result of the query is already cached and has not expired,
  * return it. Otherwise, perform the query and cache the result
  * giving it the specified lifetime in seconds.<br />
  * If seconds is negative, the query is performed irrespective of
@@ -1151,7 +1143,14 @@ extern unsigned	SQLClientTimeTick();
  * Handles locking.<br />
  * Maintains -lastOperation date.<br />
  * The value of cls must be a class which responds to the
- * [SQLRecord+newWithValues:keys:count:] method.
+ * [SQLRecord+newWithValues:keys:count:] method.<br />
+ * If a cache thread has been set using the -setCacheThread: method, and the
+ * -cache:simpleQuery:recordClass: method is called from a thread other
+ * than the cache thread, then any query to retrieve uncached data will
+ * be performed in the cache thread, and for cached (but expired) data,
+ * the old (expired) results may be returned ... in which case an
+ * asynchronous query to update the cache will be executed as soon
+ * as possible in the cache thread.
  */
 - (NSMutableArray*) cache: (int)seconds
 	      simpleQuery: (NSString*)stmt
@@ -1165,6 +1164,19 @@ extern unsigned	SQLClientTimeTick();
  */
 - (void) setCache: (GSCache*)aCache;
 
+/** Sets the thread to be used to retrieve data to populate the cache.<br />
+ * All cached queries will be performed in this thread (if non-nil).<br />
+ * The setting of a thread for the cache also implies that expired items in
+ * the cache may not be removed when they are queried from another thread,
+ * rather they can be kept (if they are not <em>too</em> old) and an
+ * asynchronous query to update them will be run on the cache thread.<br />
+ * The rule is that, if the item's age is more than twice its nominal
+ * lifetime, it will be retrieved immediately, otherwise it will be
+ * retrieved asynchrnonously.<br />
+ * Currently this may only be the main thread or nil.  Any attempt to set
+ * another thread will use the main thread instead.
+ */
+- (void) setCacheThread: (NSThread*)aThread;
 @end
 
 /**

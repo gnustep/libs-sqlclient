@@ -1,3 +1,14 @@
+2008-02-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Experimental new method to set a thread to do all cached
+	queries on and to perform asynchronous updates if other
+	threads request information which is in the cache but
+	past its expiry date.  Should allow threads to use
+	config information from a database without blocking
+	unnecessarily.
+
 2008-02-15 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fix memory leak when executing transaction.

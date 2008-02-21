@@ -44,8 +44,10 @@
 #import	<Foundation/NSNull.h>
 #import	<Foundation/NSPathUtilities.h>
 #import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSRunLoop.h>
 #import	<Foundation/NSSet.h>
 #import	<Foundation/NSString.h>
+#import	<Foundation/NSThread.h>
 #import	<Foundation/NSTimer.h>
 #import	<Foundation/NSUserDefaults.h>
 #import	<Foundation/NSValue.h>
@@ -70,10 +72,29 @@ NSString * const SQLClientDidDisconnectNotification
  = @"SQLClientDidDisconnectNotification";
 
 static NSNull	*null = nil;
+static NSArray	*queryModes = nil;
+static NSThread	*mainThread = nil;
 static Class	NSStringClass = 0;
 static Class	NSArrayClass = 0;
 static Class	NSDateClass = 0;
 static Class	NSSetClass = 0;
+
+@interface	CacheQuery : NSObject
+{
+@public
+  NSString	*query;
+  Class		recordClass;
+  unsigned	lifetime;
+}
+@end
+
+@implementation	CacheQuery
+- (void) dealloc
+{
+  RELEASE(query);
+  [super dealloc];
+}
+@end
 
 @interface	SQLClientPool : NSObject
 {
@@ -842,9 +863,18 @@ static NSArray		*rollbackStatement = nil;
 
 @interface	SQLClient (Private)
 - (void) _configure: (NSNotification*)n;
+- (void) _populateCache: (CacheQuery*)a;
 - (NSArray*) _prepare: (NSString*)stmt args: (va_list)args;
+- (void) _recordMainThread;
 - (NSArray*) _substitute: (NSString*)str with: (NSDictionary*)vals;
 + (void) _tick: (NSTimer*)t;
+@end
+
+@interface	SQLClient (GSCacheDelegate)
+- (BOOL) shouldKeepItem: (id)anObject
+		withKey: (id)aKey
+	       lifetime: (unsigned)lifetime
+		  after: (unsigned)delay;
 @end
 
 @implementation	SQLClient
@@ -915,6 +945,10 @@ static unsigned int	maxConnections = 8;
 
 + (void) initialize
 {
+  static id	modes[1];
+  
+  modes[0] = NSDefaultRunLoopMode;
+  queryModes = [[NSArray alloc] initWithObjects: modes count: 1];
   GSTickerTimeNow();
   [SQLRecord class];	// Force initialisation
   if (clientsMap == 0)
@@ -1159,6 +1193,7 @@ static unsigned int	maxConnections = 8;
   DESTROY(_name);
   DESTROY(_statements);
   DESTROY(_cache);
+  DESTROY(_cacheThread);
   [super dealloc];
 }
 
@@ -1166,6 +1201,7 @@ static unsigned int	maxConnections = 8;
 {
   NSMutableString	*s = AUTORELEASE([NSMutableString new]);
 
+  [lock lock];
   [s appendFormat: @"Database      - %@\n", [self clientName]];
   [s appendFormat: @"  Name        - %@\n", [self name]];
   [s appendFormat: @"  DBase       - %@\n", [self database]];
@@ -1182,6 +1218,7 @@ static unsigned int	maxConnections = 8;
     {
       [s appendFormat: @"  Cache -       %@\n", _cache];
     }
+  [lock unlock];
   return s;
 }
 
@@ -2068,6 +2105,32 @@ static unsigned int	maxConnections = 8;
   [self setPassword: s];
 }
 
+/** Internal method to populate the cache with the result of a query.
+ */
+- (void) _populateCache: (CacheQuery*)a
+{
+  GSCache	*cache;
+  id		result;
+
+  [lock lock];
+  NS_DURING
+    {
+      result = [self backendQuery: a->query recordClass: a->recordClass];
+    }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
+
+  cache = [self cache];
+  [cache setObject: result
+	    forKey: a->query
+	  lifetime: a->lifetime];
+}
+
 /**
  * Internal method to build an sql string by quoting any non-string objects
  * and concatenating the resulting strings in a nil terminated list.<br />
@@ -2114,6 +2177,11 @@ static unsigned int	maxConnections = 8;
   [ma insertObject: stmt atIndex: 0];
   DESTROY(arp);
   return ma;
+}
+
+- (void) _recordMainThread
+{
+  mainThread = [NSThread currentThread];
 }
 
 /**
@@ -2308,6 +2376,39 @@ static unsigned int	maxConnections = 8;
 }
 @end
 
+@implementation	SQLClient (GSCacheDelegate)
+- (BOOL) shouldKeepItem: (id)anObject
+		withKey: (id)aKey
+	       lifetime: (unsigned)lifetime
+		  after: (unsigned)delay
+{
+  CacheQuery	*a;
+
+  a = [CacheQuery new];
+  ASSIGN(a->query, aKey);
+  a->recordClass = [[[NSThread currentThread] threadDictionary]
+    objectForKey: @"SQLClientRecordClass"];
+  a->lifetime = lifetime;
+  AUTORELEASE(a);
+  if (_cacheThread == nil)
+    {
+      [self _populateCache: a];
+    }
+  else
+    {
+      /* We schedule an asynchronous update if the item is not too old,
+       * otherwise (more than lifetime seconds past its expiry) we wait
+       * for the update to complete.
+       */
+      [self performSelectorOnMainThread: @selector(_populateCache:)
+			     withObject: a
+			  waitUntilDone: (delay > lifetime) ? YES : NO
+				  modes: queryModes];
+    }
+  return YES;	// Always keep items ... 
+}
+@end
+
 
 
 @implementation	SQLClient(Convenience)
@@ -2439,11 +2540,20 @@ static unsigned int	maxConnections = 8;
 
 - (GSCache*) cache
 {
+  GSCache	*c;
+
+  [lock lock];
   if (_cache == nil)
     {
       _cache = [GSCache new];
+      if (_cacheThread != nil)
+	{
+	  [_cache setDelegate: self];
+	}
     }
-  return _cache;
+  c = RETAIN(_cache);
+  [lock unlock];
+  return AUTORELEASE(c);
 }
 
 - (NSMutableArray*) cache: (int)seconds
@@ -2476,79 +2586,134 @@ static unsigned int	maxConnections = 8;
 	      simpleQuery: (NSString*)stmt
 	      recordClass: (Class)cls
 {
-  NSMutableArray	*result = nil;
+  NSMutableArray	*result;
+  NSTimeInterval	start;
+  GSCache		*c;
+  id			toCache;
 
   if (cls == 0)
     {
       [NSException raise: NSInvalidArgumentException
         format: @"nil class passed to cache:simpleQuery:recordClass:"];
     }
-  [lock lock];
-  NS_DURING
-    {
-      NSTimeInterval	start = GSTickerTimeNow();
-      GSCache		*c = [self cache];
-      id		toCache = nil;
 
-      if (seconds < 0)
-        {
-	  seconds = -seconds;
+  [[[NSThread currentThread] threadDictionary] setObject: cls
+    forKey: @"SQLClientRecordClass"];
+  start = GSTickerTimeNow();
+  c = [self cache];
+  toCache = nil;
+
+  if (seconds < 0)
+    {
+      seconds = -seconds;
+      result = nil;
+    }
+  else
+    {
+      result = [c objectForKey: stmt];
+    }
+
+  if (result == nil)
+    {
+      CacheQuery	*a;
+
+      a = [CacheQuery new];
+      ASSIGN(a->query, stmt);
+      a->recordClass = cls;
+      a->lifetime = seconds;
+      AUTORELEASE(a);
+
+      if (_cacheThread == nil)
+	{
+          [self _populateCache: a];
 	}
       else
 	{
-	  result = [c objectForKey: stmt];
-        }
-
-      if (result == nil)
+	  /* Not really an asynchronous query becuse we wait until it's
+	   * done in order to have a result we can return.
+	   */
+	  [self performSelectorOnMainThread: @selector(_populateCache:)
+				 withObject: a
+			      waitUntilDone: YES
+				      modes: queryModes];
+	}
+      result = [c objectForKey: stmt];
+      _lastOperation = GSTickerTimeNow();
+      if (_duration >= 0)
 	{
-	  result = toCache = [self backendQuery: stmt recordClass: cls];
-	  _lastOperation = GSTickerTimeNow();
-	  if (_duration >= 0)
-	    {
-	      NSTimeInterval	d;
+	  NSTimeInterval	d;
 
-	      d = _lastOperation - start;
-	      if (d >= _duration)
-		{
-		  [self debug: @"Duration %g for query %@", d, stmt];
-		}
+	  d = _lastOperation - start;
+	  if (d >= _duration)
+	    {
+	      [self debug: @"Duration %g for query %@", d, stmt];
 	    }
 	}
-
-      if (seconds == 0)
-	{
-	  // We have been told to remove the existing cached item.
-	  [c setObject: nil forKey: stmt lifetime: seconds];
-	  toCache = nil;
-	}
-
-      if (toCache != nil)
-	{
-	  // We have a newly retrieved object ... cache it.
-	  [c setObject: toCache forKey: stmt lifetime: seconds];
-	}
-
-      if (result != nil)
-	{
-	  /*
-	   * Return an autoreleased copy ... not the original cached data.
-	   */
-	  result = [NSMutableArray arrayWithArray: result];
-	}
     }
-  NS_HANDLER
+
+  if (seconds == 0)
     {
-      [lock unlock];
-      [localException raise];
+      // We have been told to remove the existing cached item.
+      [c setObject: nil forKey: stmt lifetime: seconds];
+      toCache = nil;
     }
-  NS_ENDHANDLER
-  [lock unlock];
+
+  if (toCache != nil)
+    {
+      // We have a newly retrieved object ... cache it.
+      [c setObject: toCache forKey: stmt lifetime: seconds];
+    }
+
+  if (result != nil)
+    {
+      /*
+       * Return an autoreleased copy ... not the original cached data.
+       */
+      result = [NSMutableArray arrayWithArray: result];
+    }
   return result;
 }
 
 - (void) setCache: (GSCache*)aCache
 {
+  [lock lock];
+  if (_cacheThread != nil)
+    {
+      [_cache setDelegate: nil];
+    }
   ASSIGN(_cache, aCache);
+  if (_cacheThread != nil)
+    {
+      [_cache setDelegate: self];
+    }
+  [lock unlock];
+}
+
+- (void) setCacheThread: (NSThread*)aThread
+{
+  if (mainThread == nil)
+    {
+      [self performSelectorOnMainThread: @selector(_recordMainThread)
+			     withObject: nil
+			  waitUntilDone: NO
+				  modes: queryModes];
+    }
+  if (aThread != nil && aThread != mainThread)
+    {
+      NSLog(@"SQLClient: only the main thread is usable as cache thread");
+      aThread = mainThread;
+    }
+  [lock lock];
+  if (_cacheThread != nil)
+    {
+      [_cache setDelegate: nil];
+    }
+  ASSIGN(_cacheThread, aThread);
+  if (_cacheThread != nil)
+    {
+      [_cache setDelegate: self];
+    }
+  [lock unlock];
 }
 @end
 
