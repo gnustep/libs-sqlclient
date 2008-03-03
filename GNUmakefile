@@ -28,7 +28,7 @@ SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
 
 BUNDLE_NAME=
 
-BUNDLE_INSTALL_DIR=$(GNUSTEP_INSTALLATION_DIR)/Library/Bundles/SQLClient
+BUNDLE_INSTALL_DIR=$(GNUSTEP_BUNDLES)/SQLClient
 
 # In some systems and situations the dynamic linker needs to haved the
 # SQLClient, gnustep-base, and objc libraries explicityly linked into
