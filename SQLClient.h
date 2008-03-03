@@ -372,7 +372,8 @@ extern unsigned	SQLClientTimeTick();
   NSMutableArray	*_statements;	/** Uncommitted statements */
   /**
    * Timestamp of last operation.<br />
-   * Maintained by -simpleExecute: -simpleQuery: -cache:simpleQuery:
+   * Maintained by -simpleExecute: -simpleQuery:recordType:listType:
+   * and -cache:simpleQuery:recordType:listType:
    */
   NSTimeInterval	_lastOperation;	
   NSTimeInterval	_duration;
@@ -472,7 +473,8 @@ extern unsigned	SQLClientTimeTick();
  * <p>Upon error, an exception is raised.
  * </p>
  * <p>The method returns a string containing sql suitable for passing to
- * the -simpleQuery:recordClass: or -cache:simpleQuery:recordClass: methods.
+ * the -simpleQuery:recordType:listType:
+ * or -cache:simpleQuery:recordType:listType: methods.
  * </p>
  */
 - (NSString*) buildQuery: (NSString*)stmt,...;
@@ -492,7 +494,8 @@ extern unsigned	SQLClientTimeTick();
  * in the dictionary.
  * </p>
  * <p>The method returns a string containing sql suitable for passing to
- * the -simpleQuery:recordClass: or -cache:simpleQuery:recordClass: methods.
+ * the -simpleQuery:recordType:listType:
+ * or -cache:simpleQuery:recordType:listType: methods.
  * </p>
  */
 - (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
@@ -793,18 +796,27 @@ extern unsigned	SQLClientTimeTick();
 - (void) simpleExecute: (NSArray*)info;
 
 /**
- * Calls -simpleQuery:recordClass: with the default record class.
+ * Calls -simpleQuery:recordType:listType: with the default record class
+ * and default array class.
  */
 - (NSMutableArray*) simpleQuery: (NSString*)stmt;
 
 /**
- * Calls -backendQuery:recordClass: in a safe manner.<br />
+ * Calls -backendQuery:recordType:listType: in a safe manner.<br />
  * Handles locking.<br />
  * Maintains -lastOperation date.<br />
- * The value of cls must be a class which responds to the
- * [SQLRecord+newWithValues:keys:count:] method.
+ * The value of rtype must respond to the
+ * [SQLRecord+newWithValues:keys:count:] method.<br />
+ * If rtype is nil then the [SQLRecord] class is used.<br />
+ * The value of ltype must respond to the [NSObject+alloc] method to produce
+ * a container which must repond to the [NSMutableArray-initWithCapacity:]
+ * method to initialise itsself and the [NSMutableArray-addObject:] method
+ * to add records to the list.<br />
+ * If ltype is nil then the [NSMutableArray] class is used.<br />
  */
-- (NSMutableArray*) simpleQuery: (NSString*)stmt recordClass: (Class)cls;
+- (NSMutableArray*) simpleQuery: (NSString*)stmt
+		     recordType: (id)rtype
+		       listType: (id)ltype;
 
 /**
  * Return the database user for this instance (or nil).
@@ -901,7 +913,8 @@ extern unsigned	SQLClientTimeTick();
  * </p>
  * <example>
  *   result = [db backendQuery: @"SELECT Name FROM Table"
- *                 recordClass: [SQLRecord class]];
+ *                  recordType: [SQLRecord class]]
+ *                    listType: [NSMutableArray class]];
  * </example>
  * <p>Upon error, an exception is raised.
  * </p>
@@ -920,18 +933,31 @@ extern unsigned	SQLClientTimeTick();
  * <p>Application code must <em>not</em> call this method directly, it is
  * for internal use only.
  * </p>
- * <p>The cls argument specifies a class of to be used to
+ * <p>The rtype argument specifies an object to be used to
  * create the records produced by the query.<br />
  * This is provided as a performance optimisation when you want to store
  * data directly into a special class of your own.<br />
- * The class must respond to the [SQLRecord +newWithValues:keys:count:]
- * method.
+ * The object must respond to the [SQLRecord +newWithValues:keys:count:]
+ * method to produce a new record initialised with the supplied data.
+ * </p>
+ * <p>The ltype argument specifies an object to be used to create objects to
+ * store the records produced by the query.<br />
+ * The should be a subclass of NSMutableArray.  It must at least
+ * implement the [NSObject+alloc] method to create an instnce to store
+ * records.  The instance must implement [NSMutableArray-initWithCapacity:]
+ * to initialise itsself and [NSMutableArray-addObject:] to allow the
+ * backend to add records to it.<br />
+ * For caching to work, it must be possible to make a mutable copy of the
+ * instance using the mutableCopy method.
  * </p>
  */
-- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)cls;
+- (NSMutableArray*) backendQuery: (NSString*)stmt
+		      recordType: (id)rtype
+		        listType: (id)ltype;
 
 /**
- * Calls -backendQuery:recordClass: with the default record class.
+ * Calls -backendQuery:recordType:listType: with the default record class
+ * and array class.
  */
 - (NSMutableArray*) backendQuery: (NSString*)stmt;
 
@@ -1113,22 +1139,25 @@ extern unsigned	SQLClientTimeTick();
 - (GSCache*) cache;
 
 /**
- * Calls -cache:simpleQuery:recordClass: with the default record class and
- * wth a query string formed from stmt and the following values (if any).
+ * Calls -cache:simpleQuery:recordType:listType: with the default
+ * record class, array class, and with a query string formed from
+ * stmt and the following values (if any).
  */
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...;
 
 /**
- * Calls -cache:simpleQuery:recordClass: with the default record class and
- * wth a query string formed from stmt and values.
+ * Calls -cache:simpleQuery:recordType:listType: with the default
+ * record class array class and with a query string formed from stmt
+ * and values.
  */
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values;
 
 /**
- * Calls -cache:simpleQuery:recordClass: with the default record class.
+ * Calls -cache:simpleQuery:recordType:listType: with the default
+ * record class and array class.
  */
 - (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
 
@@ -1142,19 +1171,28 @@ extern unsigned	SQLClientTimeTick();
  * If seconds is zero, the cache for this query is emptied.<br />
  * Handles locking.<br />
  * Maintains -lastOperation date.<br />
- * The value of cls must be a class which responds to the
+ * The value of rtype must respond to the
  * [SQLRecord+newWithValues:keys:count:] method.<br />
+ * If rtype is nil then the [SQLRecord] class is used.<br />
+ * The value of ltype must respond to the [NSObject+alloc] method to produce
+ * a container which must repond to the [NSMutableArray-initWithCapacity:]
+ * method to initialise itsself and the [NSMutableArray-addObject:] method
+ * to add records to the list.<br />
+ * If ltype is nil then the [NSMutableArray] class is used.<br />
+ * The list produced by this argument is used as the return value of
+ * this method.<br />
  * If a cache thread has been set using the -setCacheThread: method, and the
- * -cache:simpleQuery:recordClass: method is called from a thread other
- * than the cache thread, then any query to retrieve uncached data will
- * be performed in the cache thread, and for cached (but expired) data,
- * the old (expired) results may be returned ... in which case an
- * asynchronous query to update the cache will be executed as soon
- * as possible in the cache thread.
+ * -cache:simpleQuery:recordType:listType: method is called from a
+ * thread other than the cache thread, then any query to retrieve
+ * uncached data will be performed in the cache thread, and for cached
+ * (but expired) data, the old (expired) results may be returned ...
+ * in which case an asynchronous query to update the cache will be
+ * executed as soon as possible in the cache thread.
  */
 - (NSMutableArray*) cache: (int)seconds
 	      simpleQuery: (NSString*)stmt
-	      recordClass: (Class)cls;
+	       recordType: (id)rtype
+	         listType: (id)ltype;
 
 /**
  * Sets the cache to be used by the receiver for storing the results of

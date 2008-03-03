@@ -1,3 +1,16 @@
+2008-03-03 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* ECPG.pgm:
+	* MySQL.m:
+	* Postgres.m:
+	* SQLite.m:
+	* JDBC.m:
+	Alter to allow control of both the way records are strored and
+	the way they are listed ... so people can make performance
+	optimisations.
+
 2008-02-21 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

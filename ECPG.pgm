@@ -355,7 +355,9 @@ static unsigned int trim(char *str)
   return (str - start);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
+- (NSMutableArray*) backendQuery: (NSString*)stmt
+		      recordType: (id)rtype
+		        listType: (id)ltype
 {
   EXEC SQL BEGIN DECLARE SECTION;
   bool	aBool;
@@ -392,7 +394,7 @@ static unsigned int trim(char *str)
 
   query = (char*)[hackForPrepare(stmt) UTF8String];
   handle = (char*)[[self clientName] UTF8String];
-  records = [[NSMutableArray alloc] initWithCapacity: 32];
+  records = [[ltype alloc] initWithCapacity: 32];
 
   /*
    * Ensure we have a working connection.
@@ -597,9 +599,9 @@ static unsigned int trim(char *str)
 		  keys[index-1] = [NSString stringWithUTF8String:
 		    fieldName];
 		}
-	      record = [rClass newWithValues: values
-				        keys: keys
-				       count: count];
+	      record = [rtype newWithValues: values
+				       keys: keys
+			              count: count];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }

@@ -362,7 +362,9 @@ static unsigned int trim(char *str)
   return (str - start);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
+- (NSMutableArray*) backendQuery: (NSString*)stmt
+		      recordType: (id)rtype
+		        listType: (id)ltype
 {
   CREATE_AUTORELEASE_POOL(arp);
   PGresult		*result = 0;
@@ -426,7 +428,7 @@ static unsigned int trim(char *str)
 	      formats[i] = PQfformat(result, i);
 	    }
 
-	  records = [[NSMutableArray alloc] initWithCapacity: recordCount];
+	  records = [[ltype alloc] initWithCapacity: recordCount];
 	  for (i = 0; i < recordCount; i++)
 	    {
 	      SQLRecord	*record;
@@ -489,9 +491,9 @@ static unsigned int trim(char *str)
 		    }
 		  values[j] = v;
 		}
-	      record = [rClass newWithValues: values
-					keys: keys
-				       count: fieldCount];
+	      record = [rtype newWithValues: values
+				       keys: keys
+				      count: fieldCount];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }

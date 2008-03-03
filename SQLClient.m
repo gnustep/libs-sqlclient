@@ -83,7 +83,8 @@ static Class	NSSetClass = 0;
 {
 @public
   NSString	*query;
-  Class		recordClass;
+  id		recordType;
+  id		listType;
   unsigned	lifetime;
 }
 @end
@@ -323,6 +324,7 @@ typedef	struct {
 } *TDefs;
 
 @class	_ConcreteSQLRecord;
+static Class aClass = 0;
 static Class rClass = 0;
 
 @implementation	SQLRecord
@@ -338,6 +340,7 @@ static Class rClass = 0;
   if (null == nil)
     {
       null = [NSNull new];
+      aClass = [NSMutableArray class];
       rClass = [_ConcreteSQLRecord class];
     }
 }
@@ -1796,18 +1799,17 @@ static unsigned int	maxConnections = 8;
 
 - (NSMutableArray*) simpleQuery: (NSString*)stmt
 {
-  return [self simpleQuery: stmt recordClass: rClass];
+  return [self simpleQuery: stmt recordType: rClass listType: aClass];
 }
 
-- (NSMutableArray*) simpleQuery: (NSString*)stmt recordClass: (Class)cls
+- (NSMutableArray*) simpleQuery: (NSString*)stmt
+		     recordType: (id)rtype
+		       listType: (id)ltype
 {
   NSMutableArray	*result = nil;
 
-  if (cls == 0)
-    {
-      [NSException raise: NSInvalidArgumentException
-        format: @"nil class passed to simpleQuery:recordClass:"];
-    }
+  if (rtype == 0) rtype = rClass;
+  if (ltype == 0) ltype = aClass;
   [lock lock];
   NS_DURING
     {
@@ -1817,7 +1819,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  start = GSTickerTimeNow();
 	}
-      result = [self backendQuery: stmt recordClass: cls];
+      result = [self backendQuery: stmt recordType: rtype listType: ltype];
       _lastOperation = GSTickerTimeNow();
       if (_duration >= 0)
 	{
@@ -1873,10 +1875,12 @@ static unsigned int	maxConnections = 8;
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt
 {
-  return [self backendQuery: stmt recordClass: rClass];
+  return [self backendQuery: stmt recordType: rClass listType: aClass];
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)cls
+- (NSMutableArray*) backendQuery: (NSString*)stmt
+		      recordType: (id)rtype
+		        listType: (id)ltype
 {
   [NSException raise: NSInternalInconsistencyException
 	      format: @"Called -%@ without backend bundle loaded",
@@ -2115,7 +2119,9 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
-      result = [self backendQuery: a->query recordClass: a->recordClass];
+      result = [self backendQuery: a->query
+		       recordType: a->recordType
+		         listType: a->listType];
     }
   NS_HANDLER
     {
@@ -2383,11 +2389,13 @@ static unsigned int	maxConnections = 8;
 		  after: (unsigned)delay
 {
   CacheQuery	*a;
+  NSDictionary	*d;
 
   a = [CacheQuery new];
   ASSIGN(a->query, aKey);
-  a->recordClass = [[[NSThread currentThread] threadDictionary]
-    objectForKey: @"SQLClientRecordClass"];
+  d = [[NSThread currentThread] threadDictionary];
+  a->recordType = [d objectForKey: @"SQLClientRecordType"];
+  a->listType = [d objectForKey: @"SQLClientListType"];
   a->lifetime = lifetime;
   AUTORELEASE(a);
   if (_cacheThread == nil)
@@ -2579,26 +2587,29 @@ static unsigned int	maxConnections = 8;
 - (NSMutableArray*) cache: (int)seconds
 	      simpleQuery: (NSString*)stmt
 {
-  return [self cache: seconds simpleQuery: stmt recordClass: rClass];
+  return [self cache: seconds
+	 simpleQuery: stmt
+	  recordType: nil
+	    listType: nil];
 }
 
 - (NSMutableArray*) cache: (int)seconds
 	      simpleQuery: (NSString*)stmt
-	      recordClass: (Class)cls
+	       recordType: (id)rtype
+	         listType: (id)ltype
 {
   NSMutableArray	*result;
+  NSMutableDictionary	*md;
   NSTimeInterval	start;
   GSCache		*c;
   id			toCache;
 
-  if (cls == 0)
-    {
-      [NSException raise: NSInvalidArgumentException
-        format: @"nil class passed to cache:simpleQuery:recordClass:"];
-    }
+  if (rtype == 0) rtype = rClass;
+  if (ltype == 0) ltype = aClass;
 
-  [[[NSThread currentThread] threadDictionary] setObject: cls
-    forKey: @"SQLClientRecordClass"];
+  md = [[NSThread currentThread] threadDictionary];
+  [md setObject: rtype forKey: @"SQLClientRecordType"];
+  [md setObject: ltype forKey: @"SQLClientListType"];
   start = GSTickerTimeNow();
   c = [self cache];
   toCache = nil;
@@ -2619,7 +2630,8 @@ static unsigned int	maxConnections = 8;
 
       a = [CacheQuery new];
       ASSIGN(a->query, stmt);
-      a->recordClass = cls;
+      a->recordType = rtype;
+      a->listType = ltype;
       a->lifetime = seconds;
       AUTORELEASE(a);
 
@@ -2669,7 +2681,7 @@ static unsigned int	maxConnections = 8;
       /*
        * Return an autoreleased copy ... not the original cached data.
        */
-      result = [NSMutableArray arrayWithArray: result];
+      result = [[result mutableCopy] autorelease];
     }
   return result;
 }

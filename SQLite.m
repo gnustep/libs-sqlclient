@@ -195,10 +195,12 @@
   DESTROY(arp);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
+- (NSMutableArray*) backendQuery: (NSString*)stmt
+		      recordType: (id)rtype
+		        listType: (id)ltype
 {
   CREATE_AUTORELEASE_POOL(arp);
-  NSMutableArray	*records = [[NSMutableArray alloc] init];
+  NSMutableArray	*records = [[ltype alloc] initWithCapacity: 2];
 
   if ([stmt length] == 0)
     {
@@ -282,9 +284,9 @@
 		    }
 		}
 
-	      record = [rClass newWithValues: values
-				        keys: keys
-				       count: columns];
+	      record = [rtype newWithValues: values
+				       keys: keys
+				      count: columns];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }

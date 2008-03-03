@@ -1241,7 +1241,9 @@ static	int	JDBCVARCHAR = 0;
   DESTROY(arp);
 }
 
-- (NSMutableArray*) backendQuery: (NSString*)stmt recordClass: (Class)rClass
+- (NSMutableArray*) backendQuery: (NSString*)stmt
+		      recordType: (id)rType
+		        listType: (id)lType
 {
   NSMutableArray	*records = nil;
   CREATE_AUTORELEASE_POOL(arp);
@@ -1268,7 +1270,7 @@ static	int	JDBCVARCHAR = 0;
       int	fieldCount;
       jclass	resultClass;
       jobject	result;
-      jclass	metaDataClass;
+      jclass	metaDatlType;
       jobject	metaData;
       jmethodID	jm;
 
@@ -1294,9 +1296,9 @@ static	int	JDBCVARCHAR = 0;
       JException (env);
       metaData = (*env)->CallObjectMethod (env, result, jm);
       JException (env);
-      metaDataClass = (*env)->GetObjectClass(env, metaData);
+      metaDatlType = (*env)->GetObjectClass(env, metaData);
       JException (env);
-      jm = (*env)->GetMethodID (env, metaDataClass,
+      jm = (*env)->GetMethodID (env, metaDatlType,
         "getColumnCount", "()I");
       JException (env);
       fieldCount = (*env)->CallIntMethod (env, metaData, jm);
@@ -1316,7 +1318,7 @@ static	int	JDBCVARCHAR = 0;
 
 	  /* Get the names of each field
 	   */
-	  jm = (*env)->GetMethodID (env, metaDataClass,
+	  jm = (*env)->GetMethodID (env, metaDatlType,
 	    "getColumnName", "(I)Ljava/lang/String;");
 	  JException (env);
 	  for (i = 0; i < fieldCount; i++)
@@ -1330,7 +1332,7 @@ static	int	JDBCVARCHAR = 0;
 	  /* Get the types of each field.
 	   * We treat most as strings.
 	   */
-	  jm = (*env)->GetMethodID (env, metaDataClass,
+	  jm = (*env)->GetMethodID (env, metaDatlType,
 	    "getColumnType", "(I)I");
 	  JException (env);
 	  for (i = 0; i < fieldCount; i++)
@@ -1377,7 +1379,7 @@ static	int	JDBCVARCHAR = 0;
 	  next = (*env)->GetMethodID (env, resultClass,
 	    "next", "()Z");
 	  JException (env);
-	  records = [[NSMutableArray alloc] initWithCapacity: 100];
+	  records = [[lType alloc] initWithCapacity: 2];
 	  while ((*env)->CallBooleanMethod (env, result, next) == JNI_TRUE)
 	    {
 	      SQLRecord	*record;
@@ -1474,16 +1476,16 @@ static	int	JDBCVARCHAR = 0;
 		  [localException raise];
 		}
 	      NS_ENDHANDLER
-	      record = [rClass newWithValues: values
-					keys: keys
-				       count: fieldCount];
+	      record = [rType newWithValues: values
+				       keys: keys
+				      count: fieldCount];
 	      [records addObject: record];
 	      RELEASE(record);
 	    }
 	}
       else
 	{
-	  records = [NSMutableArray array];
+	  records = [[lType alloc] initWthCapacity: 0];
 	}
       (*env)->PopLocalFrame (env, NULL);
     }
