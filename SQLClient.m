@@ -2747,7 +2747,7 @@ static unsigned int	maxConnections = 8;
 {
   return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
     [super description],
-    (_count == 0 ? (id)@"" : (id)[_info objectAtIndex: 0]), _db];
+    (_count == 0 ? (id)@"" : (id)_info), _db];
 }
 
 - (void) add: (NSString*)stmt,...
