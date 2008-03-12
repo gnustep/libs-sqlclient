@@ -1019,10 +1019,10 @@ extern unsigned	SQLClientTimeTick();
 /**
  * Returns a transaction object configured to handle batching and
  * execute part of a batch of statements if execution of the whole
- * fails.<br />
+ * using the [SQLTransaction-executeBatch] method fails.<br />
  * If stopOnFailure is YES than execution of the transaction will
  * stop with the first statement to fail, otherwise it will execute
- * all the statements it can, skipping any failued statements.
+ * all the statements it can, skipping any failed statements.
  */
 - (SQLTransaction*) batch: (BOOL)stopOnFailure;
 
@@ -1316,6 +1316,9 @@ extern unsigned	SQLClientTimeTick();
  * <p>If the transaction has had transactions appended to it, those
  * subsidiary transactions may succeed or fail atomically depending
  * on their individual attributes.
+ * </p>
+ * <p>If the transaction was not created using [SQLClient-batch:], then
+ * calling this method is equivalent to calling the -execute method.
  * </p>
  * The method returns the number of statements which actually succeeded.
  */
