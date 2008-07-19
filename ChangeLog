@@ -1,3 +1,11 @@
+2008-07-19  Nicola Pero <nicola.pero@meta-innovation.com>
+
+	* configure.ac: Documented the --with-additional-include=,
+	--with-additional-lib=, --with-postgres-dir= and
+	--with-jre-architecture= options.
+	* configure: Regenerated.
+	* config.h.in: Regenerated.
+	
 2008-03-03 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

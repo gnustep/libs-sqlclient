@@ -10,8 +10,14 @@ else
 fi
 
 #--------------------------------------------------------------------
-AC_ARG_WITH(additional-include,
-  [  --with-additional-include=flags  specify additional include dirs to use],
+AC_ARG_WITH(additional-include, [  
+--with-additional-include=flags  
+   Specifies additional include compiler flags to use.
+   If configure can not find your database library headers,
+   you may want to use this flag to help it find them.  For
+   example:
+   --with-additional-include=-I/usr/local/include
+],
   additional_include="$withval", additional_include="no")
 
 if test "$additional_include" != "no"; then
@@ -19,8 +25,14 @@ if test "$additional_include" != "no"; then
   INCD="$INCD $additional_include"
 fi
 
-AC_ARG_WITH(additional-lib,
-  [  --with-additional-lib=flags  specify additional lib dirs to use],
+AC_ARG_WITH(additional-lib, [
+--with-additional-lib=flags  
+   Specifies additional library compiler flags to use.
+   If configure can not find your database libraries,
+   you may want to use this flag to help it find them.  For
+   example:
+   --with-additional-lib=-L/usr/local/lib/mysql
+],
   additional_lib="$withval", additional_lib="no")
 
 if test "$additional_lib" != "no"; then
@@ -28,8 +40,18 @@ if test "$additional_lib" != "no"; then
   LIBD="$LIBD $additional_lib"
 fi
 
-AC_ARG_WITH(postgres-dir,
-  [  --with-postgres-dir=PATH  specify postgres installation dir],
+AC_ARG_WITH(postgres-dir, [ 
+--with-postgres-dir=PATH
+   Specifies the postgres installation dir; configure
+   will add the appropriate additional include and lib
+   flags.  Useful when you installed postgres in some 
+   unusual place and want to help configure find it.  For
+   example:
+   --with-postgres-dir=/usr/local/pgsql
+   (which is equivalent to
+   --with-additional-include=-L/usr/local/pgsql/include
+   --with-additional-lib=-L/usr/local/pgsql/lib)
+],
   postgres_topdir="$withval", postgres_topdir="no")
 
 if test "$postgres_topdir" != "no"; then
@@ -66,8 +88,12 @@ case "$GNUSTEP_HOST_OS" in
   *)		_JNI_SUBDIR="genunix";;
 esac
 
-AC_ARG_WITH(jre-architecture,
-  [  --with-jre-architecture=value  specify cpu architecture for jre],
+AC_ARG_WITH(jre-architecture,  [ 
+--with-jre-architecture=value
+   Specifies the CPU architecture to use for the JRE
+   (only used when building the JDBC module).  Example
+   values are i386, amd64 and sparc.
+],
   jre_architecture="$withval", jre_architecture="")
 
 save_LIBS="$LIBS"
