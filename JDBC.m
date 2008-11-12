@@ -1485,7 +1485,7 @@ static	int	JDBCVARCHAR = 0;
 	}
       else
 	{
-	  records = [[lType alloc] initWthCapacity: 0];
+	  records = [[lType alloc] initWithCapacity: 0];
 	}
       (*env)->PopLocalFrame (env, NULL);
     }

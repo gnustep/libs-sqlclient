@@ -4,6 +4,8 @@
 	* SQLClient.m:
 	Add support for tracking the number of consecutive connection failures
 	and imposing a delay between connection attempts.
+	* JDBC.m: fix typo
+	* GNUMmakefile: bump version
 
 2008-07-19  Nicola Pero <nicola.pero@meta-innovation.com>
 

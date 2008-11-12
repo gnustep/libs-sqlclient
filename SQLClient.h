@@ -382,7 +382,12 @@ extern unsigned	SQLClientTimeTick();
   unsigned int		_debugging;	/** The current debugging level */
   GSCache		*_cache;	/** The cache for query results */
   NSThread		*_cacheThread;	/** Thread for cache queries */
-  unsigned		_connectFails;	/** The count of connection failures */
+  unsigned int		_connectFails;	/** The count of connection failures */
+  /** Allow for extensions by allocating memory and pointing to it from
+   * the _extra ivar.  That way we can avoid binary incompatibility between
+   * minor releases.
+   */
+  void			*_extra;
 }
 
 /**
