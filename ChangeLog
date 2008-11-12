@@ -1,3 +1,10 @@
+2008-11-12 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Add support for tracking the number of consecutive connection failures
+	and imposing a delay between connection attempts.
+
 2008-07-19  Nicola Pero <nicola.pero@meta-innovation.com>
 
 	* configure.ac: Documented the --with-additional-include=,

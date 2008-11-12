@@ -1141,13 +1141,33 @@ static unsigned int	maxConnections = 8;
       [lock lock];
       if (connected == NO)
 	{
+	  if (_connectFails > 1)
+	    {
+	      NSTimeInterval	delay;
+	      NSTimeInterval	elapsed;
+
+	      /* If we have repeated connection failures, we enforce a
+	       * delay fo up to 30 seconds between connection attempts
+	       * to avoid overloading the system with too frequent
+	       * connection attempts.
+	       */
+	      delay = (_connectFails < 30) ? _connectFails : 30;
+	      elapsed = GSTickerTimeNow() - _lastOperation;
+	      if (elapsed < delay)
+		{
+		  [NSThread sleepForTimeInterval: delay - elapsed];
+		}
+	    }
 	  NS_DURING
 	    {
 	      [self backendConnect];
+	      _connectFails = 0;
 	    }
 	  NS_HANDLER
 	    {
 	      [lock unlock];
+	      _lastOperation = GSTickerTimeNow();
+	      _connectFails++;
 	      [localException raise];
 	    }
 	  NS_ENDHANDLER
@@ -1347,7 +1367,7 @@ static unsigned int	maxConnections = 8;
 
 - (NSDate*) lastOperation
 {
-  if (_lastOperation > 0.0)
+  if (_lastOperation > 0.0 && _connectFails == 0)
     {
       return [NSDate dateWithTimeIntervalSinceReferenceDate: _lastOperation];
     }
@@ -1492,6 +1512,11 @@ static unsigned int	maxConnections = 8;
   quoted = [self quoteString: str];
   RELEASE(str);
   return quoted;
+}
+
+- (NSString*) quoteBigInteger: (int64_t)i
+{
+  return [NSString stringWithFormat: @"%lld", i];
 }
 
 - (NSString*) quoteCString: (const char *)s

@@ -374,12 +374,15 @@ extern unsigned	SQLClientTimeTick();
    * Timestamp of last operation.<br />
    * Maintained by -simpleExecute: -simpleQuery:recordType:listType:
    * and -cache:simpleQuery:recordType:listType:
+   * Also set for a failed connection attempt, but not reported by the
+   * -lastOperation method in that case.
    */
   NSTimeInterval	_lastOperation;	
   NSTimeInterval	_duration;
   unsigned int		_debugging;	/** The current debugging level */
   GSCache		*_cache;	/** The cache for query results */
   NSThread		*_cacheThread;	/** Thread for cache queries */
+  unsigned		_connectFails;	/** The count of connection failures */
 }
 
 /**
@@ -529,7 +532,14 @@ extern unsigned	SQLClientTimeTick();
  * If the <em>connected</em> instance variable is NO, this method
  * calls -backendConnect to ensure that there is a connection to the
  * database server established. Returns the result.<br />
- * Performs any necessary locking for thread safety.
+ * Performs any necessary locking for thread safety.<br />
+ * This method also counts the number of consecutive failed connection
+ * attempts.  A delay is enforced between each connection attempt, with
+ * the length of the delay growing with each failure.  This ensures
+ * that applications which fail to deal with connection failures, and
+ * just keep trying to reconnect, will not overload the system/server.<br />
+ * The maximum delay is 30 seconds, so when the database server is restarted,
+ * the application can reconnect reasonably quickly.
  */
 - (BOOL) connect;
 
@@ -711,6 +721,11 @@ extern unsigned	SQLClientTimeTick();
  * Produce a quoted string from the supplied arguments (printf style).
  */
 - (NSString*) quotef: (NSString*)fmt, ...;
+
+/**
+ * Convert a big (64 bit) integer to a string suitable for use in an SQL query.
+ */
+- (NSString*) quoteBigInteger: (int64_t)i;
 
 /**
  * Convert a 'C' string to a string suitable for use in an SQL query
