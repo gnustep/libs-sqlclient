@@ -300,12 +300,13 @@ connectQuote(NSString *str)
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
 	  [self backendDisconnect];
-	  [NSException raise: SQLException format: @"%@ %@", str, stmt];
+	  [NSException raise: SQLException format: @"Error executing %@: %@",
+	    stmt, str];
 	}
       if (PQresultStatus(result) != PGRES_COMMAND_OK)
 	{
-	  [NSException raise: SQLException format: @"%s",
-	    PQresultErrorMessage(result)];
+	  [NSException raise: SQLException format: @"Error executing %@: %s",
+	    stmt, PQresultErrorMessage(result)];
 	}
     }
   NS_HANDLER
@@ -315,11 +316,6 @@ connectQuote(NSString *str)
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
 	  [self backendDisconnect];
-	}
-      if ([self debugging] > 0)
-	{
-	  [self debug: @"Error executing statement:\n%@\n%@",
-	    stmt, localException];
 	}
       if (result != 0)
 	{
@@ -408,7 +404,8 @@ static unsigned int trim(char *str)
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
 	  [self backendDisconnect];
-	  [NSException raise: SQLException format: @"%@", str];
+	  [NSException raise: SQLException format: @"Error executing %@: %@",
+	    stmt, str];
 	}
       if (PQresultStatus(result) == PGRES_TUPLES_OK)
 	{
@@ -500,8 +497,8 @@ static unsigned int trim(char *str)
 	}
       else
 	{
-	  [NSException raise: SQLException format: @"%s",
-	    PQresultErrorMessage(result)];
+	  [NSException raise: SQLException format: @"Error executing %@: %s",
+	    stmt, PQresultErrorMessage(result)];
 	}
     }
   NS_HANDLER
@@ -511,11 +508,6 @@ static unsigned int trim(char *str)
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
 	  [self backendDisconnect];
-	}
-      if ([self debugging] > 0)
-	{
-	  [self debug: @"Error executing statement:\n%@\n%@",
-	    stmt, localException];
 	}
       if (result != 0)
 	{
