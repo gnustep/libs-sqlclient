@@ -2932,6 +2932,11 @@ static unsigned int	maxConnections = 8;
         }
       NS_HANDLER
         {
+	  if ([_db debugging] > 0)
+	    {
+	      [_db debug: @"Initial failure executing batch %@: %@",
+		self, localException];
+	    }
           if (_batch == YES)
             {
               unsigned  count = [_info count];
@@ -2965,6 +2970,11 @@ static unsigned int	maxConnections = 8;
                     }
                   NS_HANDLER
                     {
+		      if ([_db debugging] > 0)
+			{
+			  [_db debug: @"Failure of %d executing batch %@: %@",
+			    i, self, localException];
+			}
                       success = NO;
                     }
                   NS_ENDHANDLER
