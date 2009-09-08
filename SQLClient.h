@@ -1325,8 +1325,9 @@ extern unsigned	SQLClientTimeTick();
  */
 - (void) execute;
 
-/** Convenience method which calls -executeBatchReturningFailures: with
- * a nil argument.
+/** Convenience method which calls
+ * -executeBatchReturningFailures:logExceptions: with
+ * a nil failures argument and exception logging off.
  */
 - (unsigned) executeBatch;
 
@@ -1354,9 +1355,14 @@ extern unsigned	SQLClientTimeTick();
  * batch is set to stop on the first failure) are <em>also</em> added to
  * the failures transaction. 
  * </p>
+ * <p>If the log argument is YES, then any exceptions encountered when
+ * executing the batch are logged using the [SQLClient-debug:,...] method,
+ * even if debug logging is not enabled with [SQLClient-setDebugging:].
+ * </p>
  * The method returns the number of statements which actually succeeded.
  */
-- (unsigned) executeBatchReturningFailures: (SQLTransaction*)failures;
+- (unsigned) executeBatchReturningFailures: (SQLTransaction*)failures
+			     logExceptions: (BOOL)log;
 
 /**
  * Insert trn at the index'th position in the receiver.<br />

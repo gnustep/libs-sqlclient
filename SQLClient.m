@@ -2927,10 +2927,11 @@ static unsigned int	maxConnections = 8;
 
 - (unsigned) executeBatch
 {
-  return [self executeBatchReturningFailures: nil];
+  return [self executeBatchReturningFailures: nil logExceptions: NO];
 }
 
 - (unsigned) executeBatchReturningFailures: (SQLTransaction*)failures
+			     logExceptions: (BOOL)log
 {
   unsigned      executed = 0;
 
@@ -2943,7 +2944,7 @@ static unsigned int	maxConnections = 8;
         }
       NS_HANDLER
         {
-	  if ([_db debugging] > 0)
+	  if (log == YES || [_db debugging] > 0)
 	    {
 	      [_db debug: @"Initial failure executing batch %@: %@",
 		self, localException];
@@ -2973,7 +2974,7 @@ static unsigned int	maxConnections = 8;
 			      [failures->_info addObject: o];
 			      failures->_count++;
 			    }
-			  if ([_db debugging] > 0)
+			  if (log == YES || [_db debugging] > 0)
 			    {
 			      [_db debug:
 				@"Failure of %d executing batch %@: %@",
@@ -2988,7 +2989,8 @@ static unsigned int	maxConnections = 8;
 		      unsigned      result;
 
 		      result = [(SQLTransaction*)o
-			executeBatchReturningFailures: failures];
+			executeBatchReturningFailures: failures
+			logExceptions: log];
 		      executed += result;
 		      if (result == [(SQLTransaction*)o totalCount])
 			{
