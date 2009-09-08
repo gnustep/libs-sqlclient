@@ -1,3 +1,12 @@
+2009-09-08 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Add method for executing a batch of statements/transactions and
+	returning any failed statements/transactions to they can be
+	re-done.  Also add methods to manipulate the statements in a
+	transaction so we can retry things intelligently.
+
 2008-11-12 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

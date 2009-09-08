@@ -1039,7 +1039,7 @@ extern unsigned	SQLClientTimeTick();
 /**
  * Returns a transaction object configured to handle batching and
  * execute part of a batch of statements if execution of the whole
- * using the [SQLTransaction-executeBatch] method fails.<br />
+ * using the [SQLTransaction-executeBatch:] method fails.<br />
  * If stopOnFailure is YES than execution of the transaction will
  * stop with the first statement to fail, otherwise it will execute
  * all the statements it can, skipping any failed statements.
@@ -1294,7 +1294,9 @@ extern unsigned	SQLClientTimeTick();
 - (id) copyWithZone: (NSZone*)z;
 
 /**
- * Returns the number of statements in this transaction.
+ * Returns the number of individual statements ond/r subsidiary transactions
+ * which have been added to the receiver.  For a count of the total number
+ * of statements, use the -totalCount method.
  */
 - (unsigned) count;
 
@@ -1323,6 +1325,11 @@ extern unsigned	SQLClientTimeTick();
  */
 - (void) execute;
 
+/** Convenience method which calls -executeBatchReturningFailures: with
+ * a nil argument.
+ */
+- (unsigned) executeBatch;
+
 /**
  * <p>This is similar to the -execute method, but may allow partial
  * execution of the transaction if appropriate:
@@ -1340,9 +1347,27 @@ extern unsigned	SQLClientTimeTick();
  * <p>If the transaction was not created using [SQLClient-batch:], then
  * calling this method is equivalent to calling the -execute method.
  * </p>
+ * <p>If any statements/transactions in the batch fail, they are added to
+ * the transaction supplied in the failures parameter (if it's not nil)
+ * so that you can retry them later.<br />
+ * NB. statements/transactions which are not executed at all (because the
+ * batch is set to stop on the first failure) are <em>also</em> added to
+ * the failures transaction. 
+ * </p>
  * The method returns the number of statements which actually succeeded.
  */
-- (unsigned) executeBatch;
+- (unsigned) executeBatchReturningFailures: (SQLTransaction*)failures;
+
+/**
+ * Insert trn at the index'th position in the receiver.<br />
+ * The transaction trn must be non-empty and must use the same
+ * database client as the receiver.
+ */
+- (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
+
+/** Remove the index'th transaction or statement from the receiver.
+ */
+- (void) removeTransactionAtIndex: (unsigned)index;
 
 /**
  * Resets the transaction, removing all previously added statements.
@@ -1350,6 +1375,20 @@ extern unsigned	SQLClientTimeTick();
  * transactions.
  */
 - (void) reset;
+
+/**
+ * Returns the total count of statements in this transaction including
+ * those in any subsidiary transactions.  For a count of the statements
+ * and/or transactions directly added to the receiver, use the -count method.
+ */
+- (unsigned) totalCount;
+
+/** Return an autoreleased copy of the index'th transaction or statement
+ * added to the receiver.<br />
+ * Since the returned transaction contains a copy of the statement/transaction
+ * in the receiver, you can modify it without effecting the original.
+ */
+- (SQLTransaction*) transactionAtIndex: (unsigned)index;
 @end
 
 #endif

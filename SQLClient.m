@@ -2756,67 +2756,6 @@ static unsigned int	maxConnections = 8;
 
 @implementation	SQLTransaction
 
-- (unsigned) count
-{
-  return _count;
-}
-
-- (void) dealloc
-{
-  DESTROY(_db);
-  DESTROY(_info);
-  [super dealloc];
-}
-
-- (NSString*) description
-{
-  return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
-    [super description],
-    (_count == 0 ? (id)@"" : (id)_info), _db];
-}
-
-- (void) add: (NSString*)stmt,...
-{
-  va_list       ap;
-
-  va_start (ap, stmt);
-  [_info addObject: [_db _prepare: stmt args: ap]];
-  _count++;
-  va_end (ap);
-}
-
-- (void) add: (NSString*)stmt with: (NSDictionary*)values
-{
-  [_info addObject: [_db _substitute: stmt with: values]];
-  _count++;
-}
-
-- (void) append: (SQLTransaction*)other
-{
-  if (other != nil && other->_count > 0)
-    {
-      other = [other copy];
-      [_info addObject: other];
-      _count += other->_count;
-      RELEASE(other);
-    }
-}
-
-- (id) copyWithZone: (NSZone*)z
-{
-  SQLTransaction        *c;
-
-  c = (SQLTransaction*)NSCopyObject(self, 0, z);
-  c->_db = RETAIN(c->_db);
-  c->_info = [c->_info mutableCopy];
-  return c;
-}
-
-- (SQLClient*) db
-{
-  return _db;
-}
-
 - (void) _addSQL: (NSMutableString*)sql andArgs: (NSMutableArray*)args
 {
   unsigned      count = [_info count];
@@ -2875,6 +2814,73 @@ static unsigned int	maxConnections = 8;
     }
 }
 
+- (void) add: (NSString*)stmt,...
+{
+  va_list       ap;
+
+  va_start (ap, stmt);
+  [_info addObject: [_db _prepare: stmt args: ap]];
+  _count++;
+  va_end (ap);
+}
+
+- (void) add: (NSString*)stmt with: (NSDictionary*)values
+{
+  [_info addObject: [_db _substitute: stmt with: values]];
+  _count++;
+}
+
+- (void) append: (SQLTransaction*)other
+{
+  if (other != nil && other->_count > 0)
+    {
+      if (other->_db != _db)
+	{
+	  [NSException raise: NSInvalidArgumentException
+		      format: @"[%@-%@] database client missmatch",
+	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+	}
+      other = [other copy];
+      [_info addObject: other];
+      _count += other->_count;
+      RELEASE(other);
+    }
+}
+
+- (id) copyWithZone: (NSZone*)z
+{
+  SQLTransaction        *c;
+
+  c = (SQLTransaction*)NSCopyObject(self, 0, z);
+  c->_db = RETAIN(c->_db);
+  c->_info = [c->_info mutableCopy];
+  return c;
+}
+
+- (unsigned) count
+{
+  return [_info count];
+}
+
+- (SQLClient*) db
+{
+  return _db;
+}
+
+- (void) dealloc
+{
+  DESTROY(_db);
+  DESTROY(_info);
+  [super dealloc];
+}
+
+- (NSString*) description
+{
+  return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
+    [super description],
+    (_count == 0 ? (id)@"" : (id)_info), _db];
+}
+
 - (void) execute
 {
   if (_count > 0)
@@ -2921,6 +2927,11 @@ static unsigned int	maxConnections = 8;
 
 - (unsigned) executeBatch
 {
+  return [self executeBatchReturningFailures: nil];
+}
+
+- (unsigned) executeBatchReturningFailures: (SQLTransaction*)failures
+{
   unsigned      executed = 0;
 
   if (_count > 0)
@@ -2945,41 +2956,67 @@ static unsigned int	maxConnections = 8;
               for (i = 0; i < count; i++)
                 {
                   BOOL      success = NO;
+	          id        o = [_info objectAtIndex: i];
 
-                  NS_DURING
-                    {
-                      id        o = [_info objectAtIndex: i];
-
-                      if ([o isKindOfClass: NSArrayClass] == YES)
-                        {
+		  if ([o isKindOfClass: NSArrayClass] == YES)
+		    {
+		      NS_DURING
+			{
                           [_db simpleExecute: (NSArray*)o];
                           executed++;
                           success = YES;
                         }
-                      else
-                        {
-                          unsigned      result;
-
-                          result = [(SQLTransaction*)o executeBatch];
-                          executed += result;
-                          if (result == [(SQLTransaction*)o count])
-                            {
-                              success = YES;
-                            }
-                        }
-                    }
-                  NS_HANDLER
-                    {
-		      if ([_db debugging] > 0)
+		      NS_HANDLER
 			{
-			  [_db debug: @"Failure of %d executing batch %@: %@",
-			    i, self, localException];
+			  if (failures != nil)
+			    {
+			      [failures->_info addObject: o];
+			      failures->_count++;
+			    }
+			  if ([_db debugging] > 0)
+			    {
+			      [_db debug:
+				@"Failure of %d executing batch %@: %@",
+				i, self, localException];
+			    }
+			  success = NO;
 			}
-                      success = NO;
-                    }
-                  NS_ENDHANDLER
+		      NS_ENDHANDLER
+		    }
+		  else
+		    {
+		      unsigned      result;
+
+		      result = [(SQLTransaction*)o
+			executeBatchReturningFailures: failures];
+		      executed += result;
+		      if (result == [(SQLTransaction*)o totalCount])
+			{
+			  success = YES;
+			}
+		    }
                   if (success == NO && _stop == YES)
                     {
+		      /* We are configured to stop after a failure,
+		       * so we need to add all the subsequent statements
+		       * or transactions to the list of those which have
+		       * not been done.
+		       */
+		      i++;
+		      while (i < count)
+			{
+			  id        o = [_info objectAtIndex: i++];
+
+			  if ([o isKindOfClass: NSArrayClass] == YES)
+			    {
+			      [failures->_info addObject: o];
+			      failures->_count++;
+			    }
+			  else
+			    {
+			      [failures append: (SQLTransaction*)o];
+			    }
+			}
                       break;
                     }
                 }
@@ -2990,10 +3027,89 @@ static unsigned int	maxConnections = 8;
   return executed;
 }
 
+- (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index
+{
+  if (index > [_info count])
+    {
+      [NSException raise: NSRangeException
+		  format: @"[%@-%@] index too large",
+	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+    }
+  if (trn == nil || trn->_count == 0)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"[%@-%@] attempt to insert nil/empty transaction",
+	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+    }
+  if (trn->_db != _db)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"[%@-%@] database client missmatch",
+	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+    }
+  trn = [trn copy];
+  [_info addObject: trn];
+  _count += trn->_count;
+  RELEASE(trn);
+}
+
+- (void) removeTransactionAtIndex: (unsigned)index
+{
+  id	o;
+
+  if (index >= [_info count])
+    {
+      [NSException raise: NSRangeException
+		  format: @"[%@-%@] index too large",
+	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+    }
+  o = [_info objectAtIndex:  index];
+  if ([o isKindOfClass: NSArrayClass] == YES)
+    {
+      _count--;
+    }  
+  else
+    {
+      _count -= [(SQLTransaction*)o totalCount];
+    }
+  [_info removeObjectAtIndex: index];
+}
+
 - (void) reset
 {
   [_info removeAllObjects];
   _count = 0;
+}
+
+- (unsigned) totalCount
+{
+  return _count;
+}
+
+- (SQLTransaction*) transactionAtIndex: (unsigned)index
+{
+  id	o;
+
+  if (index >= [_info count])
+    {
+      [NSException raise: NSRangeException
+		  format: @"[%@-%@] index too large",
+	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+    }
+  o = [_info objectAtIndex: index];
+  if ([o isKindOfClass: NSArrayClass] == YES)
+    {
+      SQLTransaction	*t = [[self db] transaction];
+
+      [t->_info addObject: o];
+      t->_count = 1;
+      return t;
+    }
+  else
+    {
+      o = [o copy];
+      return AUTORELEASE(o);
+    }
 }
 @end
 
