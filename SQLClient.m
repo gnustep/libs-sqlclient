@@ -2788,6 +2788,12 @@ static unsigned int	maxConnections = 8;
     }
 }
 
+- (void) _addPrepared: (NSArray*)statement
+{
+  [_info addObject: statement];
+  _count++;
+}
+
 - (void) _countLength: (unsigned*)length andArgs: (unsigned*)args
 {
   unsigned      count = [_info count];
@@ -2951,8 +2957,9 @@ static unsigned int	maxConnections = 8;
 	    }
           if (_batch == YES)
             {
-              unsigned  count = [_info count];
-              unsigned  i;
+	      SQLTransaction	*wrapper = nil;
+              unsigned  	count = [_info count];
+              unsigned  	i;
 
               for (i = 0; i < count; i++)
                 {
@@ -2963,7 +2970,22 @@ static unsigned int	maxConnections = 8;
 		    {
 		      NS_DURING
 			{
-                          [_db simpleExecute: (NSArray*)o];
+			  /* Wrap the statement inside a transaction so
+			   * its context will still be that of a statement
+			   * in a transaction rather than a standalone
+			   * statement.  This might be important if the
+			   * statement is actually a call to a stored
+			   * procedure whose code must all be executed
+			   * with the visibility rules of a single
+			   * transaction.
+			   */
+			  if (wrapper == nil)
+			    {
+			      wrapper = [_db transaction];
+			    }
+			  [wrapper reset];
+			  [wrapper _addPrepared: o];
+                          [wrapper execute];
                           executed++;
                           success = YES;
                         }
@@ -2971,8 +2993,7 @@ static unsigned int	maxConnections = 8;
 			{
 			  if (failures != nil)
 			    {
-			      [failures->_info addObject: o];
-			      failures->_count++;
+			      [failures _addPrepared: o];
 			    }
 			  if (log == YES || [_db debugging] > 0)
 			    {
@@ -3011,8 +3032,7 @@ static unsigned int	maxConnections = 8;
 
 			  if ([o isKindOfClass: NSArrayClass] == YES)
 			    {
-			      [failures->_info addObject: o];
-			      failures->_count++;
+			      [failures _addPrepared: o];
 			    }
 			  else
 			    {
@@ -3103,8 +3123,7 @@ static unsigned int	maxConnections = 8;
     {
       SQLTransaction	*t = [[self db] transaction];
 
-      [t->_info addObject: o];
-      t->_count = 1;
+      [t _addPrepared: o];
       return t;
     }
   else
