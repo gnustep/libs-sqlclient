@@ -2150,6 +2150,7 @@ static unsigned int	maxConnections = 8;
     }
   NS_HANDLER
     {
+      result = nil;
       [lock unlock];
       [localException raise];
     }
@@ -2458,6 +2459,43 @@ static unsigned int	maxConnections = 8;
   transaction->_batch = YES;
   transaction->_stop = stopOnFailure;
   return AUTORELEASE((SQLTransaction*)transaction);
+}
+
+- (NSMutableArray*) columns: (NSMutableArray*)records
+{
+  SQLRecord		*r = [records lastObject];
+  unsigned		rowCount = [records count];
+  unsigned		colCount = [r count];
+  NSMutableArray	*m;
+
+  if (rowCount == 0 || colCount == 0)
+    {
+      m = [NSMutableArray array];
+    }
+  else
+    {
+      NSMutableArray	*cols[colCount];
+      unsigned		i;
+
+      m = [NSMutableArray arrayWithCapacity: colCount];
+      for (i = 0; i < colCount; i++)
+	{
+	  cols[i] = [[NSMutableArray alloc] initWithCapacity: rowCount];
+	  [m addObject: cols[i]];
+	  [cols[i] release];
+	}
+      for (i = 0; i < rowCount; i++)
+	{
+	  unsigned	j;
+
+	  r = [records objectAtIndex: i];
+	  for (j = 0; j < colCount; j++)
+	    {
+	      [cols[j] addObject: [r objectAtIndex: j]];
+	    }
+	}
+    }
+  return m;
 }
 
 - (SQLRecord*) queryRecord: (NSString*)stmt, ...

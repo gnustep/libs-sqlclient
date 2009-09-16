@@ -1047,6 +1047,13 @@ extern unsigned	SQLClientTimeTick();
 - (SQLTransaction*) batch: (BOOL)stopOnFailure;
 
 /**
+ * Convenience method to deal with the results of a query converting the
+ * normal array of records into an array of record columns.  Each column
+ * in the array is an array containing all the values from that column.
+ */
+- (NSMutableArray*) columns: (NSMutableArray*)records;
+
+/**
  * Executes a query (like the -query:,... method) and checks the result
  * (raising an exception if the query did not contain a single record)
  * and returns the resulting record.

@@ -1,3 +1,10 @@
+2009-09-16 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Add convenience method to convert array of rows into an array of
+	columns.
+
 2009-09-08 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
