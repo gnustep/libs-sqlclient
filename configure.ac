@@ -60,6 +60,11 @@ if test "$postgres_topdir" != "no"; then
   LIBD="$LIBD -L$postgres_topdir/lib"
 fi
 
+# Call AC_CHECK_HEADERS here as a workaround for a configure bug/feature
+# which messes up all subsequent tests if the first occurrence in the
+# file does not get called ... as would otherwise be the case if jdbc
+# support is disabled.
+AC_CHECK_HEADERS(stdio.h)
 
 AC_MSG_CHECKING([if Jdbc support was manually disabled])
 AC_ARG_ENABLE(jdbc-bundle, [
@@ -73,7 +78,6 @@ AC_ARG_ENABLE(jdbc-bundle, [
 
 if test "$ac_cv_jdbc_bundle" = "no"; then
   AC_MSG_RESULT([yes: disabled from the command-line])
-  JDBC=
 else
   AC_MSG_RESULT([no: build if possible])
 
