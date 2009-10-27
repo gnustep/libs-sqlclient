@@ -27,6 +27,17 @@
 #import	<Performance/GSCache.h>
 #import	"SQLClient.h"
 
+@interface	Logger : NSObject
+- (void) notified: (NSNotification*)n;
+@end
+
+@implementation	Logger
+- (void) notified: (NSNotification*)n
+{
+  NSLog(@"Received %@", n);
+}
+@end
+
 int
 main()
 {
@@ -39,6 +50,7 @@ main()
   unsigned int		i;
   NSData		*data;
   NSString		*name;
+  Logger		*l;
 
   defs = [NSUserDefaults standardUserDefaults];
   [defs registerDefaults:
@@ -57,6 +69,16 @@ main()
     ];
 
   db = [SQLClient clientWithConfiguration: nil name: @"test"];
+
+  l = [Logger new];
+  [[NSNotificationCenter defaultCenter] addObserver: l
+	selector: @selector(notified:)
+	name: SQLClientDidConnectNotification
+	object: db];
+  [[NSNotificationCenter defaultCenter] addObserver: l
+	selector: @selector(notified:)
+	name: SQLClientDidDisconnectNotification
+	object: db];
 
   if ((name = [defs stringForKey: @"Producer"]) != nil)
     {
