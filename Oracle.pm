@@ -240,7 +240,7 @@ void SQLClientOracleErrorHandler()
   /*
    * Ensure we have a working connection.
    */
-  if ([self backendConnect] == NO)
+  if ([self connect] == NO)
     {
       [NSException raise: SQLException
 		  format: @"(Oracle) Unable to connect to database"];
@@ -273,7 +273,7 @@ void SQLClientOracleErrorHandler()
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       /*
        * remove line number information from database exception message
@@ -368,7 +368,7 @@ static unsigned int trim(char *str)
   /*
    * Ensure we have a working connection.
    */
-  if ([self backendConnect] == NO)
+  if ([self connect] == NO)
     {
       [NSException raise: SQLException
 		  format: @"(Oracle) Unable to connect to database"];
@@ -644,7 +644,7 @@ static unsigned int trim(char *str)
 	    }
 	  if ([e isEqual: SQLConnectionException] == YES) 
 	    {
-	      [self backendDisconnect];
+	      [self disconnect];
 	    }
 	}
       NS_ENDHANDLER
@@ -667,7 +667,7 @@ static unsigned int trim(char *str)
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
 	  _inTransaction = NO;
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
 
       /*

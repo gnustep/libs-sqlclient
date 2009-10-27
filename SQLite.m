@@ -151,7 +151,7 @@
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to execute statement %@",
@@ -179,7 +179,7 @@
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       if ([self debugging] > 0)
 	{
@@ -219,7 +219,7 @@
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to run query %@",
@@ -305,7 +305,7 @@
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       if ([self debugging] > 0)
 	{

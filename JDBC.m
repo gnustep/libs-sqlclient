@@ -1164,7 +1164,7 @@ static	int	JDBCVARCHAR = 0;
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to execute statement %@",
@@ -1277,7 +1277,7 @@ static	int	JDBCVARCHAR = 0;
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to run query %@",
@@ -1498,7 +1498,7 @@ static	int	JDBCVARCHAR = 0;
 	  (*env)->PopLocalFrame (env, NULL);
 	  if ([n isEqual: SQLConnectionException] == YES) 
 	    {
-	      [self backendDisconnect];
+	      [self disconnect];
 	    }
 	  if ([self debugging] > 0)
 	    {
@@ -1579,7 +1579,7 @@ static	int	JDBCVARCHAR = 0;
 
 - (void) dealloc
 {
-  [self backendDisconnect];
+  [self disconnect];
   [super dealloc];
 }
 
@@ -1739,7 +1739,7 @@ static	int	JDBCVARCHAR = 0;
       /*
        * Ensure we have a working connection.
        */
-      if ([_db backendConnect] == NO)
+      if ([_db connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to execute transaction %@",

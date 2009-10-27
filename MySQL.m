@@ -198,7 +198,7 @@ static NSNull	*null = nil;
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to execute statement %@",
@@ -226,7 +226,7 @@ static NSNull	*null = nil;
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       if ([self debugging] > 0)
 	{
@@ -288,7 +288,7 @@ static unsigned int trim(char *str)
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to run query %@",
@@ -433,7 +433,7 @@ static unsigned int trim(char *str)
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       if ([self debugging] > 0)
 	{

@@ -268,7 +268,7 @@ connectQuote(NSString *str)
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to execute statement %@",
@@ -299,7 +299,7 @@ connectQuote(NSString *str)
 	      cstr = PQresultErrorMessage(result);
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
-	  [self backendDisconnect];
+	  [self disconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -315,7 +315,7 @@ connectQuote(NSString *str)
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       if (result != 0)
 	{
@@ -380,7 +380,7 @@ static unsigned int trim(char *str)
       /*
        * Ensure we have a working connection.
        */
-      if ([self backendConnect] == NO)
+      if ([self connect] == NO)
 	{
 	  [NSException raise: SQLException
 	    format: @"Unable to connect to '%@' to run query %@",
@@ -403,7 +403,7 @@ static unsigned int trim(char *str)
 	      cstr = PQresultErrorMessage(result);
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
-	  [self backendDisconnect];
+	  [self disconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -507,7 +507,7 @@ static unsigned int trim(char *str)
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       if (result != 0)
 	{
@@ -808,7 +808,7 @@ static unsigned int trim(char *str)
 {
   if (extra != 0)
     {
-      [self backendDisconnect];
+      [self disconnect];
       NSZoneFree(NSDefaultMallocZone(), extra);
     }
   [super dealloc];
@@ -823,7 +823,7 @@ static unsigned int trim(char *str)
 #ifdef	HAVE_PQESCAPESTRINGCONN
   int		err;
 
-  [self backendConnect];
+  [self connect];
   l = PQescapeStringConn(connection, (char*)(to + 1), [d bytes], l, &err);
 #else
   l = PQescapeString(to + 1, [d bytes], l);

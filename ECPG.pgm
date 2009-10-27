@@ -276,7 +276,7 @@ static NSDate	*future = nil;
   /*
    * Ensure we have a working connection.
    */
-  if ([self backendConnect] == NO)
+  if ([self connect] == NO)
     {
       RELEASE (arp);
       [NSException raise: SQLException
@@ -296,7 +296,7 @@ static NSDate	*future = nil;
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
       /*
        * remove line number information from database exception message
@@ -399,7 +399,7 @@ static unsigned int trim(char *str)
   /*
    * Ensure we have a working connection.
    */
-  if ([self backendConnect] == NO)
+  if ([self connect] == NO)
     {
       RELEASE (arp);
       [NSException raise: SQLException
@@ -640,14 +640,14 @@ static unsigned int trim(char *str)
 
 	  if ([e isEqual: SQLConnectionException] == YES) 
 	    {
-	      [self backendDisconnect];
+	      [self disconnect];
 	    }
 	}
       NS_ENDHANDLER
 
       if ([n isEqual: SQLConnectionException] == YES) 
 	{
-	  [self backendDisconnect];
+	  [self disconnect];
 	}
 
       /*
