@@ -4,6 +4,11 @@ AC_INIT(SQLClient.h)
 AC_CONFIG_HEADER(config.h)
 
 if test -z "$GNUSTEP_MAKEFILES"; then
+ GNUSTEP_MAKEFILES=`gnustep-config --variable=GNUSTEP_MAKEFILES 2>/dev/null`
+ export GNUSTEP_MAKEFILES
+fi
+
+if test -z "$GNUSTEP_MAKEFILES"; then
   AC_MSG_ERROR([You must have the gnustep-make package installed and set up the GNUSTEP_MAKEFILES environment variable to contain the path to the makefiles directory before configuring!])
 else
   . $GNUSTEP_MAKEFILES/GNUstep.sh

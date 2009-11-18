@@ -1354,6 +1354,11 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 if test -z "$GNUSTEP_MAKEFILES"; then
+ GNUSTEP_MAKEFILES=`gnustep-config --variable=GNUSTEP_MAKEFILES 2>/dev/null`
+ export GNUSTEP_MAKEFILES
+fi
+
+if test -z "$GNUSTEP_MAKEFILES"; then
   { { echo "$as_me:$LINENO: error: You must have the gnustep-make package installed and set up the GNUSTEP_MAKEFILES environment variable to contain the path to the makefiles directory before configuring!" >&5
 echo "$as_me: error: You must have the gnustep-make package installed and set up the GNUSTEP_MAKEFILES environment variable to contain the path to the makefiles directory before configuring!" >&2;}
    { (exit 1); exit 1; }; }
@@ -1405,6 +1410,10 @@ if test "$postgres_topdir" != "no"; then
   LIBD="$LIBD -L$postgres_topdir/lib"
 fi
 
+# Call AC_CHECK_HEADERS here as a workaround for a configure bug/feature
+# which messes up all subsequent tests if the first occurrence in the
+# file does not get called ... as would otherwise be the case if jdbc
+# support is disabled.
 ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
