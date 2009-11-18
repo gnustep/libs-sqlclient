@@ -41,6 +41,9 @@
 #import	<Foundation/NSAutoreleasePool.h>
 
 #include	"config.h"
+
+#define SQLCLIENT_PRIVATE       @public
+
 #include	"SQLClient.h"
 
 #include	<libpq-fe.h>

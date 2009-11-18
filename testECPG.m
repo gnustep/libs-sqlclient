@@ -29,7 +29,7 @@
 int
 main()
 {
-  NSAutoreleasePool pool = [NSAutoreleasePool new];
+  NSAutoreleasePool	*pool = [NSAutoreleasePool new];
   SQLClient		*db;
   NSUserDefaults	*defs;
   NSMutableArray	*records;

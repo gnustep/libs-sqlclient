@@ -41,6 +41,9 @@
 #import	<Foundation/NSValue.h>
 
 #include	"config.h"
+
+#define SQLCLIENT_PRIVATE       @public
+
 #include	"SQLClient.h"
 #include	<string.h>
 #include	<sqlite3.h>

@@ -203,6 +203,10 @@ extern NSString * const SQLClientDidConnectNotification;
  */
 extern NSString * const SQLClientDidDisconnectNotification;
 
+#if     !defined(SQLCLIENT_PRIVATE)
+#define SQLCLIENT_PRIVATE       @private
+#endif
+
 /**
  * <p>An enhanced array to represent a record returned from a query.
  * You should <em>NOT</em> try to create instances of this class
@@ -348,6 +352,7 @@ extern unsigned	SQLClientTimeTick();
  */
 @interface	SQLClient : NSObject
 {
+SQLCLIENT_PRIVATE
   void			*extra;		/** For subclass specific data */
   NSRecursiveLock	*lock;		/** Maintain thread-safety */
   /**
@@ -1241,10 +1246,6 @@ extern unsigned	SQLClientTimeTick();
  */
 - (void) setCacheThread: (NSThread*)aThread;
 @end
-
-#if     !defined(SQLCLIENT_PRIVATE)
-#define SQLCLIENT_PRIVATE       @private
-#endif
 
 /**
  * The SQLTransaction transaction class provides a convenient mechanism

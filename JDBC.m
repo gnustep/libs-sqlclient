@@ -45,18 +45,13 @@
 #import        <Performance/GSTicker.h>
 
 #include	"config.h"
+
+#define	SQLCLIENT_PRIVATE	@public
+
 #include	"SQLClient.h"
 
 @interface	_JDBCTransaction : SQLTransaction
 @end
-
-typedef struct {
-  @defs(SQLClient);
-} *CDefs;
-
-typedef struct {
-  @defs(_JDBCTransaction);
-} *TDefs;
 
 #include	<jni.h>
 
@@ -1520,9 +1515,9 @@ static	int	JDBCVARCHAR = 0;
 
 - (SQLTransaction*) batch: (BOOL)stopOnFailure
 {
-  TDefs	transaction;
+  _JDBCTransaction	*transaction;
 
-  transaction = (TDefs)NSAllocateObject([_JDBCTransaction class], 0,
+  transaction = (_JDBCTransaction*)NSAllocateObject([_JDBCTransaction class], 0,
     NSDefaultMallocZone());
  
   transaction->_db = [self retain];
@@ -1679,9 +1674,9 @@ static	int	JDBCVARCHAR = 0;
 
 - (SQLTransaction*) transaction
 {
-  TDefs	transaction;
+  _JDBCTransaction	*transaction;
 
-  transaction = (TDefs)NSAllocateObject([_JDBCTransaction class], 0,
+  transaction = (_JDBCTransaction*)NSAllocateObject([_JDBCTransaction class], 0,
     NSDefaultMallocZone());
  
   transaction->_db = [self retain];
@@ -1887,12 +1882,12 @@ static	int	JDBCVARCHAR = 0;
 
 	  (*env)->PopLocalFrame (env, NULL);
 
-	  ((CDefs)_db)->_lastOperation = GSTickerTimeNow();
+	  _db->_lastOperation = GSTickerTimeNow();
 	  if (_duration >= 0)
 	    {
 	      NSTimeInterval	d;
 
-	      d = ((CDefs)_db)->_lastOperation - start;
+	      d = _db->_lastOperation - start;
 	      if (d >= _duration)
 		{
 		  [_db debug: @"Duration %g for transaction %@",

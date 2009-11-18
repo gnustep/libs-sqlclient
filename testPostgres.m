@@ -41,7 +41,7 @@
 int
 main()
 {
-  NSAutoreleasePool pool = [NSAutoreleasePool new];
+  NSAutoreleasePool	*pool = [NSAutoreleasePool new];
   SQLClient		*db;
   NSUserDefaults	*defs;
   NSMutableArray	*records;
@@ -116,7 +116,7 @@ main()
       NSLog(@"Start producing");
       for (i = 0; i < 100000; i++)
 	{
-	  NSAutoreleasePool arp = [NSAutoreleasePool new];
+	  NSAutoreleasePool	*arp = [NSAutoreleasePool new];
 	  NSString	*destination = [NSString stringWithFormat: @"%d", i];
 	  NSString	*sid = [NSString stringWithFormat: @"%d", i%100];
 
@@ -132,7 +132,7 @@ main()
       NSLog(@"Start consuming");
       for (i = 0; i < 100000;)
 	{
-	  NSAutoreleasePool arp = [NSAutoreleasePool new];
+	  NSAutoreleasePool	*arp = [NSAutoreleasePool new];
 	  unsigned		count;
 	  int			j;
 
