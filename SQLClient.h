@@ -181,8 +181,6 @@
 #import	<Foundation/NSObject.h>
 #import	<Foundation/NSArray.h>
 
-#import	<GNUstepBase/GNUstep.h>
-
 @class	GSCache;
 @class	NSData;
 @class	NSDate;
@@ -1244,6 +1242,10 @@ extern unsigned	SQLClientTimeTick();
 - (void) setCacheThread: (NSThread*)aThread;
 @end
 
+#if     !defined(SQLCLIENT_PRIVATE)
+#define SQLCLIENT_PRIVATE       @private
+#endif
+
 /**
  * The SQLTransaction transaction class provides a convenient mechanism
  * for grouping together a series of SQL statements to be executed as a
@@ -1261,6 +1263,7 @@ extern unsigned	SQLClientTimeTick();
  */
 @interface	SQLTransaction : NSObject <NSCopying>
 {
+SQLCLIENT_PRIVATE
   SQLClient		*_db;
   NSMutableArray	*_info;
   unsigned		_count;

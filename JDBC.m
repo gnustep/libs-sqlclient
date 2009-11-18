@@ -283,7 +283,7 @@ JNIEnv *SQLClientJNIEnv ()
     }
 
   {
-    CREATE_AUTORELEASE_POOL (pool);
+    NSAutoreleasePool   *pool = [NSAutoreleasePool new];
     
     args.version = JNI_VERSION_1_2;
     args.name = (char *)[[NSString stringWithFormat:
@@ -293,7 +293,7 @@ JNIEnv *SQLClientJNIEnv ()
     result = (*SQLClientJavaVM)->AttachCurrentThread
       (SQLClientJavaVM, (void **)&env, &args);
     
-    RELEASE (pool);
+    [pool release];
   }
 
   if (result < 0)
@@ -764,9 +764,9 @@ static	int	JDBCVARCHAR = 0;
       future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
 			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
 				       locale: nil];
-      RETAIN(future);
+      [future retain];
       null = [NSNull null];
-      RETAIN(null);
+      [null retain];
 
       [SQLClientJVM startVirtualMachineWithClassPath: nil libraryPath: nil];
       env = SQLClientJNIEnv();
@@ -1136,14 +1136,14 @@ static	int	JDBCVARCHAR = 0;
 
 - (void) backendExecute: (NSArray*)info
 {
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSString	*stmt = [info objectAtIndex: 0];
   JNIEnv	*env = SQLClientJNIEnv();
   JInfo		*ji;
 
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -1151,7 +1151,7 @@ static	int	JDBCVARCHAR = 0;
   if ((*env)->PushLocalFrame (env, 32) < 0)
     {
       JExceptionClear(env);
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"No java memory for execute"];
     }
@@ -1232,13 +1232,13 @@ static	int	JDBCVARCHAR = 0;
 		stmt, localException];
 	    }
 	}
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt
@@ -1246,13 +1246,13 @@ static	int	JDBCVARCHAR = 0;
 		        listType: (id)lType
 {
   NSMutableArray	*records = nil;
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   JNIEnv		*env = SQLClientJNIEnv();
   JInfo			*ji;
 
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -1260,7 +1260,7 @@ static	int	JDBCVARCHAR = 0;
   if ((*env)->PushLocalFrame (env, 32) < 0)
     {
       JExceptionClear(env);
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"No java memory for query"];
     }
@@ -1389,7 +1389,7 @@ static	int	JDBCVARCHAR = 0;
 	      if ((*env)->PushLocalFrame (env, fieldCount * 2) < 0)
 		{
 		  JExceptionClear(env);
-		  RELEASE (arp);
+		  [arp release];
 		  [NSException raise: NSInternalInconsistencyException
 			      format: @"No java memory for query"];
 		}
@@ -1480,7 +1480,7 @@ static	int	JDBCVARCHAR = 0;
 				       keys: keys
 				      count: fieldCount];
 	      [records addObject: record];
-	      RELEASE(record);
+	      [record release];
 	    }
 	}
       else
@@ -1506,15 +1506,16 @@ static	int	JDBCVARCHAR = 0;
 		stmt, localException];
 	    }
 	}
-      DESTROY(records);
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [records release];
+      records = nil;
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
-  return AUTORELEASE(records);
+  [arp release];
+  return [records autorelease];
 }
 
 - (SQLTransaction*) batch: (BOOL)stopOnFailure
@@ -1524,11 +1525,11 @@ static	int	JDBCVARCHAR = 0;
   transaction = (TDefs)NSAllocateObject([_JDBCTransaction class], 0,
     NSDefaultMallocZone());
  
-  transaction->_db = RETAIN(self);
+  transaction->_db = [self retain];
   transaction->_info = [NSMutableArray new];
   transaction->_batch = YES;
   transaction->_stop = stopOnFailure;
-  return AUTORELEASE((SQLTransaction*)transaction);
+  return [(SQLTransaction*)transaction autorelease];
 }
 
 - (void) begin
@@ -1602,15 +1603,15 @@ static	int	JDBCVARCHAR = 0;
 	 			       length: 3
 		 		     encoding: NSASCIIStringEncoding];
       special = [NSCharacterSet characterSetWithCharactersInString: stemp];
-      RELEASE(stemp);
-      RETAIN(special);
+      [stemp release];
+      [special retain];
     }
 
   /*
    * Step through string removing nul characters
    * and escaping quote characters as required.
    */
-  m = AUTORELEASE([s mutableCopy]);
+  m = [[s mutableCopy] autorelease];
   l = [m length];
   r = NSMakeRange(0, l);
   r = [m rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
@@ -1683,9 +1684,9 @@ static	int	JDBCVARCHAR = 0;
   transaction = (TDefs)NSAllocateObject([_JDBCTransaction class], 0,
     NSDefaultMallocZone());
  
-  transaction->_db = RETAIN(self);
+  transaction->_db = [self retain];
   transaction->_info = [NSMutableArray new];
-  return AUTORELEASE((SQLTransaction*)transaction);
+  return [(SQLTransaction*)transaction autorelease];
 }
 @end
 
@@ -1730,7 +1731,7 @@ static	int	JDBCVARCHAR = 0;
 {
   if (_count > 0)
     {
-      CREATE_AUTORELEASE_POOL(arp);
+      NSAutoreleasePool *arp = [NSAutoreleasePool new];
       BOOL	wrapped = NO;
       BOOL	batched = NO;
       JNIEnv	*env;
@@ -1750,7 +1751,7 @@ static	int	JDBCVARCHAR = 0;
       if ((*env)->PushLocalFrame (env, 32) < 0)
 	{
 	  JExceptionClear(env);
-	  RELEASE (arp);
+	  [arp release];
 	  [NSException raise: NSInternalInconsistencyException
 		      format: @"No java memory for execute"];
 	}
@@ -1916,7 +1917,7 @@ static	int	JDBCVARCHAR = 0;
 	}
       NS_ENDHANDLER
 
-      RELEASE(arp);
+      [arp release];
     }
 }
 

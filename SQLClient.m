@@ -55,6 +55,10 @@
 #import	<Performance/GSCache.h>
 #import	<Performance/GSTicker.h>
 
+#define SQLCLIENT_PRIVATE       @public
+
+#include	<memory.h>
+
 #include	"SQLClient.h"
 
 #if	defined(GNUSTEP_BASE_LIBRARY)
@@ -79,6 +83,12 @@ static Class	NSArrayClass = 0;
 static Class	NSDateClass = 0;
 static Class	NSSetClass = 0;
 
+@interface	_ConcreteSQLRecord : SQLRecord
+{
+  unsigned	count;
+}
+@end
+
 @interface	CacheQuery : NSObject
 {
 @public
@@ -92,7 +102,7 @@ static Class	NSSetClass = 0;
 @implementation	CacheQuery
 - (void) dealloc
 {
-  RELEASE(query);
+  [query release];
   [super dealloc];
 }
 @end
@@ -127,11 +137,11 @@ static Class	NSSetClass = 0;
       NSFreeHashTable(used);
       used = 0;
     }
-  DESTROY(name);
-  DESTROY(serv);
-  DESTROY(user);
-  DESTROY(pass);
-  DESTROY(path);
+  [name release]; name = nil;
+  [serv release]; serv = nil;
+  [user release]; user = nil;
+  [pass release]; pass = nil;
+  [path release]; path = nil;
   [super dealloc];
 }
 
@@ -218,7 +228,9 @@ static Class	NSSetClass = 0;
     }
   if (s != serv && [s isEqual: serv] == NO)
     {
-      ASSIGNCOPY(serv, s);
+      s = [s copy];
+      [serv release];
+      serv = s;
       change = YES;
     }
 
@@ -233,7 +245,9 @@ static Class	NSSetClass = 0;
     }
   if (s != path && [s isEqual: path] == NO)
     {
-      ASSIGNCOPY(path, s);
+      s = [s copy];
+      [path release];
+      path = s;
       change = YES;
     }
 
@@ -248,7 +262,9 @@ static Class	NSSetClass = 0;
     }
   if (s != user && [s isEqual: user] == NO)
     {
-      ASSIGNCOPY(user, s);
+      s = [s copy];
+      [user release];
+      user = s;
       change = YES;
     }
 
@@ -263,7 +279,9 @@ static Class	NSSetClass = 0;
     }
   if (s != pass && [s isEqual: pass] == NO)
     {
-      ASSIGNCOPY(pass, s);
+      s = [s copy];
+      [pass release];
+      pass = s;
       change = YES;
     }
 
@@ -319,11 +337,7 @@ static Class	NSSetClass = 0;
 @end
 
 
-typedef	struct {
-  @defs(SQLTransaction);
-} *TDefs;
 
-@class	_ConcreteSQLRecord;
 static Class aClass = 0;
 static Class rClass = 0;
 
@@ -364,7 +378,7 @@ static Class rClass = 0;
 
 - (id) copyWithZone: (NSZone*)z
 {
-  return RETAIN(self);
+  return [self retain];
 }
 
 - (unsigned int) count
@@ -409,8 +423,8 @@ static Class rClass = 0;
 - (id) init
 {
   NSLog(@"Illegal attempt to -init an SQLRecord");
-  DESTROY(self);
-  return self;
+  [self release];
+  return nil;
 }
 
 - (NSString*) keyAtIndex: (unsigned)index
@@ -544,12 +558,6 @@ static Class rClass = 0;
 @end
 
 
-@interface	_ConcreteSQLRecord : SQLRecord
-{
-  unsigned	count;
-}
-@end
-
 @implementation	_ConcreteSQLRecord
 
 + (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
@@ -566,13 +574,13 @@ static Class rClass = 0;
     {
       if (v[pos] == nil)
 	{
-	  ptr[pos] = RETAIN(null);
+	  ptr[pos] = [null retain];
 	}
       else
 	{
-	  ptr[pos] = RETAIN(v[pos]);
+	  ptr[pos] = [v[pos] retain];
 	}
-      ptr[pos + c] = RETAIN(k[pos]);
+      ptr[pos + c] = [k[pos] retain];
     }
   return r;
 }
@@ -587,7 +595,7 @@ static Class rClass = 0;
 
 - (id) copyWithZone: (NSZone*)z
 {
-  return RETAIN(self);
+  return [self retain];
 }
 
 - (unsigned int) count
@@ -603,8 +611,8 @@ static Class rClass = 0;
   ptr = ((void*)&count) + sizeof(count);
   for (pos = 0; pos < count; pos++)
     {
-      DESTROY(ptr[pos]);
-      DESTROY(ptr[count + pos]);
+      [ptr[pos] release]; ptr[pos] = nil;
+      [ptr[count + pos] release]; ptr[count + pos] = nil;
     }
   [super dealloc];
 }
@@ -652,8 +660,8 @@ static Class rClass = 0;
 - (id) init
 {
   NSLog(@"Illegal attempt to -init an SQLRecord");
-  DESTROY(self);
-  return self;
+  [self release];
+  return nil;
 }
 
 - (NSString*) keyAtIndex: (unsigned int)pos
@@ -721,7 +729,9 @@ static Class rClass = 0;
     }
   ptr = ((void*)&count) + sizeof(count);
   ptr += index;
-  ASSIGN(*ptr, anObject);
+  [anObject retain];
+  [*ptr release];
+  *ptr = anObject;
 }
 
 - (void) setObject: (id)anObject forKey: (NSString*)aKey
@@ -738,7 +748,9 @@ static Class rClass = 0;
     {
       if ([aKey isEqualToString: ptr[pos + count]] == YES)
 	{
-	  ASSIGN(ptr[pos], anObject);
+          [anObject retain];
+          [ptr[pos] release];
+	  ptr[pos] = anObject;
 	  return;
 	}
     }
@@ -746,7 +758,9 @@ static Class rClass = 0;
     {
       if ([aKey caseInsensitiveCompare: ptr[pos + count]] == NSOrderedSame)
 	{
-	  ASSIGN(ptr[pos], anObject);
+          [anObject retain];
+          [ptr[pos] release];
+	  ptr[pos] = anObject;
 	  return;
 	}
     }
@@ -920,7 +934,7 @@ static unsigned int	maxConnections = 8;
   if (o == nil)
     {
       o = [[SQLClient alloc] initWithConfiguration: config name: reference];
-      AUTORELEASE(o);
+      [o autorelease];
     }
   return o;
 }
@@ -941,7 +955,7 @@ static unsigned int	maxConnections = 8;
 
   [clientsMapLock lock];
   existing = (SQLClient*)NSMapGet(clientsMap, reference);
-  AUTORELEASE(RETAIN(existing));
+  [[existing retain] autorelease];
   [clientsMapLock unlock];
   return existing;
 }
@@ -959,9 +973,9 @@ static unsigned int	maxConnections = 8;
       clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
         NSNonRetainedObjectMapValueCallBacks, 0);
       clientsMapLock = [GSLazyRecursiveLock new];
-      beginStatement = RETAIN([NSArray arrayWithObject: beginString]);
-      commitStatement = RETAIN([NSArray arrayWithObject: commitString]);
-      rollbackStatement = RETAIN([NSArray arrayWithObject: rollbackString]);
+      beginStatement = [[NSArray arrayWithObject: beginString] retain];
+      commitStatement = [[NSArray arrayWithObject: commitString] retain];
+      rollbackStatement = [[NSArray arrayWithObject: rollbackString] retain];
       NSStringClass = [NSString class];
       NSArrayClass = [NSArray class];
       NSSetClass = [NSSet class];
@@ -1208,21 +1222,21 @@ static unsigned int	maxConnections = 8;
   nc = [NSNotificationCenter defaultCenter];
   [nc removeObserver: self];
   [self disconnect];
-  DESTROY(lock);
-  DESTROY(_client);
-  DESTROY(_database);
-  DESTROY(_password);
-  DESTROY(_user);
-  DESTROY(_name);
-  DESTROY(_statements);
-  DESTROY(_cache);
-  DESTROY(_cacheThread);
+  [lock release]; lock = nil;
+  [_client release]; _client = nil;
+  [_database release]; _database = nil;
+  [_password release]; _password = nil;
+  [_user release]; _user = nil;
+  [_name release]; _name = nil;
+  [_statements release]; _statements = nil;
+  [_cache release]; _cache = nil;
+  [_cacheThread release]; _cacheThread = nil;
   [super dealloc];
 }
 
 - (NSString*) description
 {
-  NSMutableString	*s = AUTORELEASE([NSMutableString new]);
+  NSMutableString	*s = [[NSMutableString new] autorelease];
 
   [lock lock];
   [s appendFormat: @"Database      - %@\n", [self clientName]];
@@ -1352,8 +1366,8 @@ static unsigned int	maxConnections = 8;
     }
   else
     {
-      RELEASE(self);
-      self = RETAIN(existing);
+      [self release];
+      self = [existing retain];
     }
   [clientsMapLock unlock];
 
@@ -1510,7 +1524,7 @@ static unsigned int	maxConnections = 8;
   va_end(ap);
 
   quoted = [self quoteString: str];
-  RELEASE(str);
+  [str release];
   return quoted;
 }
 
@@ -1530,7 +1544,7 @@ static unsigned int	maxConnections = 8;
     }
   str = [[NSString alloc] initWithCString: s];
   quoted = [self quoteString: str];
-  RELEASE(str);
+  [str release];
   return quoted;
 }
 
@@ -1546,7 +1560,7 @@ static unsigned int	maxConnections = 8;
     }
   str = [[NSString alloc] initWithFormat: @"%c", c];
   quoted = [self quoteString: str];
-  RELEASE(str);
+  [str release];
   return quoted;
 }
 
@@ -1579,15 +1593,15 @@ static unsigned int	maxConnections = 8;
 	 			       length: 2
 		 		     encoding: NSASCIIStringEncoding];
       special = [NSCharacterSet characterSetWithCharactersInString: stemp];
-      RELEASE(stemp);
-      RETAIN(special);
+      [stemp release];
+      [special retain];
     }
 
   /*
    * Step through string removing nul characters
    * and escaping quote characters as required.
    */
-  m = AUTORELEASE([s mutableCopy]);
+  m = [[s mutableCopy] autorelease];
   l = [m length];
   r = NSMakeRange(0, l);
   r = [m rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
@@ -1668,7 +1682,9 @@ static unsigned int	maxConnections = 8;
 	{
 	  [self disconnect];
 	}
-      ASSIGNCOPY(_database, s);
+      s = [s copy];
+      [_database release];
+      _database = s;
     }
 }
 
@@ -1697,17 +1713,20 @@ static unsigned int	maxConnections = 8;
 	{
 	  [self disconnect];
 	}
-      RETAIN(self);
+      [self retain];
       if (_name != nil)
 	{
           NSMapRemove(clientsMap, (void*)_name);
         }
-      ASSIGNCOPY(_name, s);
-      ASSIGN(_client, [[NSProcessInfo processInfo] globallyUniqueString]);
+      s = [s copy];
+      [_name release];
+      _name = s;
+      [_client release];
+      _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
       NSMapInsert(clientsMap, (void*)_name, (void*)self);
       [clientsMapLock unlock];
       [lock unlock];
-      RELEASE(self);
+      [self release];
     }
 }
 
@@ -1719,7 +1738,9 @@ static unsigned int	maxConnections = 8;
 	{
 	  [self disconnect];
 	}
-      ASSIGNCOPY(_password, s);
+      s = [s copy];
+      [_password release];
+      _password = s;
     }
 }
 
@@ -1731,7 +1752,9 @@ static unsigned int	maxConnections = 8;
 	{
 	  [self disconnect];
 	}
-      ASSIGNCOPY(_user, s);
+      s = [s copy];
+      [_user release];
+      _user = s;
     }
 }
 
@@ -2174,7 +2197,7 @@ static unsigned int	maxConnections = 8;
 {
   NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
   NSString		*tmp = va_arg(args, NSString*);
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
 
   if (tmp != nil)
     {
@@ -2207,7 +2230,7 @@ static unsigned int	maxConnections = 8;
       stmt = s;
     }
   [ma insertObject: stmt atIndex: 0];
-  DESTROY(arp);
+  [arp release];
   return ma;
 }
 
@@ -2229,7 +2252,7 @@ static unsigned int	maxConnections = 8;
   unsigned int		l = [str length];
   NSRange		r;
   NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
 
   if (l < 2)
     {
@@ -2256,7 +2279,7 @@ static unsigned int	maxConnections = 8;
     }
   else
     {
-      NSMutableString	*mtext = AUTORELEASE([str mutableCopy]);
+      NSMutableString	*mtext = [[str mutableCopy] autorelease];
 
       /*
        * Replace {FieldName} with the value of the field
@@ -2394,7 +2417,7 @@ static unsigned int	maxConnections = 8;
 	}
       [ma insertObject: mtext atIndex: 0];
     }
-  RELEASE(arp);
+  [arp release];
   return ma;
 }
 
@@ -2418,12 +2441,14 @@ static unsigned int	maxConnections = 8;
   NSDictionary	*d;
 
   a = [CacheQuery new];
-  ASSIGN(a->query, aKey);
+  aKey = [aKey copy];
+  [a->query release];
+  a->query = aKey;
   d = [[NSThread currentThread] threadDictionary];
   a->recordType = [d objectForKey: @"SQLClientRecordType"];
   a->listType = [d objectForKey: @"SQLClientListType"];
   a->lifetime = lifetime;
-  AUTORELEASE(a);
+  [a autorelease];
   if (_cacheThread == nil)
     {
       [self _populateCache: a];
@@ -2449,16 +2474,16 @@ static unsigned int	maxConnections = 8;
 
 - (SQLTransaction*) batch: (BOOL)stopOnFailure
 {
-  TDefs	transaction;
+  SQLTransaction        *transaction;
 
-  transaction = (TDefs)NSAllocateObject([SQLTransaction class], 0,
+  transaction = (SQLTransaction*)NSAllocateObject([SQLTransaction class], 0,
     NSDefaultMallocZone());
  
-  transaction->_db = RETAIN(self);
+  transaction->_db = [self retain];
   transaction->_info = [NSMutableArray new];
   transaction->_batch = YES;
   transaction->_stop = stopOnFailure;
-  return AUTORELEASE((SQLTransaction*)transaction);
+  return [(SQLTransaction*)transaction autorelease];
 }
 
 - (NSMutableArray*) columns: (NSMutableArray*)records
@@ -2568,14 +2593,14 @@ static unsigned int	maxConnections = 8;
 
 - (SQLTransaction*) transaction
 {
-  TDefs	transaction;
+  SQLTransaction	*transaction;
 
-  transaction = (TDefs)NSAllocateObject([SQLTransaction class], 0,
+  transaction = (SQLTransaction*)NSAllocateObject([SQLTransaction class], 0,
     NSDefaultMallocZone());
  
-  transaction->_db = RETAIN(self);
+  transaction->_db = [self retain];
   transaction->_info = [NSMutableArray new];
-  return AUTORELEASE((SQLTransaction*)transaction);
+  return [(SQLTransaction*)transaction autorelease];
 }
 @end
 
@@ -2593,11 +2618,11 @@ static unsigned int	maxConnections = 8;
 @implementation	SQLClientCacheInfo
 - (void) dealloc
 {
-  DESTROY(query);
-  DESTROY(result);
+  [query release]; query = nil;
+  [result release]; result = nil;
   [super dealloc];
 }
-- (unsigned) hash
+- (NSUInteger) hash
 {
   return [query hash];
 }
@@ -2622,9 +2647,9 @@ static unsigned int	maxConnections = 8;
 	  [_cache setDelegate: self];
 	}
     }
-  c = RETAIN(_cache);
+  c = [_cache retain];
   [lock unlock];
-  return AUTORELEASE(c);
+  return [c autorelease];
 }
 
 - (NSMutableArray*) cache: (int)seconds
@@ -2692,11 +2717,11 @@ static unsigned int	maxConnections = 8;
       CacheQuery	*a;
 
       a = [CacheQuery new];
-      ASSIGN(a->query, stmt);
+      a->query = [stmt copy];
       a->recordType = rtype;
       a->listType = ltype;
       a->lifetime = seconds;
-      AUTORELEASE(a);
+      [a autorelease];
 
       if (_cacheThread == nil)
 	{
@@ -2756,7 +2781,9 @@ static unsigned int	maxConnections = 8;
     {
       [_cache setDelegate: nil];
     }
-  ASSIGN(_cache, aCache);
+  [aCache retain];
+  [_cache release];
+  _cache = aCache;
   if (_cacheThread != nil)
     {
       [_cache setDelegate: self];
@@ -2783,7 +2810,9 @@ static unsigned int	maxConnections = 8;
     {
       [_cache setDelegate: nil];
     }
-  ASSIGN(_cacheThread, aThread);
+  [aThread retain];
+  [_cacheThread release];
+  _cacheThread = aThread;
   if (_cacheThread != nil)
     {
       [_cache setDelegate: self];
@@ -2887,7 +2916,7 @@ static unsigned int	maxConnections = 8;
       other = [other copy];
       [_info addObject: other];
       _count += other->_count;
-      RELEASE(other);
+      [other release];
     }
 }
 
@@ -2896,7 +2925,7 @@ static unsigned int	maxConnections = 8;
   SQLTransaction        *c;
 
   c = (SQLTransaction*)NSCopyObject(self, 0, z);
-  c->_db = RETAIN(c->_db);
+  c->_db = [c->_db retain];
   c->_info = [c->_info mutableCopy];
   return c;
 }
@@ -2913,8 +2942,8 @@ static unsigned int	maxConnections = 8;
 
 - (void) dealloc
 {
-  DESTROY(_db);
-  DESTROY(_info);
+  [_db release]; _db = nil;
+  [_info release]; _info = nil;
   [super dealloc];
 }
 
@@ -2944,7 +2973,7 @@ static unsigned int	maxConnections = 8;
           info = [[NSMutableArray alloc] initWithCapacity: argCount + 1];
           sql = [[NSMutableString alloc] initWithCapacity: sqlSize + 13];
           [info addObject: sql];
-          RELEASE(sql);
+          [sql release];
           if ([_db isInTransaction] == NO)
             {
               [sql appendString: @"begin;"];
@@ -2958,11 +2987,11 @@ static unsigned int	maxConnections = 8;
             }
 
           [_db simpleExecute: info];
-          DESTROY(info);
+          [info release]; info = nil;
 	}
       NS_HANDLER
 	{
-          RELEASE(info);
+          [info release];
 	  [localException raise];
 	}
       NS_ENDHANDLER
@@ -3110,7 +3139,7 @@ static unsigned int	maxConnections = 8;
   trn = [trn copy];
   [_info addObject: trn];
   _count += trn->_count;
-  RELEASE(trn);
+  [trn release];
 }
 
 - (void) removeTransactionAtIndex: (unsigned)index
@@ -3167,7 +3196,7 @@ static unsigned int	maxConnections = 8;
   else
     {
       o = [o copy];
-      return AUTORELEASE(o);
+      return [o autorelease];
     }
 }
 @end

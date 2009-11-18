@@ -134,7 +134,7 @@ static NSDate	*future = nil;
       future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
 			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
 				       locale: nil];
-      RETAIN(future);
+      [future retain];
     }
 }
 
@@ -251,14 +251,14 @@ static NSDate	*future = nil;
   char	*statement;
   char	*handle;
   EXEC SQL END DECLARE SECTION;
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   unsigned int		length;
   NSString		*stmt = [info objectAtIndex: 0];
 
   length = [stmt length];
   if (length == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -278,7 +278,7 @@ static NSDate	*future = nil;
    */
   if ([self connect] == NO)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: SQLException
 	format: @"Unable to connect to '%@' to execute statement %@",
 	[self name], stmt];
@@ -322,13 +322,13 @@ static NSDate	*future = nil;
 	  [self debug: @"Error executing statement:\n%@\n%@",
 	    stmt, localException];
 	}
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
 }
 
 static unsigned int trim(char *str)
@@ -379,7 +379,7 @@ static unsigned int trim(char *str)
   char	*query;
   char	*handle;
   EXEC SQL END DECLARE SECTION;
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSMutableArray	*records;
   BOOL			isOpen = NO;
   BOOL			localTransaction = NO;
@@ -387,7 +387,7 @@ static unsigned int trim(char *str)
   length = [stmt length];
   if (length == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -401,7 +401,7 @@ static unsigned int trim(char *str)
    */
   if ([self connect] == NO)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: SQLException
 	format: @"Unable to connect to '%@' to run query %@",
 	[self name], stmt];
@@ -603,7 +603,7 @@ static unsigned int trim(char *str)
 				       keys: keys
 			              count: count];
 	      [records addObject: record];
-	      RELEASE(record);
+	      [record release];
 	    }
 	}
       
@@ -621,7 +621,8 @@ static unsigned int trim(char *str)
       NSString	*n = [localException name];
       NSString	*msg = [localException reason];
 
-      DESTROY(records);
+      [records release];
+      records = nil;
 
       NS_DURING
 	{
@@ -669,15 +670,15 @@ static unsigned int trim(char *str)
 						     userInfo: nil];
 	    }
 	}
-      RETAIN(localException);
-      RELEASE(arp);
-      AUTORELEASE(localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
 
-  return AUTORELEASE(records);
+  return [records autorelease];
 }
 
 - (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf
@@ -1069,8 +1070,8 @@ static unsigned int trim(char *str)
     }
   d = [[NSData alloc] initWithBytes: b length: l];
   s = [[NSString alloc] initWithData: d encoding: NSUTF8StringEncoding];
-  RELEASE(d);
-  return AUTORELEASE(s);
+  [d release];
+  return [s autorelease];
 }
 
 @end

@@ -42,6 +42,7 @@
 
 #include	"config.h"
 #include	"SQLClient.h"
+#include	<string.h>
 #include	<sqlite3.h>
 
 @interface SQLClientSQLite : SQLClient
@@ -130,13 +131,13 @@
 
 - (void) backendExecute: (NSArray*)info
 {
-  NSString	*stmt;
-  CREATE_AUTORELEASE_POOL(arp);
+  NSString	        *stmt;
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
 
   stmt = [info objectAtIndex: 0];
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -186,25 +187,25 @@
 	  [self debug: @"Error executing statement:\n%@\n%@",
 	    stmt, localException];
 	}
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt
 		      recordType: (id)rtype
 		        listType: (id)ltype
 {
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSMutableArray	*records = [[ltype alloc] initWithCapacity: 2];
 
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -288,7 +289,7 @@
 				       keys: keys
 				      count: columns];
 	      [records addObject: record];
-	      RELEASE(record);
+	      [record release];
 	    }
 	  while ((result = sqlite3_step(prepared)) == SQLITE_ROW);
         }
@@ -312,14 +313,14 @@
 	  [self debug: @"Error executing statement:\n%@\n%@",
 	    stmt, localException];
 	}
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
-  return AUTORELEASE(records);
+  [arp release];
+  return [records autorelease];
 }
 
 static char hex[16] = "0123456789ABCDEF";

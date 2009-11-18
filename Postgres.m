@@ -74,9 +74,9 @@ static NSNull	*null = nil;
       future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
 			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
 				       locale: nil];
-      RETAIN(future);
+      [future retain];
       null = [NSNull null];
-      RETAIN(null);
+      [null retain];
     }
 }
 
@@ -90,7 +90,7 @@ connectQuote(NSString *str)
   [m replaceString: @"'" withString: @"\\'"];
   [m replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
   [m appendString: @"'"];
-  return AUTORELEASE(m);
+  return [m autorelease];
 }
 
 - (BOOL) backendConnect
@@ -249,13 +249,13 @@ connectQuote(NSString *str)
 
 - (void) backendExecute: (NSArray*)info
 {
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   PGresult	*result = 0;
   NSString	*stmt = [info objectAtIndex: 0];
 
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -321,9 +321,9 @@ connectQuote(NSString *str)
 	{
 	  PQclear(result);
 	}
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
@@ -331,7 +331,7 @@ connectQuote(NSString *str)
     {
       PQclear(result);
     }
-  DESTROY(arp);
+  [arp release];
 }
 
 static unsigned int trim(char *str)
@@ -362,13 +362,13 @@ static unsigned int trim(char *str)
 		      recordType: (id)rtype
 		        listType: (id)ltype
 {
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   PGresult		*result = 0;
   NSMutableArray	*records = nil;
 
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -492,7 +492,7 @@ static unsigned int trim(char *str)
 				       keys: keys
 				      count: fieldCount];
 	      [records addObject: record];
-	      RELEASE(record);
+	      [record release];
 	    }
 	}
       else
@@ -513,19 +513,20 @@ static unsigned int trim(char *str)
 	{
 	  PQclear(result);
 	}
-      DESTROY(records);
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [records release];
+      records = nil;
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
   if (result != 0)
     {
       PQclear(result);
     }
-  return AUTORELEASE(records);
+  return [records autorelease];
 }
 
 - (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf
@@ -834,7 +835,7 @@ static unsigned int trim(char *str)
 				     length: l + 2
 				   encoding: NSUTF8StringEncoding
 			       freeWhenDone: YES];
-  return AUTORELEASE(s);
+  return [s autorelease];
 }
 
 @end

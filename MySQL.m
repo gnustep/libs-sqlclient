@@ -61,9 +61,9 @@ static NSNull	*null = nil;
       future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
 			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
 				       locale: nil];
-      RETAIN(future);
+      [future retain];
       null = [NSNull null];
-      RETAIN(null);
+      [null retain];
     }
 }
 
@@ -179,13 +179,13 @@ static NSNull	*null = nil;
 
 - (void) backendExecute: (NSArray*)info
 {
-  NSString	*stmt;
-  CREATE_AUTORELEASE_POOL(arp);
+  NSString	        *stmt;
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
 
   stmt = [info objectAtIndex: 0];
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -233,13 +233,13 @@ static NSNull	*null = nil;
 	  [self debug: @"Error executing statement:\n%@\n%@",
 	    stmt, localException];
 	}
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
 }
 
 static unsigned int trim(char *str)
@@ -270,13 +270,13 @@ static unsigned int trim(char *str)
 		      recordType: (Class)rtype
 		        listType: (Class)ltype
 {
-  CREATE_AUTORELEASE_POOL(arp);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSMutableArray	*records = nil;
   MYSQL_RES		*result = 0;
 
   if ([stmt length] == 0)
     {
-      RELEASE (arp);
+      [arp release];
       [NSException raise: NSInternalInconsistencyException
 		  format: @"Statement produced null string"];
     }
@@ -390,7 +390,7 @@ static unsigned int trim(char *str)
 				  calendarFormat: @"%y"
 				      locale: nil];
 				}
-			      RELEASE(s);
+			      [s release];
 			      [v setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
 			    }
 			    break;
@@ -418,7 +418,7 @@ static unsigned int trim(char *str)
 				       keys: keys
 				      count: fieldCount];
 	      [records addObject: record];
-	      RELEASE(record);
+	      [record release];
 	    }
 	}
       else
@@ -444,19 +444,20 @@ static unsigned int trim(char *str)
 	{
 	  mysql_free_result(result);
 	}
-      DESTROY(records);
-      RETAIN (localException);
-      RELEASE (arp);
-      AUTORELEASE (localException);
+      [records release];
+      records = nil;
+      [localException retain];
+      [arp release];
+      [localException autorelease];
       [localException raise];
     }
   NS_ENDHANDLER
-  DESTROY(arp);
+  [arp release];
   if (result != 0)
     {
       mysql_free_result(result);
     }
-  return AUTORELEASE(records);
+  return [records autorelease];
 }
 
 - (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf

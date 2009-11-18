@@ -29,7 +29,7 @@
 int
 main()
 {
-  CREATE_AUTORELEASE_POOL(pool);
+  NSAutoreleasePool pool = [NSAutoreleasePool new];
   SQLClient		*db;
   NSUserDefaults	*defs;
   NSMutableArray	*records;
@@ -128,7 +128,7 @@ main()
 
   NSLog(@"Records - %@", records);
 
-  RELEASE(pool);
+  [pool release];
   return 0;
 }
 

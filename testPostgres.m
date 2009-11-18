@@ -41,7 +41,7 @@
 int
 main()
 {
-  CREATE_AUTORELEASE_POOL(pool);
+  NSAutoreleasePool pool = [NSAutoreleasePool new];
   SQLClient		*db;
   NSUserDefaults	*defs;
   NSMutableArray	*records;
@@ -116,14 +116,14 @@ main()
       NSLog(@"Start producing");
       for (i = 0; i < 100000; i++)
 	{
-	  CREATE_AUTORELEASE_POOL(arp);
+	  NSAutoreleasePool arp = [NSAutoreleasePool new];
 	  NSString	*destination = [NSString stringWithFormat: @"%d", i];
 	  NSString	*sid = [NSString stringWithFormat: @"%d", i%100];
 
 	  [db execute: @"INSERT INTO Queue (Consumer, Destination, ServiceID, Payload) VALUES (",
 	    [db quote: name], @", ", [db quote: destination], @", ", sid, @", ",
 	    @"'helo there'", @")", nil];
-	  RELEASE(arp);
+	  [arp release];
 	}
       NSLog(@"End producing");
     }
@@ -132,7 +132,7 @@ main()
       NSLog(@"Start consuming");
       for (i = 0; i < 100000;)
 	{
-	  CREATE_AUTORELEASE_POOL(arp);
+	  NSAutoreleasePool arp = [NSAutoreleasePool new];
 	  unsigned		count;
 	  int			j;
 
@@ -174,7 +174,7 @@ main()
 	    }
 	  [db commit];
 	  i += count;
-	  RELEASE(arp);
+	  [arp release];
 	}
       NSLog(@"End consuming (%d records)", i);
 /*
@@ -298,7 +298,7 @@ main()
       NSLog(@"Records - %@", [GSCache class]);
     }
 
-  RELEASE(pool);
+  [pool release];
   return 0;
 }
 
