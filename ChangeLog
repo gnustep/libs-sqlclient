@@ -1,3 +1,7 @@
+2009-11-18 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	Many tweaks to build under OSX snow leopard.
+
 2009-10-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* ECPG.pgm:
