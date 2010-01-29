@@ -688,14 +688,16 @@ static unsigned int trim(char *str)
     {
       int	e;
 
-      /* If it's a simple date (YYYY-MM-DD) append time for start of day. */
-      if (l == 10)
+      i = l;
+      /* Convert +/-HH:SS timezone to +/-HHSS
+       */
+      if (i > 5 && b[i-3] == ':' && (b[i-6] == '+' || b[i-6] == '-'))
 	{
-	  strcat(b, " 00:00:00 +0000");
-	  l += 15;
+	  b[i-3] = b[i-2];
+	  b[i-2] = b[i-1];
+	  b[--i] = '\0';
 	}
 
-      i = l;
       while (i-- > 0)
 	{
 	  if (b[i] == '+' || b[i] == '-')

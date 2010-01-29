@@ -1,3 +1,7 @@
+2010-01-29 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Fix to cope with a new date format in recent postgres.
+
 2009-11-18 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	Many tweaks to build under OSX snow leopard.
