@@ -1,3 +1,8 @@
+2010-02-15 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Just include Foundation.h,  fix minor doc errors
+	* GNUmakefile: Add documentation flag to avoid warning.
+
 2010-01-29 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: Fix to cope with a new date format in recent postgres.

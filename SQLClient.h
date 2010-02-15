@@ -178,17 +178,9 @@
 #ifndef	INCLUDED_SQLClient_H
 #define	INCLUDED_SQLClient_H
 
-#import	<Foundation/NSObject.h>
-#import	<Foundation/NSArray.h>
+#import	<Foundation/Foundation.h>
 
 @class	GSCache;
-@class	NSData;
-@class	NSDate;
-@class	NSMutableDictionary;
-@class	NSMutableSet;
-@class	NSRecursiveLock;
-@class	NSString;
-@class	NSThread;
 @class	SQLTransaction;
 
 /**
@@ -1037,12 +1029,12 @@ SQLCLIENT_PRIVATE
  * This category contains convenience methods including those for
  * frequently performed database operations ... message logging etc.
  */
-@interface	SQLClient(Convenience)
+@interface	SQLClient (Convenience)
 
 /**
  * Returns a transaction object configured to handle batching and
  * execute part of a batch of statements if execution of the whole
- * using the [SQLTransaction-executeBatch:] method fails.<br />
+ * using the [SQLTransaction-executeBatch] method fails.<br />
  * If stopOnFailure is YES than execution of the transaction will
  * stop with the first statement to fail, otherwise it will execute
  * all the statements it can, skipping any failed statements.

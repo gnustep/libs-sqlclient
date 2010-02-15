@@ -31,6 +31,7 @@ SQLClient_OBJC_FILES = SQLClient.m
 SQLClient_LIBRARIES_DEPEND_UPON = -lPerformance
 SQLClient_HEADER_FILES = SQLClient.h
 SQLClient_AGSDOC_FILES = SQLClient.h
+SQLClient_AGSDOC_FLAGS = -WordMap '{SQLCLIENT_PRIVATE="";}'
 
 # Optional Java wrappers for the library
 JAVA_WRAPPER_NAME = SQLClient
