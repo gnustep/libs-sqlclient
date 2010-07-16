@@ -61,8 +61,8 @@ static NSNull	*null = nil;
 {
   if (future == nil)
     {
-      future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
-			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
+      future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00"
+			       calendarFormat: @"%Y-%m-%d %H:%M:%S"
 				       locale: nil];
       [future retain];
       null = [NSNull null];
@@ -100,9 +100,11 @@ static NSNull	*null = nil;
 
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Connect to '%@' as %@", [self database], [self name]];
+	      [self debug: @"Connect to '%@' as %@",
+		[self database], [self name]];
 	    }
 	  extra = mysql_init(0);
+	  mysql_options(connection, MYSQL_SET_CHARSET_NAME, "utf8");
 	  if (mysql_real_connect(connection,
 	    [host UTF8String],
 	    [[self user] UTF8String],
@@ -110,23 +112,13 @@ static NSNull	*null = nil;
 	    [dbase UTF8String],
 	    [port intValue],
 	    NULL,
-	    0
-	    ) == 0)
+	    CLIENT_MULTI_STATEMENTS) == 0)
 	    {
 	      [self debug: @"Error connecting to '%@' (%@) - %s",
 		[self name], [self database], mysql_error(connection)];
 	      mysql_close(connection);
 	      extra = 0;
 	    }
-#if 0
-	  else if (mysql_query(connection, "SET CHARACTER SET utf8") != 0)
-	    {
-	      [self debug: @"Error setting utf8 support for '%@' (%@) - %s",
-		[self name], [self database], mysql_error(connection)];
-	      mysql_close(connection);
-	      extra = 0;
-	    }
-#endif
 	  else
 	    {
 	      connected = YES;
@@ -195,6 +187,7 @@ static NSNull	*null = nil;
 
   NS_DURING
     {
+      MYSQL_RES		*result;
       const char	*statement;
       unsigned		length;
 
@@ -221,6 +214,18 @@ static NSNull	*null = nil;
 	{
 	  [NSException raise: SQLException format: @"%s",
 	    mysql_error(connection)];
+	}
+      /* discard any results.
+       */
+      result = mysql_store_result(connection);
+      if (result != 0) mysql_free_result(result);
+      while (mysql_more_results(connection))
+	{
+          if (mysql_next_result(connection) == 0)
+	    {
+              result = mysql_store_result(connection);
+	      if (result != 0) mysql_free_result(result);
+	    }
 	}
     }
   NS_HANDLER
@@ -341,58 +346,51 @@ static unsigned int trim(char *str)
 			{
 			  case FIELD_TYPE_TIMESTAMP:
 			    {
+			      char	b[32];
+			      NSString	*f;
 			      NSString	*s;
 
-			      s = [[NSString alloc] initWithBytes: p
-				length: size encoding: NSASCIIStringEncoding];
 			      if (size > 14)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%Y-%m-%d %H:%M:%S"
-				      locale: nil];
+				  size = 19;
+				  f = @"%Y-%m-%d %H:%M:%S %z";
 				}
 			      else if (size == 14)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%Y%m%d%H%M%S"
-				      locale: nil];
+				  f = @"%Y%m%d%H%M%S %z";
 				}
 			      else if (size == 12)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%y%m%d%H%M%S"
-				      locale: nil];
+				  f = @"%y%m%d%H%M%S %z";
 				}
 			      else if (size == 10)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%y%m%d%H%M"
-				      locale: nil];
+				  f = @"%y%m%d%H%M %z";
 				}
 			      else if (size == 8)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%y%m%d%H"
-				      locale: nil];
+				  f = @"%y%m%d%H %z";
 				}
 			      else if (size == 6)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%y%m%d"
-				      locale: nil];
+				  f = @"%y%m%d %z";
 				}
 			      else if (size == 4)
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%y%m"
-				      locale: nil];
+				  f = @"%y%m %z";
 				}
 			      else 
 				{
-				  v = [NSCalendarDate dateWithString: s
-				  calendarFormat: @"%y"
-				      locale: nil];
+				  f = @"%y %z";
 				}
+			      strncpy(b, (char*)p, size);
+			      strncpy(b + size, (char*)" +0000", 6);
+			      s = [[NSString alloc] initWithBytes: b
+				length: size + 6
+				encoding: NSASCIIStringEncoding];
+			      v = [NSCalendarDate dateWithString: s
+				calendarFormat: @"%y"
+				locale: nil];
 			      [s release];
 			      [v setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
 			    }
@@ -406,7 +404,16 @@ static unsigned int trim(char *str)
 			  case FIELD_TYPE_TINY_BLOB:
 			  case FIELD_TYPE_MEDIUM_BLOB:
 			  case FIELD_TYPE_LONG_BLOB:
-			    v = [NSData dataWithBytes: p length: size];
+		            if (63 == fields[j].charsetnr)
+			      {
+			        v = [NSData dataWithBytes: p length: size];
+			      }
+			    else
+			      {
+			        v = [[[NSString alloc] initWithBytes: p
+				  length: size
+				  encoding: NSUTF8StringEncoding] autorelease];
+			      }
 			    break;
 
 			  default:
@@ -511,6 +518,39 @@ static unsigned int trim(char *str)
       length++;
     }
   return length;
+}
+
+- (NSString*) quote: (id)obj
+{
+  /* MySQL doesn't support timezones ... convert dates to simple GMT.
+   */
+  if ([obj isKindOfClass: [NSDate class]] == YES)
+    {
+      NSString		*fmt = nil;
+      static NSTimeZone	*gmt = nil;
+
+      if (nil == gmt)
+	{
+	  gmt = [[NSTimeZone timeZoneForSecondsFromGMT: 0] retain];
+	}
+      if ([obj isKindOfClass: [NSCalendarDate class]] == YES)
+	{
+	  fmt = [obj calendarFormat];
+	  if ([fmt length] > 17)
+	    {
+	      fmt = nil;	// bad format ... had timezone
+	    }
+	}
+      if (nil == fmt)
+	{
+	  fmt = @"%Y-%m-%d %H:%M:%S";
+	}
+      fmt = [NSString stringWithFormat: @"'%@'", fmt];
+      return [obj descriptionWithCalendarFormat: fmt
+				       timeZone: gmt
+				         locale: nil];
+    }
+  return [super quote: obj];
 }
 
 @end

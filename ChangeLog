@@ -1,5 +1,10 @@
 2010-07-16 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* MySQL.m: Add support for TEXT data and for MySQL's failure to support
+	timezones.  Also add support for multiple statements in a batch.
+
+2010-07-16 Richard Frith-Macdonald  <rfm@gnu.org>
+
 	* configure.ac: Improve check for mysql library.
 
 2010-02-15 Richard Frith-Macdonald  <rfm@gnu.org>
