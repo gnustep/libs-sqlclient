@@ -1,3 +1,7 @@
+2010-07-16 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* configure.ac: Improve check for mysql library.
+
 2010-02-15 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Just include Foundation.h,  fix minor doc errors

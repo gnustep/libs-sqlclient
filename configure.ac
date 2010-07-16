@@ -196,6 +196,20 @@ else
   echo "*********************************************************"
 fi
 if test "$MYSQL" = "yes"; then
+  if test -d /usr/lib/mysql ; then
+    CPPFLAGS="$CPPFLAGS -L/usr/lib/mysql"
+    LIBD="$LIBD -L/usr/lib/mysql"
+  else
+    if test -d /usr/local/lib/mysql ; then
+      CPPFLAGS="$CPPFLAGS -L/usr/local/lib/mysql"
+      LIBD="$LIBD -L/usr/local/lib/mysql"
+    else
+      if test -d /usr/local/mysql/lib ; then
+        CPPFLAGS="$CPPFLAGS -L/usr/local/mysql/lib"
+        LIBD="$LIBD -L/usr/local/mysql/lib"
+      fi
+    fi
+  fi
   AC_CHECK_LIB(mysqlclient,mysql_init)
   if test "$ac_cv_lib_mysqlclient_mysql_init" != "yes"; then
     MYSQL=
