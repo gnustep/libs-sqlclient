@@ -1,3 +1,8 @@
+2010-08-13 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* MySQL.m: Try to recognise loss of connection.
+	Fix bug in timezone management.
+
 2010-07-16 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* MySQL.m: Add support for TEXT data and for MySQL's failure to support

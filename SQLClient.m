@@ -1161,7 +1161,7 @@ static unsigned int	maxConnections = 8;
 	      NSTimeInterval	elapsed;
 
 	      /* If we have repeated connection failures, we enforce a
-	       * delay fo up to 30 seconds between connection attempts
+	       * delay of up to 30 seconds between connection attempts
 	       * to avoid overloading the system with too frequent
 	       * connection attempts.
 	       */

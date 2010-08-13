@@ -212,8 +212,17 @@ static NSNull	*null = nil;
 
       if (mysql_real_query(connection, statement, length) != 0)
 	{
-	  [NSException raise: SQLException format: @"%s",
-	    mysql_error(connection)];
+	  NSString	*s;
+
+	  s = [NSString stringWithFormat: @"%s", mysql_error(connection)];
+	  if (mysql_ping(connection) == 0)
+	    {
+	      [NSException raise: SQLException format: @"%@", s];
+	    }
+	  else
+	    {
+	      [NSException raise: SQLConnectionException format: @"%@", s];
+	    }
 	}
       /* discard any results.
        */
@@ -435,8 +444,17 @@ static unsigned int trim(char *str)
 	}
       else
 	{
-	  [NSException raise: SQLException format: @"%s",
-	    mysql_error(connection)];
+	  NSString	*s;
+
+	  s = [NSString stringWithFormat: @"%s", mysql_error(connection)];
+	  if (mysql_ping(connection) == 0)
+	    {
+	      [NSException raise: SQLException format: @"%@", s];
+	    }
+	  else
+	    {
+	      [NSException raise: SQLConnectionException format: @"%@", s];
+	    }
 	}
     }
   NS_HANDLER
