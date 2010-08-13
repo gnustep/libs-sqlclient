@@ -389,10 +389,12 @@ static unsigned int trim(char *str)
 				length: size + 6
 				encoding: NSASCIIStringEncoding];
 			      v = [NSCalendarDate dateWithString: s
-				calendarFormat: @"%y"
+				calendarFormat: f
 				locale: nil];
-			      [s release];
 			      [v setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
+			      if ([self debugging] > 1)
+				[self debug: @"Parsed '%@' as '%@'\n", s, v];
+			      [s release];
 			    }
 			    break;
 
