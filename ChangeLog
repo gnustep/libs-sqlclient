@@ -1,3 +1,9 @@
+2010-11-17  Nicola Pero  <nicola.pero@meta-innovation.com>
+
+	* GNUmakefile.postamble: Uncommented .PRECIOUS for ECPG and
+	Oracle, so that typing 'make' does nothing when everything is
+	already built.
+
 2010-08-13 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* MySQL.m: Try to recognise loss of connection.

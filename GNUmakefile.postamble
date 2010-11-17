@@ -13,9 +13,7 @@ ifneq ($(ECPG),)
 %.m: %.pgm
 	ecpg -o $@ $< $(ADDITIONAL_INCLUDE_DIRS)
 
-# if you need to see the .m files for debugging, uncomment
-# the following line
-#.PRECIOUS: %.m
+.PRECIOUS: %.m
 
 endif
 
@@ -25,9 +23,7 @@ ifneq ($(ORACLE_HOME),)
 %.m: %.pm
 	proc iname=$< oname=$@ mode=ansi parse=none
 
-# if you need to see the .m files for debugging, uncomment
-# the following line
-#.PRECIOUS: %.m
+.PRECIOUS: %.m
 
 endif
 
