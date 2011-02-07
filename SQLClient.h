@@ -178,9 +178,14 @@
 #ifndef	INCLUDED_SQLClient_H
 #define	INCLUDED_SQLClient_H
 
+#import	<Foundation/NSArray.h>
 #import	<Foundation/NSObject.h>
 
 @class	GSCache;
+@class	NSMutableDictionary;
+@class	NSMutableSet;
+@class	NSString;
+@class	NSThread;
 @class	SQLTransaction;
 
 /**
