@@ -178,7 +178,7 @@
 #ifndef	INCLUDED_SQLClient_H
 #define	INCLUDED_SQLClient_H
 
-#import	<Foundation/Foundation.h>
+#import	<Foundation/NSObject.h>
 
 @class	GSCache;
 @class	SQLTransaction;
