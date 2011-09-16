@@ -1074,6 +1074,10 @@ static unsigned int	maxConnections = 8;
       NS_DURING
 	{
 	  [self simpleExecute: beginStatement];
+	  /* NB.  We leave the lock locked ... until a matching -commit
+	   * or -rollback is called.  This prevents other threads from
+	   * intefering with this transaction.
+	   */
 	}
       NS_HANDLER
 	{
@@ -1129,19 +1133,22 @@ static unsigned int	maxConnections = 8;
       [NSException raise: NSInternalInconsistencyException
 		  format: @"commit used outside transaction"];
     }
+
+  /* Since we are in a transaction we must be doubly locked right now,
+   * so we unlock once, and we still have the lock (which was locked
+   * in the earlier call to the -begin method).
+   */
+  [lock unlock];
+  _inTransaction = NO;
   NS_DURING
     {
       [self simpleExecute: commitStatement];
-      _inTransaction = NO;
       [_statements removeAllObjects];
-      [lock unlock];		// Locked at start of -commit
       [lock unlock];		// Locked by -begin
     }
   NS_HANDLER
     {
-      _inTransaction = NO;
       [_statements removeAllObjects];
-      [lock unlock];		// Locked at start of -commit
       [lock unlock];		// Locked by -begin
       [localException raise];
     }
@@ -1654,24 +1661,31 @@ static unsigned int	maxConnections = 8;
 - (void) rollback
 {
   [lock lock];
-  if (_inTransaction == YES)
+  if (NO == _inTransaction)
     {
-      _inTransaction = NO;
-      [_statements removeAllObjects];
-      NS_DURING
-	{
-	  [self simpleExecute: rollbackStatement];
-	  [lock unlock];		// Locked at start of -rollback
-	  [lock unlock];		// Locked by -begin
-	}
-      NS_HANDLER
-	{
-	  [lock unlock];		// Locked at start of -rollback
-	  [lock unlock];		// Locked by -begin
-	  [localException raise];
-	}
-      NS_ENDHANDLER
+      [lock unlock];	// Not in a transaction ... nothing to do.
+      return;
     }
+
+  /* Since we are in a transaction we must be doubly locked right now,
+   * so we unlock once, and we still have the lock (which was locked
+   * in the earlier call to the -begin method).
+   */
+  [lock unlock];
+  _inTransaction = NO;
+  NS_DURING
+    {
+      [self simpleExecute: rollbackStatement];
+      [_statements removeAllObjects];
+      [lock unlock];		// Locked by -begin
+    }
+  NS_HANDLER
+    {
+      [_statements removeAllObjects];
+      [lock unlock];		// Locked by -begin
+      [localException raise];
+    }
+  NS_ENDHANDLER
 }
 
 - (void) setDatabase: (NSString*)s

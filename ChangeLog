@@ -1,5 +1,10 @@
 2011-04-01 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* SQLClient.m: Cleanup locking on -begin/-commit/-rollback
+	* Version 1.5.2: bump version number
+
+2011-04-01 Richard Frith-Macdonald  <rfm@gnu.org>
+
 	* Version 1.5.1: bump version number
 
 2010-11-17  Nicola Pero  <nicola.pero@meta-innovation.com>
