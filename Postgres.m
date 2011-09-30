@@ -611,41 +611,60 @@ static unsigned int trim(char *str)
   unsigned char	*dst;
   unsigned	i;
 
-  for (i = 0; i < sLen; i++)
+  if (sLen > 1 && '\\' == blob[0] && 'x' == blob[1])
     {
-      unsigned	c = blob[i];
-
-      dLen++;
-      if (c == '\\')
+      dLen = (sLen - 2) / 2;
+      dst = (unsigned char*)NSAllocateCollectable(dLen, 0);
+      md = [NSMutableData dataWithBytesNoCopy: dst length: dLen];
+      dLen = 0;
+      for (i = 2; i < sLen; i += 2)
 	{
-	  c = blob[++i];
-	  if (c != '\\')
-	    {
-	      i += 2;	// Skip 2 digits octal
-	    }
+	  unsigned	hi = blob[i];
+	  unsigned	lo = blob[i + 1];
+
+	  hi = (hi > '9') ? (hi - 'a' + 10) : (hi - '0');
+	  lo = (lo > '9') ? (lo - 'a' + 10) : (lo - '0');
+	  dst[dLen++] = (hi << 4) + lo;
 	}
     }
-  md = [NSMutableData dataWithLength: dLen];
-  dst = (unsigned char*)[md mutableBytes];
-
-  dLen = 0;
-  for (i = 0; i < sLen; i++)
+  else
     {
-      unsigned	c = blob[i];
-
-      if (c == '\\')
+      for (i = 0; i < sLen; i++)
 	{
-	  c = blob[++i];
-	  if (c != '\\')
+	  unsigned	c = blob[i];
+
+	  dLen++;
+	  if (c == '\\')
 	    {
-	      c = c - '0';
-	      c <<= 3;
-	      c += blob[++i] - '0';
-	      c <<= 3;
-	      c += blob[++i] - '0';
+	      c = blob[++i];
+	      if (c != '\\')
+		{
+		  i += 2;	// Skip 2 digits octal
+		}
 	    }
 	}
-      dst[dLen++] = c;
+
+      dst = (unsigned char*)NSAllocateCollectable(i, dLen);
+      md = [NSMutableData dataWithBytesNoCopy: dst length: dLen];
+      dLen = 0;
+      for (i = 0; i < sLen; i++)
+	{
+	  unsigned	c = blob[i];
+
+	  if (c == '\\')
+	    {
+	      c = blob[++i];
+	      if (c != '\\')
+		{
+		  c = c - '0';
+		  c <<= 3;
+		  c += blob[++i] - '0';
+		  c <<= 3;
+		  c += blob[++i] - '0';
+		}
+	    }
+	  dst[dLen++] = c;
+	}
     }
   return md;
 }

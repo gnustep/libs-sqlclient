@@ -63,6 +63,17 @@ if test "$postgres_topdir" != "no"; then
   CPPFLAGS="$CPPFLAGS -I$postgres_topdir/include -L$postgres_topdir/lib"
   INCD="$INCD -I$postgres_topdir/include"
   LIBD="$LIBD -L$postgres_topdir/lib"
+else
+  PGINC=`pg_config --includedir`
+  if test "$PGINC" != ""; then
+    CPPFLAGS="$CPPFLAGS -I$PGINC"
+    INCD="$INCD -I$PGINC"
+  fi
+  PGLIB=`pg_config --libdir`
+  if test "$PGLIB" != ""; then
+    CPPFLAGS="$CPPFLAGS -L$PGLIB"
+    LIBD="$LIBD -I$PGLIB"
+  fi
 fi
 
 # Call AC_CHECK_HEADERS here as a workaround for a configure bug/feature
