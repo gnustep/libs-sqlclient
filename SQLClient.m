@@ -381,7 +381,7 @@ static Class rClass = 0;
   return [self retain];
 }
 
-- (unsigned int) count
+- (NSUInteger) count
 {
   SUBCLASS_RESPONSIBILITY
   return 0;
@@ -427,7 +427,7 @@ static Class rClass = 0;
   return nil;
 }
 
-- (NSString*) keyAtIndex: (unsigned)index
+- (NSString*) keyAtIndex: (NSUInteger)index
 {
   SUBCLASS_RESPONSIBILITY
   return nil;
@@ -598,7 +598,7 @@ static Class rClass = 0;
   return [self retain];
 }
 
-- (unsigned int) count
+- (NSUInteger) count
 {
   return count;
 }
@@ -664,7 +664,7 @@ static Class rClass = 0;
   return nil;
 }
 
-- (NSString*) keyAtIndex: (unsigned int)pos
+- (NSString*) keyAtIndex: (NSUInteger)pos
 {
   id	*ptr;
 
@@ -2944,7 +2944,7 @@ static unsigned int	maxConnections = 8;
   return c;
 }
 
-- (unsigned) count
+- (NSUInteger) count
 {
   return [_info count];
 }

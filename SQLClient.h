@@ -241,7 +241,7 @@ extern NSString * const SQLClientDidDisconnectNotification;
  * Returns the number of items in the record.<br />
  * Subclasses must implement this method.
  */
-- (unsigned) count;
+- (NSUInteger) count;
 
 /**
  * Return the record as a mutable dictionary with the keys as the
@@ -262,7 +262,7 @@ extern NSString * const SQLClientDidDisconnectNotification;
 /** <override-subclass />
  * Returns the key at the specified indes.<br />
  */
-- (NSString*) keyAtIndex: (unsigned)index;
+- (NSString*) keyAtIndex: (NSUInteger)index;
 
 /** <override-subclass />
  * Returns the object at the specified indes.<br />
@@ -1306,7 +1306,7 @@ SQLCLIENT_PRIVATE
  * which have been added to the receiver.  For a count of the total number
  * of statements, use the -totalCount method.
  */
-- (unsigned) count;
+- (NSUInteger) count;
 
 /**
  * Returns the database client with which this instance operates.<br />
