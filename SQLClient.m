@@ -433,7 +433,7 @@ static Class rClass = 0;
   return nil;
 }
 
-- (id) objectAtIndex: (unsigned)index
+- (id) objectAtIndex: (NSUInteger)index
 {
   SUBCLASS_RESPONSIBILITY
   return nil;
@@ -474,7 +474,7 @@ static Class rClass = 0;
     }
 }
 
-- (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject
+- (void) replaceObjectAtIndex: (NSUInteger)index withObject: (id)anObject
 {
   SUBCLASS_RESPONSIBILITY
 }
@@ -678,7 +678,7 @@ static Class rClass = 0;
   return ptr[pos];
 }
 
-- (id) objectAtIndex: (unsigned int)pos
+- (id) objectAtIndex: (NSUInteger)pos
 {
   id	*ptr;
 
@@ -714,7 +714,7 @@ static Class rClass = 0;
   return nil;
 }
 
-- (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject
+- (void) replaceObjectAtIndex: (NSUInteger)index withObject: (id)anObject
 {
   id		*ptr;
 
@@ -1641,7 +1641,7 @@ static unsigned int	maxConnections = 8;
   return m;
 }
 
-- (void) release
+- (oneway void) release
 {
   /* We lock the table while checking, to prevent
    * another thread from grabbing this object while we are

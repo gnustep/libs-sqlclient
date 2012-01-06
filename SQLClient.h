@@ -267,7 +267,7 @@ extern NSString * const SQLClientDidDisconnectNotification;
 /** <override-subclass />
  * Returns the object at the specified indes.<br />
  */
-- (id) objectAtIndex: (unsigned)index;
+- (id) objectAtIndex: (NSUInteger)index;
 
 /**
  * Returns the value of the named field.<br />
@@ -279,7 +279,7 @@ extern NSString * const SQLClientDidDisconnectNotification;
  * Replaces the value at the specified index.<br />
  * Subclasses must implement this method.
  */
-- (void) replaceObjectAtIndex: (unsigned)index withObject: (id)anObject;
+- (void) replaceObjectAtIndex: (NSUInteger)index withObject: (id)anObject;
 
 /**
  * Replaces the value of the named field.<br />
