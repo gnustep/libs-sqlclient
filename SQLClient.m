@@ -1381,6 +1381,32 @@ static unsigned int	maxConnections = 8;
   return self;
 }
 
+- (NSUInteger) hash
+{
+  return [[self database] hash] + [[self user] hash];
+}
+
+- (BOOL) isEqual: (id)other
+{
+  if (self == other)
+    {
+      return YES;
+    }
+  if ([self class] != [other class])
+    {
+      return NO;
+    }
+  if (NO == [[self database] isEqual: [other database]])
+    {
+      return NO;
+    }
+  if (NO == [[self user] isEqual: [other user]])
+    {
+      return NO;
+    }
+  return YES;
+}
+
 - (BOOL) isInTransaction
 {
   return _inTransaction;
@@ -2921,7 +2947,7 @@ static unsigned int	maxConnections = 8;
 {
   if (other != nil && other->_count > 0)
     {
-      if (other->_db != _db)
+      if (NO == [_db isEqual: other->_db])
 	{
 	  [NSException raise: NSInvalidArgumentException
 		      format: @"[%@-%@] database client missmatch",
@@ -3144,7 +3170,7 @@ static unsigned int	maxConnections = 8;
 		  format: @"[%@-%@] attempt to insert nil/empty transaction",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
     }
-  if (trn->_db != _db)
+  if (NO == [_db isEqual: trn->_db])
     {
       [NSException raise: NSInvalidArgumentException
 		  format: @"[%@-%@] database client missmatch",

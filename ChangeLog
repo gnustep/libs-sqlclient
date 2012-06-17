@@ -1,3 +1,7 @@
+2012-06-17 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * Improve check for compatibility of transactions between clients.
+
 2011-09-30 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* configure.ac: try to use pg_config if available.
