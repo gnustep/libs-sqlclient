@@ -120,7 +120,8 @@ main()
 	  NSString	*destination = [NSString stringWithFormat: @"%d", i];
 	  NSString	*sid = [NSString stringWithFormat: @"%d", i%100];
 
-	  [db execute: @"INSERT INTO Queue (Consumer, Destination, ServiceID, Payload) VALUES (",
+	  [db execute: @"INSERT INTO Queue (Consumer, Destination,"
+            @" ServiceID, Payload) VALUES (",
 	    [db quote: name], @", ", [db quote: destination], @", ", sid, @", ",
 	    @"'helo there'", @")", nil];
 	  [arp release];
@@ -219,7 +220,7 @@ main()
 	@")",
 	nil];
 
-      [db execute: @"insert into xxx "
+      if (1 != [db execute: @"insert into xxx "
 	@"(k, char1, boolval, intval, when1, when2, b) "
 	@"values ("
 	@"'hello', "
@@ -230,7 +231,10 @@ main()
 	@"CURRENT_TIMESTAMP, ",
 	data,
 	@")",
-	nil];
+	nil])
+        {
+          NSLog(@"Insert failed to return row count");
+        }
       [db execute: @"insert into xxx "
 	@"(k, char1, boolval, intval, when1, when2, b) "
 	@"values ("

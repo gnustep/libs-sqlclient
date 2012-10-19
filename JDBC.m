@@ -1129,7 +1129,7 @@ static	int	JDBCVARCHAR = 0;
     }
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSString	*stmt = [info objectAtIndex: 0];
@@ -1234,6 +1234,7 @@ static	int	JDBCVARCHAR = 0;
     }
   NS_ENDHANDLER
   [arp release];
+  return -1;
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt

@@ -1293,7 +1293,7 @@ static unsigned int	maxConnections = 8;
     }
 }
 
-- (void) execute: (NSString*)stmt, ...
+- (NSInteger) execute: (NSString*)stmt, ...
 {
   NSArray	*info;
   va_list	ap;
@@ -1301,15 +1301,15 @@ static unsigned int	maxConnections = 8;
   va_start (ap, stmt);
   info = [self _prepare: stmt args: ap];
   va_end (ap);
-  [self simpleExecute: info];
+  return [self simpleExecute: info];
 }
 
-- (void) execute: (NSString*)stmt with: (NSDictionary*)values
+- (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values
 {
   NSArray	*info;
 
   info = [self _substitute: stmt with: values];
-  [self simpleExecute: info];
+  return [self simpleExecute: info];
 }
 
 - (id) init
@@ -1798,9 +1798,10 @@ static unsigned int	maxConnections = 8;
     }
 }
 
-- (void) simpleExecute: (NSArray*)info
+- (NSInteger) simpleExecute: (NSArray*)info
 {
   NSString	*statement;
+  NSInteger     result;
   BOOL isCommit = NO;
   BOOL isRollback = NO;
 
@@ -1824,7 +1825,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  start = GSTickerTimeNow();
 	}
-      [self backendExecute: info];
+      result = [self backendExecute: info];
       _lastOperation = GSTickerTimeNow();
       [_statements addObject: statement];
       if (_duration >= 0)
@@ -1874,6 +1875,7 @@ static unsigned int	maxConnections = 8;
     }
   NS_HANDLER
     {
+      result = -1;
       if (_inTransaction == NO)
 	{
 	  [_statements removeAllObjects];
@@ -1883,6 +1885,7 @@ static unsigned int	maxConnections = 8;
     }
   NS_ENDHANDLER
   [lock unlock];
+  return result;
 }
 
 - (NSMutableArray*) simpleQuery: (NSString*)stmt
@@ -1954,11 +1957,12 @@ static unsigned int	maxConnections = 8;
     NSStringFromSelector(_cmd)];
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   [NSException raise: NSInternalInconsistencyException
 	      format: @"Called -%@ without backend bundle loaded",
     NSStringFromSelector(_cmd)];
+  return -1;
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt

@@ -250,9 +250,10 @@ connectQuote(NSString *str)
     }
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
+  NSInteger     rowCount = -1;
   PGresult	*result = 0;
   NSString	*stmt = [info objectAtIndex: 0];
 
@@ -266,6 +267,7 @@ connectQuote(NSString *str)
   NS_DURING
     {
       const char	*statement;
+      const char        *tuples;
       unsigned		length;
 
       /*
@@ -311,6 +313,11 @@ connectQuote(NSString *str)
 	  [NSException raise: SQLException format: @"Error executing %@: %s",
 	    stmt, PQresultErrorMessage(result)];
 	}
+      tuples = PQcmdTuples(result);
+      if (0 != tuples)
+        {
+          rowCount = atol(tuples);
+        }
     }
   NS_HANDLER
     {
@@ -335,6 +342,7 @@ connectQuote(NSString *str)
       PQclear(result);
     }
   [arp release];
+  return rowCount;
 }
 
 static unsigned int trim(char *str)

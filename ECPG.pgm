@@ -248,7 +248,7 @@ static NSDate	*future = nil;
     }
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   EXEC SQL BEGIN DECLARE SECTION;
   char	*statement;
@@ -332,6 +332,7 @@ static NSDate	*future = nil;
     }
   NS_ENDHANDLER
   [arp release];
+  return -1;
 }
 
 static unsigned int trim(char *str)

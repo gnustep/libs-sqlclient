@@ -132,7 +132,7 @@
     }
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   NSString	        *stmt;
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
@@ -197,6 +197,7 @@
     }
   NS_ENDHANDLER
   [arp release];
+  return -1;
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt

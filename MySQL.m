@@ -173,7 +173,7 @@ static NSNull	*null = nil;
     }
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   NSString	        *stmt;
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
@@ -258,6 +258,7 @@ static NSNull	*null = nil;
     }
   NS_ENDHANDLER
   [arp release];
+  return -1;
 }
 
 static unsigned int trim(char *str)

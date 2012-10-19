@@ -216,7 +216,7 @@ void SQLClientOracleErrorHandler()
     }
 }
 
-- (void) backendExecute: (NSArray*)info
+- (NSInteger) backendExecute: (NSArray*)info
 {
   EXEC SQL BEGIN DECLARE SECTION;
   char	*statement;
@@ -300,6 +300,7 @@ void SQLClientOracleErrorHandler()
     }
   NS_ENDHANDLER
   DESTROY(arp);
+  return -1;
 }
 
 static unsigned int trim(char *str)

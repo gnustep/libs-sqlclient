@@ -579,8 +579,11 @@ SQLCLIENT_PRIVATE
  *   [db execute: @"UPDATE ", table, @" SET Name = ",
  *     myName, " WHERE ID = ", myId, nil];
  * </example>
+ * Where the database backend support it, this method returns the count of
+ * the number of rows to which the operation applied.  Otherwise this
+ * returns -1.
  */
-- (void) execute: (NSString*)stmt,...;
+- (NSInteger) execute: (NSString*)stmt,...;
 
 /**
  * Takes the statement and substitutes in values from
@@ -594,9 +597,12 @@ SQLCLIENT_PRIVATE
  * the results of the -quote: method.<br />
  * The markup format may also be {key?default} where <em>default</em>
  * is a string to be used if there is no value for the <em>key</em>
- * in the dictionary.
+ * in the dictionary.<br />
+ * Where the database backend support it, this method returns the count of
+ * the number of rows to which the operation applied.  Otherwise this
+ * returns -1.
  */
-- (void) execute: (NSString*)stmt with: (NSDictionary*)values;
+- (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values;
 
 /**
  * Calls -initWithConfiguration:name: passing a nil reference name.
@@ -819,9 +825,10 @@ SQLCLIENT_PRIVATE
 /**
  * Calls -backendExecute: in a safe manner.<br />
  * Handles locking.<br />
- * Maintains -lastOperation date.
+ * Maintains -lastOperation date.<br />
+ * Returns the result of -backendExecute:
  */
-- (void) simpleExecute: (NSArray*)info;
+- (NSInteger) simpleExecute: (NSArray*)info;
 
 /**
  * Calls -simpleQuery:recordType:listType: with the default record class
@@ -933,8 +940,12 @@ SQLCLIENT_PRIVATE
  * <p>Application code must <em>not</em> call this method directly, it is
  * for internal use only.
  * </p>
+ * <p>Where the database backend support it, this method returns the count of
+ * the number of rows to which the operation applied.  Otherwise this
+ * returns -1.
+ * </p>
  */
-- (void) backendExecute: (NSArray*)info;
+- (NSInteger) backendExecute: (NSArray*)info;
 
 /** <override-subclass />
  * <p>Perform arbitrary query <em>which returns values.</em>

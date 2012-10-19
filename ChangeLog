@@ -1,3 +1,18 @@
+2012-10-18 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* ECPG.pgm:
+	* MySQL.m:
+	* Postgres.m:
+	* Oracle.pm:
+	* SQLite.m:
+	* JDBC.m:
+	* testPostgres.m:
+        Change execute methods to return a count of the rows to which the
+        executed operation applies, or -1 if not supported.
+        Implement for postgresql.
+
 2012-06-17 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * Improve check for compatibility of transactions between clients.
