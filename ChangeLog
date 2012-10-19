@@ -11,7 +11,7 @@
 	* testPostgres.m:
         Change execute methods to return a count of the rows to which the
         executed operation applies, or -1 if not supported.
-        Implement for postgresql.
+        Implement for postgresql and mysql.
 
 2012-06-17 Richard Frith-Macdonald  <rfm@gnu.org>
 

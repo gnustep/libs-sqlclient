@@ -176,6 +176,7 @@ static NSNull	*null = nil;
 - (NSInteger) backendExecute: (NSArray*)info
 {
   NSString	        *stmt;
+  NSInteger             rowCount = 0;
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
 
   stmt = [info objectAtIndex: 0];
@@ -225,6 +226,9 @@ static NSNull	*null = nil;
 	      [NSException raise: SQLConnectionException format: @"%@", s];
 	    }
 	}
+      /* See how many rows were modified.
+       */
+      rowCount = mysql_affected_rows(connection);
       /* discard any results.
        */
       result = mysql_store_result(connection);
@@ -258,7 +262,7 @@ static NSNull	*null = nil;
     }
   NS_ENDHANDLER
   [arp release];
-  return -1;
+  return rowCount;
 }
 
 static unsigned int trim(char *str)
