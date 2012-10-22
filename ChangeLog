@@ -1,3 +1,11 @@
+2012-10-22 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.h:
+        * SQLClient.m:
+        * Postgres.m:
+        * GNUmakefile:
+        Add support for asynchronous notifications and bump version number.
+
 2012-10-18 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

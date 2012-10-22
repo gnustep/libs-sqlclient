@@ -181,11 +181,14 @@
 #import	<Foundation/NSArray.h>
 #import	<Foundation/NSObject.h>
 
-@class	GSCache;
+@class	NSCountedSet;
+@class	NSMapTable;
 @class	NSMutableDictionary;
 @class	NSMutableSet;
 @class	NSString;
 @class	NSThread;
+
+@class	GSCache;
 @class	SQLTransaction;
 
 /**
@@ -383,6 +386,8 @@ SQLCLIENT_PRIVATE
   GSCache		*_cache;	/** The cache for query results */
   NSThread		*_cacheThread;	/** Thread for cache queries */
   unsigned int		_connectFails;	/** The count of connection failures */
+  NSMapTable            *_observers;    /** Observations of async events */
+  NSCountedSet          *_names;        /** Track notification names */
   /** Allow for extensions by allocating memory and pointing to it from
    * the _extra ivar.  That way we can avoid binary incompatibility between
    * minor releases.
@@ -1001,6 +1006,47 @@ SQLCLIENT_PRIVATE
 - (NSMutableArray*) backendQuery: (NSString*)stmt;
 
 /** <override-subclass />
+ * Called to enable asynchronous notification of database events using the
+ * specified name (which must be a valid identifier consisting of ascii
+ * letters, digits, and underscore characters, starting with a letter).
+ * Names are not case sensitive (so AAA is the same as aaa).<br />
+ * Repeated calls to list on the same name should be treated as a single
+ * call.<br />
+ * The backend is responsible for implicitly unlistening when a connection
+ * is closed.<br />
+ * There is a default implementation which does nothing ... for backends
+ * which don't support asynchronous notifications.<br />
+ * If a backend <em>does</em> support asynchronous notifications,
+ * it should do so by posting NSNotification instances to
+ * [NSNotificationCenter defaultCenter] using the SQLClient instance as
+ * the notification object and supplying any payload as a string using
+ * the 'Payload' key in the NSNotification userInfo dictionary.
+ * The userInfo dictionary should also contain a boolean (NSNumber) value,
+ * using the 'Local' key, to indicate whether the notification was sent by
+ * the current SQLClient instance or by some other client/
+ */
+- (void) backendListen: (NSString*)name;
+
+/** <override-subclass />
+ * The backend should implement this to send asynchronous notifications
+ * to anything listening for them. The name of the notification is an
+ * SQL identifier used for listening for the asynchronous data.<br />
+ * The payload string may be nil if no additional information is
+ * needed in the notification.
+ */
+- (void) backendNotify: (NSString*)name payload: (NSString*)more;
+
+/** <override-subclass />
+ * Called to disable asynchronous notification of database events using the
+ * specified name.  This has no effect if the name has not been used in an
+ * earlier call to -backendListen:, or if the name has already been
+ * unlistened since the last call to listen. on it.<br />
+ * There is a default implementation which does nothing ... for backends
+ * which don't support asynchronous notifications.
+ */
+- (void) backendUnlisten: (NSString*)name;
+
+/** <override-subclass />
  * This method is <em>only</em> for the use of the
  * -insertBLOBs:intoStatement:length:withMarker:length:giving:
  * method.<br />
@@ -1047,6 +1093,41 @@ SQLCLIENT_PRIVATE
  */
 - (unsigned) lengthOfEscapedBLOB: (NSData*)blob;
 
+@end
+
+/**
+ * This category contains methods for asynchronous notification of 
+ * events via the database (for those database backends which support
+ * it: currently only PostgreSQL).
+ */
+@interface	SQLClient (Notifications)
+/** Adds anObserver to receive notifications when the backend database
+ * server sends an asynchronous event identified by the specified name
+ * (which must be a valid database identifier).<br />
+ * When a notification (NSNotification instance) is received by the method
+ * specified by aSelector, its <em>object</em> will be the SQLClient
+ * instance to which anObserver was added and its userInfo dictionary
+ * will contain the key 'Local' and possibly the key 'Payload'.<br />
+ * If the 'Local' value is the boolean YES, the notification originated
+ * as an action by this SQLClient instance.<br />
+ * If the 'Payload' value is not nil, then it is a string providing extra
+ * information about the notification.
+ */
+- (void) addObserver: (id)anObserver
+            selector: (SEL)aSelector
+                name: (NSString*)name;
+
+/** Posts a notification via the dastabase.  The name is an SQL identifier
+ * (for which observers may have registered) and the extra payload
+ * information may be nil if not required.
+ */
+- (void) postNotificationName: (NSString*)name payload: (NSString*)more;
+
+/** Removes anObserver as an observer for asynchronous notifications from
+ * the database server.  If name is omitted, the observer will be removed
+ * for all names.
+ */
+- (void) removeObserver: (id)anObserver name: (NSString*)name;
 @end
 
 /**

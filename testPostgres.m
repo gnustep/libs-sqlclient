@@ -120,6 +120,11 @@ main()
 	  NSString	*destination = [NSString stringWithFormat: @"%d", i];
 	  NSString	*sid = [NSString stringWithFormat: @"%d", i%100];
 
+          if (i % 1000 == 999)
+            {
+              [db postNotificationName: @"Producing"
+                               payload: [NSString stringWithFormat: @"%d", i]];
+            }
 	  [db execute: @"INSERT INTO Queue (Consumer, Destination,"
             @" ServiceID, Payload) VALUES (",
 	    [db quote: name], @", ", [db quote: destination], @", ", sid, @", ",
@@ -130,6 +135,9 @@ main()
     }
   else if ((name = [defs stringForKey: @"Consumer"]) != nil)
     {
+      [db addObserver: l 
+             selector: @selector(notified:)
+                 name: @"Producing"];
       NSLog(@"Start consuming");
       for (i = 0; i < 100000;)
 	{
@@ -268,6 +276,12 @@ main()
       [NSThread sleepForTimeInterval: 2.0];
       records = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
+
+      [db addObserver: l 
+             selector: @selector(notified:)
+                 name: @"foo"];
+
+      [db postNotificationName: @"foo" payload: @"hello"];
 
       [db execute: @"drop table xxx", nil];
 

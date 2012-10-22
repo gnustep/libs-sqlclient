@@ -1182,6 +1182,20 @@ static unsigned int	maxConnections = 8;
 	  NS_DURING
 	    {
 	      [self backendConnect];
+              /* On establishng a new connection, we must restore any
+               * listen instructions in the backend.
+               */
+              if (nil != _names)
+                {
+                  NSEnumerator  *e;
+                  NSString      *n;
+
+                  e = [_names objectEnumerator];
+                  while (nil != (n = [e nextObject]))
+                    {
+                      [self backendListen: n];
+                    }
+                }
 	      _connectFails = 0;
 	    }
 	  NS_HANDLER
@@ -1194,7 +1208,7 @@ static unsigned int	maxConnections = 8;
 	  NS_ENDHANDLER
 	}
       [lock unlock];
-      if (connected == YES)
+      if (YES == connected)
         {
           NSNotificationCenter  *nc;
 
@@ -1238,6 +1252,30 @@ static unsigned int	maxConnections = 8;
   [_statements release]; _statements = nil;
   [_cache release]; _cache = nil;
   [_cacheThread release]; _cacheThread = nil;
+  if (0 != _observers)
+    {
+      NSNotificationCenter      *nc;
+      NSMapEnumerator	        e;
+      NSMutableSet              *n;
+      id                        o;
+
+      nc = [NSNotificationCenter defaultCenter];
+      e = NSEnumerateMapTable(_observers);
+      while (NSNextMapEnumeratorPair(&e, (void**)&o, (void**)&n) != 0)
+        {
+          NSEnumerator  *ne = [n objectEnumerator];
+          NSString      *name;
+
+          while (nil != (name = [ne nextObject]))
+            {
+              [nc removeObserver: o name: name object: nil];
+            }
+        }
+      NSEndMapTableEnumeration(&e);
+      NSFreeMapTable(_observers);
+      _observers = 0;
+    }
+  [_names release]; _names = 0;
   [super dealloc];
 }
 
@@ -1965,6 +2003,19 @@ static unsigned int	maxConnections = 8;
   return -1;
 }
 
+- (void) backendListen: (NSString*)name
+{
+  return;
+}
+
+- (void) backendNotify: (NSString*)name payload: (NSString*)more
+{
+  [NSException raise: NSInternalInconsistencyException
+	      format: @"Called -%@ without backend bundle implementation",
+    NSStringFromSelector(_cmd)];
+  return;
+}
+
 - (NSMutableArray*) backendQuery: (NSString*)stmt
 {
   return [self backendQuery: stmt recordType: rClass listType: aClass];
@@ -1978,6 +2029,11 @@ static unsigned int	maxConnections = 8;
 	      format: @"Called -%@ without backend bundle loaded",
     NSStringFromSelector(_cmd)];
   return nil;
+}
+
+- (void) backendUnlisten: (NSString*)name
+{
+  return;
 }
 
 - (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf
@@ -3245,3 +3301,134 @@ static unsigned int	maxConnections = 8;
 }
 @end
 
+
+@implementation SQLClient (Notifications)
+
+static NSString *
+validName(NSString *name)
+{
+  const char    *ptr;
+
+  if (NO == [name isKindOfClass: [NSString class]])
+    {
+      [NSException raise: NSInvalidArgumentException
+        format: @"Notification name must be a string"];
+    }
+  ptr = [name UTF8String];
+  if (!isalpha(*ptr))
+    {
+      [NSException raise: NSInvalidArgumentException
+        format: @"Notification name must begin with letter"];
+    }
+  ptr++;
+  while (0 != *ptr)
+    {
+      if (!isdigit(*ptr) && !isalpha(*ptr) && *ptr != '_')
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"Notification name must contain only letters,"
+            @" digits, and underscores"];
+        }
+      ptr++;
+    }
+  return [name lowercaseString];
+}
+
+- (void) addObserver: (id)anObserver
+            selector: (SEL)aSelector
+                name: (NSString*)name
+{
+  NSMutableSet          *set;
+
+  name = validName(name);
+  [lock lock];
+  if (nil == _observers)
+    {
+      _observers = NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks,
+        NSObjectMapValueCallBacks, 0);
+      _names = [NSCountedSet new];
+    }
+  set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
+  if (nil == set)
+    {
+      set = [NSMutableSet new];
+      NSMapInsert(_observers, anObserver, set);
+      [set release];
+    }
+  if (nil == [set member: name])
+    {
+      NSUInteger        count = [_names countForObject: name];
+
+      [set addObject: name];
+      [_names addObject: name];
+      if (0 == count)
+        {
+          [self backendListen: name];
+        }
+    }
+  [[NSNotificationCenter defaultCenter] addObserver: anObserver
+                                           selector: aSelector
+                                               name: name
+                                             object: self];
+  [lock unlock];
+}
+
+- (void) postNotificationName: (NSString*)name payload: (NSString*)more
+{
+  name = validName(name);
+  if (nil != more)
+    {
+      if (NO == [more isKindOfClass: [NSString class]])
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"Notification payload is not a string"];
+        }
+    }
+  [self backendNotify: name payload: more];
+}
+
+- (void) removeObserver: (id)anObserver name: (NSString*)name
+{
+  if (nil != name)
+    {
+      name = validName(name);
+    }
+  [lock lock];
+  if (_observers != nil)
+    {
+      NSNotificationCenter  *nc;
+      NSMutableSet          *set;
+      NSEnumerator          *e;
+
+      nc = [NSNotificationCenter defaultCenter];
+      set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
+      if (nil == name)
+        {
+          e = [[set allObjects] objectEnumerator];
+          name = [e nextObject];
+        }
+      else
+        {
+          name = [[name retain] autorelease];
+        }
+      while (nil != name)
+        {
+          if (nil != [set member: name])
+            {
+              [nc removeObserver: anObserver
+                            name: name
+                          object: self];
+              [[name retain] autorelease];
+              [set removeObject: name];
+              [_names removeObject: name];
+              if (0 == [_names countForObject: name])
+                {
+                  [self backendUnlisten: name];
+                }
+            }
+          name = [e nextObject];
+        }
+    }
+  [lock unlock];
+}
+@end

@@ -31,6 +31,7 @@
 #import	<Foundation/NSCalendarDate.h>
 #import	<Foundation/NSCharacterSet.h>
 #import	<Foundation/NSException.h>
+#import	<Foundation/NSFileHandle.h>
 #import	<Foundation/NSProcessInfo.h>
 #import	<Foundation/NSNotification.h>
 #import	<Foundation/NSUserDefaults.h>
@@ -59,11 +60,15 @@
 typedef struct	{
   PGconn	*_connection;
   BOOL		_escapeStrings;         /* Can we use E'...' syntax?    */
+  int           _backendPID;
+  NSFileHandle  *_fileHandle;
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
+#define	backendPID		(cInfo->_backendPID)
 #define	connection		(cInfo->_connection)
 #define	escapeStrings	        (cInfo->_escapeStrings)
+#define	fileHandle	        (cInfo->_fileHandle)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -199,6 +204,7 @@ connectQuote(NSString *str)
                 {
                   escapeStrings = NO;
                 }
+              backendPID = PQbackendPID(connection);
 
 	      connected = YES;
 	      if ([self debugging] > 0)
@@ -221,6 +227,18 @@ connectQuote(NSString *str)
 {
   if (extra != 0 && connection != 0)
     {
+      /* On disconnectionwe no longer want to watch for events from the
+       * postgres socket.
+       */
+      if (nil != fileHandle)
+        {
+          [[NSNotificationCenter defaultCenter] removeObserver: self
+                                                          name: nil
+                                                        object: fileHandle];
+          [fileHandle release];
+          fileHandle = nil;
+        }
+
       NS_DURING
 	{
 	  if ([self isInTransaction] == YES)
@@ -247,6 +265,73 @@ connectQuote(NSString *str)
 	}
       NS_ENDHANDLER
       connected = NO;
+    }
+}
+
+- (void) _checkNotifications
+{
+  static NSNotificationCenter   *nc;
+  PGnotify                      *notify;
+
+  while ((notify = PQnotifies(connection)) != 0)
+    {
+      NS_DURING
+        {
+          NSNotification        *n;
+          NSMutableDictionary   *userInfo;
+          NSString              *name;
+
+          name = [[NSString alloc] initWithUTF8String: notify->relname];
+          userInfo = [[NSMutableDictionary alloc] initWithCapacity: 2];
+          if (0 != notify->extra)
+            {
+              NSString      *payload;
+
+              payload = [[NSString alloc] initWithUTF8String: notify->extra];
+              if (nil != payload)
+                {
+                  [userInfo setObject: payload forKey: @"Payload"];
+                  [payload release];
+                }
+            }
+          if (notify->be_pid == backendPID)
+            {
+              static NSNumber   *nY = nil;
+
+              if (nil == nY)
+                {
+                  nY = [[NSNumber numberWithBool: YES] retain];
+                }
+              [userInfo setObject: nY forKey: @"Local"];
+            }
+          else
+            {
+              static NSNumber   *nN = nil;
+
+              if (nil == nN)
+                {
+                  nN = [[NSNumber numberWithBool: NO] retain];
+                }
+              [userInfo setObject: nN forKey: @"Local"];
+            }
+          n = [NSNotification notificationWithName: name
+                                            object: self
+                                          userInfo: (NSDictionary*)userInfo];
+          [name release];
+          [userInfo release];
+          if (nil == nc)
+            {
+              nc = [[NSNotificationCenter defaultCenter] retain];
+            }
+          [nc postNotification: n];
+        }
+      NS_HANDLER
+        {
+          NSLog(@"Problem handling asynchronous notification: %@",
+            localException);
+        }
+      NS_ENDHANDLER
+      PQfreemem(notify);
     }
 }
 
@@ -341,8 +426,48 @@ connectQuote(NSString *str)
     {
       PQclear(result);
     }
+  [self _checkNotifications];
   [arp release];
   return rowCount;
+}
+
+- (void) _availableData: (NSNotification*)n
+{
+  PQconsumeInput(connection);
+  [self _checkNotifications];
+  [fileHandle waitForDataInBackgroundAndNotify];
+}
+
+- (void) backendListen: (NSString*)name
+{
+  [self execute: @"LISTEN ", name, nil];
+  if (nil == fileHandle)
+    {
+      NSNotificationCenter      *nc;
+      int                       desc;
+
+      desc = PQsocket(connection);
+      fileHandle = [[NSFileHandle alloc] initWithFileDescriptor: desc
+                                                 closeOnDealloc: NO];
+      nc = [NSNotificationCenter defaultCenter];
+      [nc addObserver: self
+             selector: @selector(_availableData:)
+                 name: NSFileHandleDataAvailableNotification
+               object: fileHandle];
+      [fileHandle waitForDataInBackgroundAndNotify];
+    }
+}
+
+- (void) backendNotify: (NSString*)name payload: (NSString*)more
+{
+  if (nil == more)
+    {
+      [self execute: @"NOTIFY ", name, nil];
+    }
+  else
+    {
+      [self execute: @"NOTIFY ", name, @",", [self quote: more], nil];
+    }
 }
 
 static unsigned int trim(char *str)
@@ -537,7 +662,13 @@ static unsigned int trim(char *str)
     {
       PQclear(result);
     }
+  [self _checkNotifications];
   return [records autorelease];
+}
+
+- (void) backendUnlisten: (NSString*)name
+{
+  [self execute: @"UNLISTEN ", name, nil];
 }
 
 - (unsigned) copyEscapedBLOB: (NSData*)blob into: (void*)buf
