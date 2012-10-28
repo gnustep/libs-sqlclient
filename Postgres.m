@@ -30,6 +30,7 @@
 #import	<Foundation/NSDate.h>
 #import	<Foundation/NSCalendarDate.h>
 #import	<Foundation/NSCharacterSet.h>
+#import	<Foundation/NSDictionary.h>
 #import	<Foundation/NSException.h>
 #import	<Foundation/NSFileHandle.h>
 #import	<Foundation/NSProcessInfo.h>
