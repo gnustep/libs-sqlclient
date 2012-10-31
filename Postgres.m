@@ -376,12 +376,12 @@ connectQuote(NSString *str)
 			     giving: &length];
 
       result = PQexec(connection, statement);
-      if (result == 0 || PQresultStatus(result) == PGRES_FATAL_ERROR)
+      if (0 == result || PQresultStatus(result) == PGRES_FATAL_ERROR)
 	{
 	  NSString	*str;
 	  const char	*cstr;
 
-	  if (result == 0)
+	  if (0 == result)
 	    {
 	      cstr = PQerrorMessage(connection);
 	    }
@@ -390,11 +390,16 @@ connectQuote(NSString *str)
 	      cstr = PQresultErrorMessage(result);
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
+          if (nil == str)
+            {
+              str = [NSString stringWithCString: cstr];
+            }
 	  [self disconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
-      if (PQresultStatus(result) != PGRES_COMMAND_OK)
+      if (PQresultStatus(result) != PGRES_COMMAND_OK
+        && PQresultStatus(result) == PGRES_TUPLES_OK)
 	{
 	  [NSException raise: SQLException format: @"Error executing %@: %s",
 	    stmt, PQresultErrorMessage(result)];
@@ -526,12 +531,12 @@ static unsigned int trim(char *str)
 
       statement = (char*)[stmt UTF8String];
       result = PQexec(connection, statement);
-      if (result == 0 || PQresultStatus(result) == PGRES_FATAL_ERROR)
+      if (0 == result || PQresultStatus(result) == PGRES_FATAL_ERROR)
 	{
 	  NSString	*str;
 	  const char	*cstr;
 
-	  if (result == 0)
+	  if (0 == result)
 	    {
 	      cstr = PQerrorMessage(connection);
 	    }
@@ -540,6 +545,10 @@ static unsigned int trim(char *str)
 	      cstr = PQresultErrorMessage(result);
 	    }
 	  str = [NSString stringWithUTF8String: cstr];
+          if (nil == str)
+            {
+              str = [NSString stringWithCString: cstr];
+            }
 	  [self disconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
