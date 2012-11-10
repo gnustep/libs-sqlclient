@@ -1,3 +1,8 @@
+2012-11-10 Niels Grewe <niels.grewe@halbordnung.de>
+
+	* GNUmakefile: Link against $(FND_LIBS) and $(OBJC_LIBS) instead
+	of -lgnustep-base and -lobjc.
+
 2012-10-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.h:

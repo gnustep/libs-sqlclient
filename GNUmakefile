@@ -81,7 +81,7 @@ BUNDLE_NAME += ECPG_libs
 ECPG_libs_OBJC_FILES = ECPG.m
 ECPG_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 ECPG_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
--lgnustep-base -lobjc -lecpg
+$(FND_LIBS) $(OBJC_LIBS) -lecpg
 ECPG_libs_PRINCIPAL_CLASS = SQLClientECPG_libs
 endif
 TEST_TOOL_NAME += testECPG
@@ -107,7 +107,7 @@ BUNDLE_NAME += Postgres_libs
 Postgres_libs_OBJC_FILES = Postgres.m
 Postgres_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 Postgres_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
--lgnustep-base -lobjc -lpq
+$(FND_LIBS) $(OBJC_LIBS) -lpq
 Postgres_libs_PRINCIPAL_CLASS = SQLClientPostgres_libs
 endif
 TEST_TOOL_NAME += testPostgres
@@ -133,7 +133,7 @@ BUNDLE_NAME += JDBC_libs
 JDBC_libs_OBJC_FILES = JDBC.m
 JDBC_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR) $(JDBC_VM_LIBDIRS)
 JDBC_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
--lgnustep-base -lobjc $(JDBC_VM_LIBS)
+$(FND_LIBS) $(OBJC_LIBS) $(JDBC_VM_LIBS)
 JDBC_libs_PRINCIPAL_CLASS = SQLClientJDBC_libs
 endif
 TEST_TOOL_NAME += testJDBC
@@ -159,7 +159,7 @@ BUNDLE_NAME += MySQL_libs
 MySQL_libs_OBJC_FILES = MySQL.m
 MySQL_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 MySQL_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
--lgnustep-base -lobjc -lmysqlclient
+$(FND_LIBS) $(OBJC_LIBS) -lmysqlclient
 MySQL_libs_PRINCIPAL_CLASS = SQLClientMySQL_libs
 endif
 TEST_TOOL_NAME += testMySQL
@@ -185,7 +185,7 @@ BUNDLE_NAME += SQLite_libs
 SQLite_libs_OBJC_FILES = SQLite.m
 SQLite_libs_LIB_DIRS = -L./$(GNUSTEP_OBJ_DIR)
 SQLite_libs_BUNDLE_LIBS += -lSQLClient -lPerformance \
--lgnustep-base -lobjc -lsqlite3
+$(FND_LIBS) $(OBJC_LIBS) -lsqlite3
 SQLite_libs_PRINCIPAL_CLASS = SQLClientSQLite_libs
 endif
 TEST_TOOL_NAME += testSQLite
@@ -208,7 +208,7 @@ Oracle_libs_OBJC_FILES = Oracle.m
 Oracle_libs_LIB_DIRS = -L$(ORACLE_HOME)/lib -L./$(GNUSTEP_OBJ_DIR) \
 			$(shell cat $(ORACLE_HOME)/lib/ldflags)
 Oracle_libs_BUNDLE_LIBS += -lclntsh \
-		      -lSQLClient -lPerformance -lgnustep-base -lobjc \
+		      -lSQLClient -lPerformance $(FND_LIBS) $(OBJC_LIBS) \
                       $(shell cat $(ORACLE_HOME)/lib/sysliblist) \
                       -ldl -lm
 Oracle_libs_PRINCIPAL_CLASS = SQLClientOracle_libs
