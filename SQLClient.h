@@ -1171,7 +1171,11 @@ SQLCLIENT_PRIVATE
 /**
  * Convenience method to deal with the results of a query where each
  * record contains a single field ... it converts the array of records
- * returned by the query to an array containing the fields.
+ * returned by the query to an array containing the fields.<br />
+ * NB. This does not check that the contents of the records array are
+ * actually instances of [SQLRecord], so you must ensure you don't
+ * call it more than once on the same array (something that may happen
+ * if you retrieve the array using a cache based query).
  */
 - (void) singletons: (NSMutableArray*)records;
 
