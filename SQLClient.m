@@ -1162,25 +1162,26 @@ static unsigned int	maxConnections = 8;
       [lock lock];
       if (connected == NO)
 	{
-	  if (_connectFails > 1)
-	    {
-	      NSTimeInterval	delay;
-	      NSTimeInterval	elapsed;
-
-	      /* If we have repeated connection failures, we enforce a
-	       * delay of up to 30 seconds between connection attempts
-	       * to avoid overloading the system with too frequent
-	       * connection attempts.
-	       */
-	      delay = (_connectFails < 30) ? _connectFails : 30;
-	      elapsed = GSTickerTimeNow() - _lastOperation;
-	      if (elapsed < delay)
-		{
-		  [NSThread sleepForTimeInterval: delay - elapsed];
-		}
-	    }
 	  NS_DURING
 	    {
+              if (_connectFails > 1)
+                {
+                  NSTimeInterval	delay;
+                  NSTimeInterval	elapsed;
+
+                  /* If we have repeated connection failures, we enforce a
+                   * delay of up to 30 seconds between connection attempts
+                   * to avoid overloading the system with too frequent
+                   * connection attempts.
+                   */
+                  delay = (_connectFails < 30) ? _connectFails : 30;
+                  elapsed = GSTickerTimeNow() - _lastOperation;
+                  if (elapsed < delay)
+                    {
+                      [NSThread sleepForTimeInterval: delay - elapsed];
+                    }
+                }
+
 	      [self backendConnect];
               /* On establishng a new connection, we must restore any
                * listen instructions in the backend.
@@ -1284,22 +1285,32 @@ static unsigned int	maxConnections = 8;
   NSMutableString	*s = [[NSMutableString new] autorelease];
 
   [lock lock];
-  [s appendFormat: @"Database      - %@\n", [self clientName]];
-  [s appendFormat: @"  Name        - %@\n", [self name]];
-  [s appendFormat: @"  DBase       - %@\n", [self database]];
-  [s appendFormat: @"  DB User     - %@\n", [self user]];
-  [s appendFormat: @"  Password    - %@\n",
-    [self password] == nil ? @"unknown" : @"known"];
-  [s appendFormat: @"  Connected   - %@\n", connected ? @"yes" : @"no"];
-  [s appendFormat: @"  Transaction - %@\n", _inTransaction ? @"yes" : @"no"];
-  if (_cache == nil)
+  NS_DURING
     {
-      [s appendString: @"\n"];
+      [s appendFormat: @"Database      - %@\n", [self clientName]];
+      [s appendFormat: @"  Name        - %@\n", [self name]];
+      [s appendFormat: @"  DBase       - %@\n", [self database]];
+      [s appendFormat: @"  DB User     - %@\n", [self user]];
+      [s appendFormat: @"  Password    - %@\n",
+        [self password] == nil ? @"unknown" : @"known"];
+      [s appendFormat: @"  Connected   - %@\n", connected ? @"yes" : @"no"];
+      [s appendFormat: @"  Transaction - %@\n",
+        _inTransaction ? @"yes" : @"no"];
+      if (_cache == nil)
+        {
+          [s appendString: @"\n"];
+        }
+      else
+        {
+          [s appendFormat: @"  Cache -       %@\n", _cache];
+        }
     }
-  else
+  NS_HANDLER
     {
-      [s appendFormat: @"  Cache -       %@\n", _cache];
+      [lock unlock];
+      [localException raise];
     }
+  NS_ENDHANDLER
   [lock unlock];
   return s;
 }
@@ -1838,26 +1849,26 @@ static unsigned int	maxConnections = 8;
 
 - (NSInteger) simpleExecute: (NSArray*)info
 {
-  NSString	*statement;
   NSInteger     result;
-  BOOL isCommit = NO;
-  BOOL isRollback = NO;
 
   [lock lock];
-  statement = [info objectAtIndex: 0];
-
-  if ([statement isEqualToString: commitString])
-    {
-      isCommit = YES;
-    }
-  if ([statement isEqualToString: rollbackString])
-    {
-      isRollback = YES;
-    }
-
   NS_DURING
     {
       NSTimeInterval	start = 0.0;
+      NSString	        *statement;
+      BOOL              isCommit = NO;
+      BOOL              isRollback = NO;
+
+      statement = [info objectAtIndex: 0];
+
+      if ([statement isEqualToString: commitString])
+        {
+          isCommit = YES;
+        }
+      if ([statement isEqualToString: rollbackString])
+        {
+          isRollback = YES;
+        }
 
       if (_duration >= 0)
 	{
@@ -2877,17 +2888,26 @@ static unsigned int	maxConnections = 8;
 - (void) setCache: (GSCache*)aCache
 {
   [lock lock];
-  if (_cacheThread != nil)
+  NS_DURING
     {
-      [_cache setDelegate: nil];
+      if (_cacheThread != nil)
+        {
+          [_cache setDelegate: nil];
+        }
+      [aCache retain];
+      [_cache release];
+      _cache = aCache;
+      if (_cacheThread != nil)
+        {
+          [_cache setDelegate: self];
+        }
     }
-  [aCache retain];
-  [_cache release];
-  _cache = aCache;
-  if (_cacheThread != nil)
+  NS_HANDLER
     {
-      [_cache setDelegate: self];
+      [lock unlock];
+      [localException raise];
     }
+  NS_ENDHANDLER
   [lock unlock];
 }
 
@@ -2906,17 +2926,26 @@ static unsigned int	maxConnections = 8;
       aThread = mainThread;
     }
   [lock lock];
-  if (_cacheThread != nil)
+  NS_DURING
     {
-      [_cache setDelegate: nil];
+      if (_cacheThread != nil)
+        {
+          [_cache setDelegate: nil];
+        }
+      [aThread retain];
+      [_cacheThread release];
+      _cacheThread = aThread;
+      if (_cacheThread != nil)
+        {
+          [_cache setDelegate: self];
+        }
     }
-  [aThread retain];
-  [_cacheThread release];
-  _cacheThread = aThread;
-  if (_cacheThread != nil)
+  NS_HANDLER
     {
-      [_cache setDelegate: self];
+      [lock unlock];
+      [localException raise];
     }
+  NS_ENDHANDLER
   [lock unlock];
 }
 @end
@@ -3342,34 +3371,43 @@ validName(NSString *name)
 
   name = validName(name);
   [lock lock];
-  if (nil == _observers)
+  NS_DURING
     {
-      _observers = NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks,
-        NSObjectMapValueCallBacks, 0);
-      _names = [NSCountedSet new];
-    }
-  set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
-  if (nil == set)
-    {
-      set = [NSMutableSet new];
-      NSMapInsert(_observers, anObserver, set);
-      [set release];
-    }
-  if (nil == [set member: name])
-    {
-      NSUInteger        count = [_names countForObject: name];
-
-      [set addObject: name];
-      [_names addObject: name];
-      if (0 == count)
+      if (nil == _observers)
         {
-          [self backendListen: name];
+          _observers = NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks,
+            NSObjectMapValueCallBacks, 0);
+          _names = [NSCountedSet new];
         }
+      set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
+      if (nil == set)
+        {
+          set = [NSMutableSet new];
+          NSMapInsert(_observers, anObserver, set);
+          [set release];
+        }
+      if (nil == [set member: name])
+        {
+          NSUInteger        count = [_names countForObject: name];
+
+          [set addObject: name];
+          [_names addObject: name];
+          if (0 == count)
+            {
+              [self backendListen: name];
+            }
+        }
+      [[NSNotificationCenter defaultCenter] addObserver: anObserver
+                                               selector: aSelector
+                                                   name: name
+                                                 object: self];
     }
-  [[NSNotificationCenter defaultCenter] addObserver: anObserver
-                                           selector: aSelector
-                                               name: name
-                                             object: self];
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
   [lock unlock];
 }
 
@@ -3394,41 +3432,50 @@ validName(NSString *name)
       name = validName(name);
     }
   [lock lock];
-  if (_observers != nil)
+  NS_DURING
     {
-      NSNotificationCenter  *nc;
-      NSMutableSet          *set;
-      NSEnumerator          *e;
+      if (_observers != nil)
+        {
+          NSNotificationCenter  *nc;
+          NSMutableSet          *set;
+          NSEnumerator          *e;
 
-      nc = [NSNotificationCenter defaultCenter];
-      set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
-      if (nil == name)
-        {
-          e = [[set allObjects] objectEnumerator];
-          name = [e nextObject];
-        }
-      else
-        {
-          name = [[name retain] autorelease];
-        }
-      while (nil != name)
-        {
-          if (nil != [set member: name])
+          nc = [NSNotificationCenter defaultCenter];
+          set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
+          if (nil == name)
             {
-              [nc removeObserver: anObserver
-                            name: name
-                          object: self];
-              [[name retain] autorelease];
-              [set removeObject: name];
-              [_names removeObject: name];
-              if (0 == [_names countForObject: name])
-                {
-                  [self backendUnlisten: name];
-                }
+              e = [[set allObjects] objectEnumerator];
+              name = [e nextObject];
             }
-          name = [e nextObject];
+          else
+            {
+              name = [[name retain] autorelease];
+            }
+          while (nil != name)
+            {
+              if (nil != [set member: name])
+                {
+                  [nc removeObserver: anObserver
+                                name: name
+                              object: self];
+                  [[name retain] autorelease];
+                  [set removeObject: name];
+                  [_names removeObject: name];
+                  if (0 == [_names countForObject: name])
+                    {
+                      [self backendUnlisten: name];
+                    }
+                }
+              name = [e nextObject];
+            }
         }
     }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
   [lock unlock];
 }
 @end

@@ -1,3 +1,8 @@
+2012-11-29 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * Wrap more code in exception handlers where there is any potential
+        for an exception in a lock protected region.
+
 2012-11-10 Niels Grewe <niels.grewe@halbordnung.de>
 
 	* GNUmakefile: Link against $(FND_LIBS) and $(OBJC_LIBS) instead
