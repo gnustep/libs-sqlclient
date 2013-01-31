@@ -1,3 +1,12 @@
+2013-01-31 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.m: Check for -disconnect being called when inside a
+        transaction and handle locking properly in that case.
+        Change simple execute and query methods so they don't call -debug:
+        inside locked regions, in case the method has been overridden to
+        do something not safe in such locked sections (such as trying a
+        query in another thread to report extra debug info).
+
 2012-11-29 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * Wrap more code in exception handlers where there is any potential

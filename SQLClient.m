@@ -1322,6 +1322,16 @@ static unsigned int	maxConnections = 8;
       NSNotificationCenter  *nc;
 
       [lock lock];
+      if (YES == _inTransaction)
+        {
+          /* If we are inside a transaction we must be doubly locked,
+           * so we do an unlock corresponding to the -begin before we
+           * disconnect (the disconnect implicitly rolls back the
+           * transaction).
+           */
+          _inTransaction = NO;
+          [lock unlock];
+        }
       if (connected == YES)
 	{
 	  NS_DURING
@@ -1850,6 +1860,7 @@ static unsigned int	maxConnections = 8;
 - (NSInteger) simpleExecute: (NSArray*)info
 {
   NSInteger     result;
+  NSString      *debug = nil;
 
   [lock lock];
   NS_DURING
@@ -1886,21 +1897,24 @@ static unsigned int	maxConnections = 8;
 	    {
 	      if (isCommit || isRollback)
 		{
-		  NSEnumerator	*e = [_statements objectEnumerator];
+		  NSEnumerator	        *e = [_statements objectEnumerator];
+                  NSMutableString       *m;
+
 		  if (isCommit)
 		    {
-		      [self debug:
-			@"Duration %g for transaction commit ...", d];
+                      m = [NSMutableString stringWithFormat:
+			@"Duration %g for transaction commit ...\n", d];
 		    }
 		  else 
 		    {
-		      [self debug:
-			@"Duration %g for transaction rollback ...", d];
+                      m = [NSMutableString stringWithFormat:
+			@"Duration %g for transaction rollback ...\n", d];
 		    }
 		  while ((statement = [e nextObject]) != nil)
 		    {
-		      [self debug: @"  %@;", statement];
+                      [m appendFormat: @"  %@;\n", statement];
 		    }
+                  debug = m;
 		}
 	      else if ([self debugging] > 1)
 		{
@@ -1908,12 +1922,13 @@ static unsigned int	maxConnections = 8;
 		   * For higher debug levels, we log data objects as well
 		   * as the query string, otherwise we omit them.
 		   */
-		  [self debug: @"Duration %g for statement %@", d, info];
+                  debug = [NSString stringWithFormat:
+                    @"Duration %g for statement %@", d, info];
 		}
 	      else
 		{
-		  [self debug: @"Duration %g for statement %@",
-		    d, statement];
+                  debug = [NSString stringWithFormat:
+		    @"Duration %g for statement %@", d, statement];
 		}
 	    }
 	}
@@ -1934,6 +1949,10 @@ static unsigned int	maxConnections = 8;
     }
   NS_ENDHANDLER
   [lock unlock];
+  if (nil != debug)
+    {
+      [self debug: @"%@", debug];
+    }
   return result;
 }
 
@@ -1947,6 +1966,7 @@ static unsigned int	maxConnections = 8;
 		       listType: (id)ltype
 {
   NSMutableArray	*result = nil;
+  NSString              *debug = nil;
 
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
@@ -1968,7 +1988,8 @@ static unsigned int	maxConnections = 8;
 	  d = _lastOperation - start;
 	  if (d >= _duration)
 	    {
-	      [self debug: @"Duration %g for query %@", d, stmt];
+	      debug = [NSString stringWithFormat:
+                @"Duration %g for query %@", d, stmt];
 	    }
 	}
     }
@@ -1979,6 +2000,10 @@ static unsigned int	maxConnections = 8;
     }
   NS_ENDHANDLER
   [lock unlock];
+  if (nil != debug)
+    {
+      [self debug: @"%@", debug];
+    }
   return result;
 }
 
