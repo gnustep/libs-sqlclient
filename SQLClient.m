@@ -2251,11 +2251,11 @@ static unsigned int	maxConnections = 8;
     {
       [self disconnect];
 #ifdef	GNUSTEP
-      GSDebugAllocationRemove(self->isa, self);
+      GSDebugAllocationRemove(object_getClass(self), self);
 #endif
-      self->isa = c;
+      object_setClass(self, c);
 #ifdef	GNUSTEP
-      GSDebugAllocationAdd(self->isa, self);
+      GSDebugAllocationAdd(object_getClass(self), self);
 #endif
     }
 
