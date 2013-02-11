@@ -111,7 +111,7 @@ void SQLErrorHandler()
   const char	*e1 = "Error in transaction processing";
 
   sqlca.sqlcode = 0;	// Reset error code
-  NSLog (@"Raising an exception, %ld, %s", code, sqlca.sqlerrm.sqlerrmc);
+  NSLog (@"Raising an exception, %d, %s", code, sqlca.sqlerrm.sqlerrmc);
   
   if (strncmp(ptr, e0, strlen(e0)) == 0
     || strncmp(ptr, e1, strlen(e1)) == 0)

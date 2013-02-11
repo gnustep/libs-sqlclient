@@ -1,3 +1,10 @@
+2013-02-11 Sebastian Reitenbach <sebastia@l00-bugdead-prods.de>
+	* ECPG.pgm
+	* testECPG.m
+	* testMySQL.m
+	* testSQLite.m
+	  use PRIuPTR to NSLog NSUIntegers
+
 2013-01-31 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.m: Check for -disconnect being called when inside a

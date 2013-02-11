@@ -104,7 +104,7 @@ main()
 
   if ([records count] != 2)
     {
-      NSLog(@"Expected 2 records but got %u", [records count]);
+      NSLog(@"Expected 2 records but got %" PRIuPTR "", [records count]);
     }
   else
     {
