@@ -1,5 +1,9 @@
 2013-03-04 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* Version 1.6.0: released
+
+2013-03-04 Richard Frith-Macdonald  <rfm@gnu.org>
+
         * SQLClient.h: Add helper classe interfaces.
         * SQLClient.m: Add helper classe implementations.
         Add performance helper classes for when querying a set of records
