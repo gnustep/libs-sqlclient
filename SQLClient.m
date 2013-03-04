@@ -3504,3 +3504,62 @@ validName(NSString *name)
   [lock unlock];
 }
 @end
+
+
+
+@implementation SQLDictionaryBuilder
+- (void) addObject: (id)anObject
+{
+  return;
+}
+
+- (id) alloc
+{
+  return [self retain];
+}
+
+- (NSMutableDictionary*) content
+{
+  return content;
+}
+
+- (void) dealloc
+{
+  [content release];
+  [super dealloc];
+}
+
+- (id) initWithCapacity: (NSUInteger)capacity
+{
+  DESTROY(content);
+  content = [[NSMutableDictionary alloc] initWithCapacity: capacity];
+  return self;
+}
+
+- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count
+{
+  if (count != 2)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Query did not return key/value pairs"];
+    }
+  [content setObject: values[1] forKey: values[0]];
+  return nil;
+}
+@end
+
+@implementation SQLSingletonBuilder
+- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count
+{
+  /* Instead of creating an object to hold the supplied record,
+   * we use the field from the record as the value to be used.
+   */
+  if (count != 1)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Query did not return singleton values"];
+    }
+  return [values[0] retain];
+}
+@end
+

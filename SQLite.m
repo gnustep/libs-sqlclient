@@ -1,6 +1,6 @@
 /* -*-objc-*- */
 
-/** Implementation of SQLClientPostgres for GNUStep
+/** Implementation of SQLClientSQLite for GNUStep
    Copyright (C) 2005 Free Software Foundation, Inc.
    
    Written by:  Richard Frith-Macdonald <rfm@gnu.org>

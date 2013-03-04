@@ -91,8 +91,8 @@ main()
 
   [db execute: @"insert into xxx "
     @"(k, char1, intval, realval, b) "
-    @"values ("
-    @"'hello', "
+    @"values (",
+    [db quoteString: @"hello"], @", "
     @"'X', "
     @"1, ",
     @"12345.6789, ",

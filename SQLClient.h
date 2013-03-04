@@ -853,6 +853,8 @@ SQLCLIENT_PRIVATE
  * method to initialise itsself and the [NSMutableArray-addObject:] method
  * to add records to the list.<br />
  * If ltype is nil then the [NSMutableArray] class is used.<br />
+ * This library provides a few helper classes to provide alternative
+ * values for rtype and ltype.
  */
 - (NSMutableArray*) simpleQuery: (NSString*)stmt
 		     recordType: (id)rtype
@@ -1507,6 +1509,74 @@ SQLCLIENT_PRIVATE
  * in the receiver, you can modify it without effecting the original.
  */
 - (SQLTransaction*) transactionAtIndex: (unsigned)index;
+@end
+
+
+
+/* A helper for building a dictionary from an SQL query which returns
+ * key-value pairs (you can subclass it to handle other records).<br />
+ * You create an instance of this class, and pass it as both the
+ * record and list class arguments of the low level SQLClient query.<br />
+ * The query (which must return a number of records, each with two fields)
+ * will result in a mutable dictionary being built, with dictionary keys
+ * being the first field from each record and dictionary values being the
+ * second field of each record.<br />
+ * If you want to handle records containing more than two values, you
+ * must create a subclass which overrides the -newWithValues:keys:count:
+ * method to create the record objects and add them to the content
+ * dictionary.<br />
+ * See [SQLClient-simpleQuery:recordType:listType:] also.<br />
+ * NB. When this class is used, the query will actually return an
+ * [NSMutableDictionary] instance rather than an [NSMutableArray] of
+ * [SQLRecord] objects.
+ */
+@interface SQLDictionaryBuilder : NSObject
+{
+  NSMutableDictionary   *content;
+}
+
+/** No need to do anything ... the object will already have been added by
+ * the -newWithValues:keys:count: method.
+ */
+- (void) addObject: (id)anObject;
+
+/** When a container is supposed to be allocated, we just return the
+ * receiver (which will then quietly ignore -addObject: messages).
+ */
+- (id) alloc;
+
+/** Returns the content dictionary for the receiver.
+ */
+- (NSMutableDictionary*) content;
+
+/** Creates a new content dictionary ... this method will be called
+ * automatically by the SQLClient object when it performs a query,
+ * so there is no need to call it at any other time.
+ */
+- (id) initWithCapacity: (NSUInteger)capacity;
+
+/** This is the main workhorse of the class ... it is called once for
+ * every record read from the database, and is responsible for adding
+ * that record to the content dictionary.  The default implementation,
+ * instead of creating an object to hold the supplied record data,
+ * uses the two fields from the record as a key-value pair to add to
+ * the content dictionary, and returns nil as the record object.
+ * It's OK to return a nil object since we ignore the -addObject:
+ * argument.
+ */
+- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count; 
+@end
+
+/* A helper for building a collection of singletons from an SQL query
+ * which returns singleton values.<br />
+ * You create an instance of this class, and pass it as the record
+ * class argument of the low level SQLClient query.<br />
+ * The query (which must return a number of records, each with one field)
+ * will result in the singleton values being stored in the list class.<br />
+ * See [SQLClient-simpleQuery:recordType:listType:] also.
+ */
+@interface SQLSingletonBuilder : NSObject
+- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count; 
 @end
 
 #endif

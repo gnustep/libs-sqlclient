@@ -1,3 +1,11 @@
+2013-03-04 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.h: Add helper classe interfaces.
+        * SQLClient.m: Add helper classe implementations.
+        Add performance helper classes for when querying a set of records
+        containing single values and when querying a dataset which contains
+        key/value pairs more naturally haqndled as a dictionary than an array.
+        
 2013-02-11 Sebastian Reitenbach <sebastia@l00-bugdead-prods.de>
 	* ECPG.pgm
 	* testECPG.m
