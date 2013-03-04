@@ -1,0 +1,81 @@
+{ /* -*-c-*- */
+  "prerequisite libraries" = (
+    "gnustep-base",
+    "Performance"
+  );
+  types = { 
+    NSTimeInterval = double;
+  };
+  classes = (
+    {
+      "file to include in preamble java code" = "Performance.import";
+      "java name" = "gnu.gnustep.SQLClient.SQLClient";
+      "objective-c name" = "SQLClient";
+      "class methods" = (
+	"allClients",
+	"clientWithConfiguration:name:",
+	"existingClient:",
+	"maxConnections",
+	"purgeConnections:",
+	"setMaxConnections:",
+      );
+      "instance methods" = (
+	"begin",
+	"cache",
+	"cache:query:with:",
+	"cache:simpleQuery:",
+	"clientName",
+	"commit",
+	"connect",
+	"connected",
+	"database",
+	"debugging",
+	"disconnect",
+	"durationLogging",
+	"isInTransaction",
+	"lastOperation",
+	"name",
+	"password",
+	"query:with:",
+	"quote:",
+	"quoteChar:",
+	"quoteFloat:",
+	"quoteInteger:",
+	"rollback",
+	"setCache:",
+	"setDatabase:",
+	"setDebugging:",
+	"setDurationLogging:",
+	"setName:",
+	"setPassword:",
+	"setUser:",
+	"simpleExecute:",
+	"simpleQuery:",
+	"singletons:",
+	"transaction",
+	"user"
+      );
+    },
+    {
+      "java name" = "gnu.gnustep.SQLClient.SQLRecord";
+      "objective-c name" = "SQLRecord";
+      "instance methods" = (
+	"allKeys",
+	"dictionary",
+	"sizeInBytes:"
+      );
+    },
+    {
+      "java name" = "gnu.gnustep.SQLClient.SQLTransaction";
+      "objective-c name" = "SQLTransaction";
+      "instance methods" = (
+	"add:with:",
+	"append:",
+	"count",
+	"db",
+	"execute",
+	"reset"
+      );
+    }
+  );
+}
