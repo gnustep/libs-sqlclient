@@ -1622,7 +1622,7 @@ static unsigned int	maxConnections = 8;
 
 - (NSString*) quoteBigInteger: (int64_t)i
 {
-  return [NSString stringWithFormat: @"%lld", i];
+  return [NSString stringWithFormat: @"%"PRId64, i];
 }
 
 - (NSString*) quoteCString: (const char *)s
