@@ -3536,7 +3536,9 @@ validName(NSString *name)
   return self;
 }
 
-- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count
+- (id) newWithValues: (id*)values
+		keys: (NSString**)keys
+	       count: (unsigned int)count
 {
   if (count != 2)
     {
@@ -3549,7 +3551,9 @@ validName(NSString *name)
 @end
 
 @implementation SQLSingletonBuilder
-- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count
+- (id) newWithValues: (id*)values
+		keys: (NSString**)keys
+	       count: (unsigned int)count
 {
   /* Instead of creating an object to hold the supplied record,
    * we use the field from the record as the value to be used.

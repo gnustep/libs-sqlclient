@@ -233,7 +233,9 @@ extern NSString * const SQLClientDidDisconnectNotification;
  * A nil value is represented by [NSNull null].<br />
  * Keys must be unique string values (case insensitive comparison).
  */
-+ (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c;
++ (id) newWithValues: (id*)v
+		keys: (NSString**)k
+	       count: (unsigned int)c;
 
 /**
  * Returns an array containing the names of all the fields in the record.
@@ -1564,7 +1566,9 @@ SQLCLIENT_PRIVATE
  * It's OK to return a nil object since we ignore the -addObject:
  * argument.
  */
-- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count; 
+- (id) newWithValues: (id*)values
+		keys: (NSString**)keys
+	       count: (unsigned int)count; 
 @end
 
 /* A helper for building a collection of singletons from an SQL query
@@ -1576,7 +1580,9 @@ SQLCLIENT_PRIVATE
  * See [SQLClient-simpleQuery:recordType:listType:] also.
  */
 @interface SQLSingletonBuilder : NSObject
-- (id) newWithValues: (id*)values keys: (id*)keys count: (unsigned int)count; 
+- (id) newWithValues: (id*)values
+		keys: (NSString**)keys
+	       count: (unsigned int)count; 
 @end
 
 #endif
