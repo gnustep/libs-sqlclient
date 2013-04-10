@@ -554,7 +554,10 @@ static unsigned int trim(char *str)
 			  
 			  /* \0-pad the string.  */
 			  aString[octetLength] = '\0'; 
-			  trim (aString);
+                          if (YES == _shouldTrim)
+                            {
+                              trim (aString);
+                            }
 			  v = [NSString stringWithUTF8String: aString];
 			  free(aString);
 			  break;
@@ -585,7 +588,10 @@ static unsigned int trim(char *str)
 			  EXEC SQL GET DESCRIPTOR 'myDesc' VALUE :index
 			    :aString = DATA;
 			  aString[octetLength] = '\0';
-			  trim (aString);
+                          if (YES == _shouldTrim)
+                            {
+                              trim (aString);
+                            }
 			  v = [NSString stringWithUTF8String: aString];
 			  free (aString);
 			  NSLog(@"(Oracle) Unknown data type (%d) for '%s': '%@'", 

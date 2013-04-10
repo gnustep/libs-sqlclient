@@ -434,7 +434,10 @@ static unsigned int trim(char *str)
 			    break;
 
 			  default:
-			    trim((char*)p);
+                            if (YES == _shouldTrim)
+                              {
+                                trim((char*)p);
+                              }
 			    v = [NSString stringWithUTF8String: (char*)p];
 			    break;
 			}

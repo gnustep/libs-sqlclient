@@ -1,3 +1,16 @@
+2013-04-10 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * ECPG.pgm:
+        * MySQL.m:
+        * Oracle.pm:
+        * Postgres.m:
+        * SQLClient.h:
+        * SQLClient.m:
+        * GNUmakefile:
+        Change behavior to no longer trim leading and trailing space from
+        values retrieved from database by default.
+        Add method to restore automatic trimming for a connection if needed.
+
 2013-03-04 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Version 1.6.1: released

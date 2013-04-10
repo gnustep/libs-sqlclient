@@ -557,7 +557,10 @@ static unsigned int trim(char *str)
 			  case SQL3_CHARACTER_VARYING:
 			    EXEC SQL GET DESCRIPTOR myDesc VALUE :index
 			      :aString = DATA;
-			    trim(aString);
+                            if (_shouldTrim)
+                              {
+                                trim(aString);
+                              }
 			    v = [NSString stringWithUTF8String: aString];
 			    free(aString);
 			    break;
@@ -586,7 +589,10 @@ static unsigned int trim(char *str)
 			  default:
 			    EXEC SQL GET DESCRIPTOR myDesc VALUE :index
 			      :aString = DATA;
-			    trim(aString);
+                            if (_shouldTrim)
+                              {
+                                trim(aString);
+                              }
 			    v = [NSString stringWithUTF8String: aString];
 			    free(aString);
 			    if ([self debugging] > 0)

@@ -1843,6 +1843,11 @@ static unsigned int	maxConnections = 8;
     }
 }
 
+- (void) setShouldTrim: (BOOL)aFlag
+{
+  _shouldTrim = (YES == aFlag) ? YES : NO;
+}
+
 - (void) setUser: (NSString*)s
 {
   if ([s isEqual: _client] == NO)

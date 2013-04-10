@@ -619,8 +619,23 @@ static unsigned int trim(char *str)
 				v = [self dataFromBLOB: p];
 				break;
 
-			      default:
+                              case 18:          // "char"
+				v = [NSString stringWithUTF8String: p];
+                                break;
+
+                              case 20:          // INT8
+                              case 21:          // INT2
+                              case 23:          // INT4
 				trim(p);
+				v = [NSString stringWithUTF8String: p];
+				break;
+
+                              case 25:          // TEXT
+			      default:
+                                if (YES == _shouldTrim)
+                                  {
+                                    trim(p);
+                                  }
 				v = [NSString stringWithUTF8String: p];
 				break;
 			    }

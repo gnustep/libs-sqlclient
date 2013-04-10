@@ -369,6 +369,12 @@ SQLCLIENT_PRIVATE
    * set by the -begin, -commit or -rollback methods.
    */
   BOOL			_inTransaction;	/** Are we inside a transaction? */
+  /**
+   * A flag indicating whether wleading and trailing white space in values
+   * read from the database shoud automatically be removed.<br />
+   * This should only be modified by the -setShouldTrim: method.
+   */
+  BOOL                  _shouldTrim;    /** Should whitespace be trimmed? */
   NSString		*_name;		/** Unique identifier for instance */
   NSString		*_client;	/** Identifier within backend */
   NSString		*_database;	/** The configured database name/host */
@@ -821,6 +827,12 @@ SQLCLIENT_PRIVATE
  * you normally shouldn't need to call it yourself.
  */
 - (void) setPassword: (NSString*)s;
+
+/** Sets an internal flag to indicate whether leading and trailing white
+ * space characters should be removed from values retrieved from the
+ * database by the receiver.
+ */
+- (void) setShouldTrim: (BOOL)aFlag;
 
 /**
  * Set the database user for this object.<br />
