@@ -899,14 +899,15 @@ static unsigned int trim(char *str)
   return ok;
 }
 
-/**
- * Convert from a database character buffer to an NSDate.
- */
 - (NSDate*) dbToDateFromBuffer: (char*)b length: (int)l
 {
-  char		buf[l+32];	/* Allow space to expend buffer. */
-  NSString	*s;
-  int		i;
+  char		        buf[l+32];	/* Allow space to expand buffer. */
+  NSCalendarDate	*d;
+  BOOL		        milliseconds = NO;
+  BOOL                  timezone = NO;
+  NSString	        *s;
+  int		        i;
+  int	                e;
 
   memcpy(buf, b, l);
   b = buf;
@@ -929,98 +930,153 @@ static unsigned int trim(char *str)
 
   if (l == 10)
     {
-      s = [self dbToStringFromBuffer: b length: l];
+      s = [NSString stringWithUTF8String: b];
       return [NSCalendarDate dateWithString: s
 			     calendarFormat: @"%Y-%m-%d"
 				     locale: nil];
     }
+
+  i = l;
+
+  /* Convert +/-HH:SS timezone to +/-HHSS
+   */
+  if (i > 5 && b[i-3] == ':' && (b[i-6] == '+' || b[i-6] == '-'))
+    {
+      b[i-3] = b[i-2];
+      b[i-2] = b[i-1];
+      b[--i] = '\0';
+    }
+
+  while (i-- > 0)
+    {
+      if (b[i] == '+' || b[i] == '-')
+        {
+          break;
+        }
+      if (b[i] == ':' || b[i] == ' ')
+        {
+          i = 0;
+          break;	/* No time zone found */
+        }
+    }
+
+  if (i == 0)
+    {
+      e = l;
+    }
   else
     {
-      i = l;
-      while (i-- > 0)
-	{
-	  if (b[i] == '+' || b[i] == '-')
-	    {
-	      break;
-	    }
-	  if (b[i] == ':' || b[i] == ' ')
-	    {
-	      i = 0;
-	      break;	/* No time zone found */
-	    }
-	}
-      if (i > 0)
-	{
-	  int	e = i;
+      timezone = YES;
+      e = i;
+      if (isdigit(b[i-1]))
+        {
+          /*
+           * Make space between seconds and timezone.
+           */
+          memmove(&b[i+1], &b[i], l - i);
+          b[i++] = ' ';
+          b[++l] = '\0';
+        }
 
-	  if (isdigit(b[i-1]))
-	    {
-	      /*
-	       * Make space between seconds and timezone.
-	       */
-	      memmove(&b[i+1], &b[i], l - i);
-	      b[i++] = ' ';
-	      b[++l] = '\0';
-	    }
-
-	  if (isdigit(b[i+1]) && isdigit(b[i+2]))
-	    {
-	      if (b[i+3] == '\0')
-		{
-		  // Two digit time zone
-		  b[l++] = '0';
-		  b[l++] = '0';
-		  b[l] = '\0';
-		}
-	      else if (b[i+3] == ':')
-		{
-		  // Zone with colon before minutes
-		  b[i+3] = b[i+4];
-		  b[i+5] = b[i+5];
-		  b[--l] = '\0';
-		}
-	    }
-
-	  /* FIXME ... horrible kludge for postgres returning timestamps with
-	     fractional second information. */
-	  while (i-- > 0)
-	    {
-	      if (b[i] == '.')
-		{
-		  break;
-		}
-	    }
-	  if (i > 0)
-	    {
-	      memmove(&b[i], &b[e], l - e);
-	      l -= (e - i);
-	      b[l] = '\0';
-	    }
-	}
-      else if (l == 19)
-	{
-	  /* A date and time without a timezone ... assume gmt */
-	  strcat(b, " +0000");
-	  l += 6;
-	}
-
-      
-      /* If it's a simple date (YYYY-MM-DD) append time for start of day. */
-      if (l == 10)
-	{
-	  strcat(b, " 00:00:00 +0000");
-	  l += 15;
-	}
-      if (l == 0)
-	{
-	  return nil;
-	}
-
-      s = [self dbToStringFromBuffer: b length: l];
-      return [NSCalendarDate dateWithString: s
-			     calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
-				     locale: nil];
+      /*
+       * Ensure we have a four digit timezone value.
+       */
+      if (isdigit(b[i+1]) && isdigit(b[i+2]))
+        {
+          if (b[i+3] == '\0')
+            {
+              // Two digit time zone ... append zero minutes
+              b[l++] = '0';
+              b[l++] = '0';
+              b[l] = '\0';
+            }
+          else if (b[i+3] == ':')
+            {
+              // Zone with colon before minutes ... remove it
+              b[i+3] = b[i+4];
+              b[i+4] = b[i+5];
+              b[--l] = '\0';
+            }
+        }
     }
+
+  /* kludge for timestamps with fractional second information.
+   * Force it to 3 digit millisecond */
+  while (i-- > 0)
+    {
+      if (b[i] == '.')
+        {
+          milliseconds = YES;
+          i++;
+          if (!isdigit(b[i]))
+            {
+              memmove(&b[i+3], &b[i], e-i);
+              l += 3;
+              memcpy(&b[i], "000", 3);
+            }
+          i++;
+          if (!isdigit(b[i]))
+            {
+              memmove(&b[i+2], &b[i], e-i);
+              l += 2;
+              memcpy(&b[i], "00", 2);
+            }
+          i++;
+          if (!isdigit(b[i]))
+            {
+              memmove(&b[i+1], &b[i], e-i);
+              l += 1;
+              memcpy(&b[i], "0", 1);
+            }
+          i++;
+          break;
+        }
+    }
+  if (i > 0 && i < e)
+    {
+      memmove(&b[i], &b[e], l - e);
+      l -= (e - i);
+    }
+  b[l] = '\0';
+  if (l == 0)
+    {
+      return nil;
+    }
+  
+  s = [NSString stringWithUTF8String: b];
+
+  if (YES == timezone)
+    {
+      if (milliseconds == YES)
+        {
+          d = [NSCalendarDate dateWithString: s
+                              calendarFormat: @"%Y-%m-%d %H:%M:%S.%F %z"
+                                      locale: nil];
+        }
+      else
+        {
+          d = [NSCalendarDate dateWithString: s
+                              calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
+                                      locale: nil];
+        }
+    }
+  else
+    {
+      if (milliseconds == YES)
+        {
+          d = [NSCalendarDate dateWithString: s
+                              calendarFormat: @"%Y-%m-%d %H:%M:%S.%F"
+                                      locale: nil];
+        }
+      else
+        {
+          d = [NSCalendarDate dateWithString: s
+                              calendarFormat: @"%Y-%m-%d %H:%M:%S"
+                                      locale: nil];
+        }
+    }
+  [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
+  return d;
 }
 
 /**
