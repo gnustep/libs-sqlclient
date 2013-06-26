@@ -646,10 +646,11 @@ SQLCLIENT_PRIVATE
  * then 'User' may be used instead.<br />
  * Password ... is the name of the database user password, if it is
  * missing then 'Password' may be used instead.<br />
- * missing then 'Password' may be used instead.<br />
  * ServerType ... is the name of the backend server to be used ... by
  * convention the name of a bundle containing the interface to that backend.
  * If this is missing then 'Postgres' is used.<br />
+ * The database name may be of the format 'name@host:port' when you wish to
+ * connect to a database on a different host over the network.
  */
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference;
