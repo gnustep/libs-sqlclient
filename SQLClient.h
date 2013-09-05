@@ -300,7 +300,7 @@ extern NSString * const SQLClientDidDisconnectNotification;
  * The exclude set is used to specify objects to exclude from the
  * calculation (to prevent recursion etc).
  */
-- (unsigned) sizeInBytes: (NSMutableSet*)exclude;
+- (NSUInteger) sizeInBytes: (NSMutableSet*)exclude;
 @end
 
 extern NSString	*SQLException;

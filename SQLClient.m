@@ -519,15 +519,15 @@ static Class rClass = 0;
     }
 }
 
-- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+- (NSUInteger) sizeInBytes: (NSMutableSet*)exclude
 {
-  unsigned	size = [super sizeInBytes: exclude];
+  NSUInteger	size = [super sizeInBytes: exclude];
 
   if (size > 0)
     {
-      unsigned	pos;
-      unsigned	count = [self count];
-      id	vals[count];
+      NSUInteger	pos;
+      NSUInteger	count = [self count];
+      id	        vals[count];
 
       [self getObjects: vals];
       for (pos = 0; pos < count; pos++)
@@ -768,7 +768,7 @@ static Class rClass = 0;
 	      format: @"Bad key (%@) in -setObject:forKey:", aKey];
 }
 
-- (unsigned) sizeInBytes: (NSMutableSet*)exclude
+- (NSUInteger) sizeInBytes: (NSMutableSet*)exclude
 {
   if ([exclude member: self] != nil)
     {
@@ -776,8 +776,8 @@ static Class rClass = 0;
     }
   else
     {
-      unsigned	size = [super sizeInBytes: exclude];
-      unsigned	pos;
+      NSUInteger	size = [super sizeInBytes: exclude];
+      NSUInteger	pos;
       id		*ptr;
 
       ptr = ((void*)&count) + sizeof(count);
