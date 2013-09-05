@@ -2197,7 +2197,7 @@ static unsigned int	maxConnections = 8;
       unsigned		count;
 
       paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
-	NSLocalDomainMask, YES);
+	NSAllDomainsMask, YES);
       count = [paths count];
       tried = [NSMutableArray arrayWithCapacity: count];
       while (count-- > 0)
