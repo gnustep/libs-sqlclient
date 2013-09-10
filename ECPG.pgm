@@ -117,12 +117,12 @@ void SQLErrorHandler()
     || strncmp(ptr, e1, strlen(e1)) == 0)
     {
       [NSException raise: SQLConnectionException
-		  format: @"SQL Error: SQLCODE=(%ld): %s", code, ptr];
+		  format: @"SQL Error: SQLCODE=(%d): %s", code, ptr];
     }
   else
     {
       [NSException raise: SQLException
-		  format: @"SQL Error: SQLCODE=(%ld): %s", code, ptr];
+		  format: @"SQL Error: SQLCODE=(%d): %s", code, ptr];
     }
 }
 
