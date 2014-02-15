@@ -1536,6 +1536,8 @@ SQLCLIENT_PRIVATE
  * will result in a mutable dictionary being built, with dictionary keys
  * being the first field from each record and dictionary values being the
  * second field of each record.<br />
+ * You may use the same instance for more than one query, but a second query
+ * will replace the content dictionary produced by the first.<br />
  * If you want to handle records containing more than two values, you
  * must create a subclass which overrides the -newWithValues:keys:count:
  * method to create the record objects and add them to the content
@@ -1591,6 +1593,8 @@ SQLCLIENT_PRIVATE
  * The query (which must return a number of records, each with one field)
  * will result in a counted set being built and a record of the number of
  * added objects being kept.<br />
+ * You may use the same instance for more than one query, but a second query
+ * will replace the content set produced by the first.<br />
  * If you want to handle records containing more than one value, you
  * must create a subclass which overrides the -newWithValues:keys:count:
  * method to create the record objects and add them to the content
