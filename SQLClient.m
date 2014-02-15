@@ -3555,6 +3555,56 @@ validName(NSString *name)
 }
 @end
 
+@implementation SQLSetBuilder
+- (NSUInteger) added
+{
+  return added;
+}
+
+- (void) addObject: (id)anObject
+{
+  return;
+}
+
+- (id) alloc
+{
+  return [self retain];
+}
+
+- (NSCountedSet*) content
+{
+  return content;
+}
+
+- (void) dealloc
+{
+  [content release];
+  [super dealloc];
+}
+
+- (id) initWithCapacity: (NSUInteger)capacity
+{
+  DESTROY(content);
+  content = [[NSCountedSet alloc] initWithCapacity: capacity];
+  added = 0;
+  return self;
+}
+
+- (id) newWithValues: (id*)values
+		keys: (NSString**)keys
+	       count: (unsigned int)count
+{
+  if (count != 1)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Query did not return a single value"];
+    }
+  added++;
+  [content addObject: values[0]];
+  return nil;
+}
+@end
+
 @implementation SQLSingletonBuilder
 - (id) newWithValues: (id*)values
 		keys: (NSString**)keys

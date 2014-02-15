@@ -1584,6 +1584,66 @@ SQLCLIENT_PRIVATE
 	       count: (unsigned int)count; 
 @end
 
+/* A helper for building a counted set from an SQL query which returns
+ * individual values (you can subclass it to handle other records).<br />
+ * You create an instance of this class, and pass it as both the
+ * record and list class arguments of the low level SQLClient query.<br />
+ * The query (which must return a number of records, each with one field)
+ * will result in a counted set being built and a record of the number of
+ * added objects being kept.<br />
+ * If you want to handle records containing more than one value, you
+ * must create a subclass which overrides the -newWithValues:keys:count:
+ * method to create the record objects and add them to the content
+ * set, and increment the counter.<br />
+ * See [SQLClient-simpleQuery:recordType:listType:] also.<br />
+ * NB. When this class is used, the query will actually return an
+ * [NSCountedSet] instance rather than an [NSMutableArray] of
+ * [SQLRecord] objects.
+ */
+@interface SQLSetBuilder : NSObject
+{
+  NSCountedSet  *content;
+  NSUInteger    added;
+}
+
+/** Returns the number of objects actually added to the counted set.
+ */
+- (NSUInteger) added;
+
+/** No need to do anything ... the object will already have been added by
+ * the -newWithValues:keys:count: method.
+ */
+- (void) addObject: (id)anObject;
+
+/** When a container is supposed to be allocated, we just return the
+ * receiver (which will then quietly ignore -addObject: messages).
+ */
+- (id) alloc;
+
+/** Returns the counted set for the receiver.
+ */
+- (NSCountedSet*) content;
+
+/** Creates a new content set ... this method will be called
+ * automatically by the SQLClient object when it performs a query,
+ * so there is no need to call it at any other time.
+ */
+- (id) initWithCapacity: (NSUInteger)capacity;
+
+/** This is the main workhorse of the class ... it is called once for
+ * every record read from the database, and is responsible for adding
+ * that record to the content set.  The default implementation,
+ * instead of creating an object to hold the supplied record data,
+ * uses the singe field from the record to add to
+ * the content set, and returns nil as the record object.
+ * It's OK to return a nil object since we ignore the -addObject:
+ * argument.
+ */
+- (id) newWithValues: (id*)values
+		keys: (NSString**)keys
+	       count: (unsigned int)count; 
+@end
+
 /* A helper for building a collection of singletons from an SQL query
  * which returns singleton values.<br />
  * You create an instance of this class, and pass it as the record
