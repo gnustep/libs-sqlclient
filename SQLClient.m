@@ -3541,6 +3541,11 @@ validName(NSString *name)
   return self;
 }
 
+- (id) mutableCopyWithZone: (NSZone*)aZone
+{
+  return [content mutableCopyWithZone: aZone];
+}
+
 - (id) newWithValues: (id*)values
 		keys: (NSString**)keys
 	       count: (unsigned int)count
@@ -3588,6 +3593,11 @@ validName(NSString *name)
   content = [[NSCountedSet alloc] initWithCapacity: capacity];
   added = 0;
   return self;
+}
+
+- (id) mutableCopyWithZone: (NSZone*)aZone
+{
+  return [content mutableCopyWithZone: aZone];
 }
 
 - (id) newWithValues: (id*)values

@@ -1,3 +1,11 @@
+2014-02-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.h:
+        * SQLClient.m:
+	Add mutable copy implementation so that set and dictionary builders
+	can be used by caching queries without raising an exception ... the
+	mutable copy of the helper's content is what gets cached.
+
 2014-02-15 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.h:

@@ -1572,6 +1572,11 @@ SQLCLIENT_PRIVATE
  */
 - (id) initWithCapacity: (NSUInteger)capacity;
 
+/** Makes a mutable copy of the content dictionary (called when a caching
+ * query uses this helper to produce the cached collection).
+ */
+- (id) mutableCopyWithZone: (NSZone*)aZone;
+
 /** This is the main workhorse of the class ... it is called once for
  * every record read from the database, and is responsible for adding
  * that record to the content dictionary.  The default implementation,
@@ -1633,6 +1638,11 @@ SQLCLIENT_PRIVATE
  * so there is no need to call it at any other time.
  */
 - (id) initWithCapacity: (NSUInteger)capacity;
+
+/** Makes a mutable copy of the content dictionary (called when a caching
+ * query uses this helper to produce the cached collection).
+ */
+- (id) mutableCopyWithZone: (NSZone*)aZone;
 
 /** This is the main workhorse of the class ... it is called once for
  * every record read from the database, and is responsible for adding
