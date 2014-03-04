@@ -370,8 +370,8 @@ SQLCLIENT_PRIVATE
    */
   BOOL			_inTransaction;	/** Are we inside a transaction? */
   /**
-   * A flag indicating whether wleading and trailing white space in values
-   * read from the database shoud automatically be removed.<br />
+   * A flag indicating whether leading and trailing white space in values
+   * read from the database should automatically be removed.<br />
    * This should only be modified by the -setShouldTrim: method.
    */
   BOOL                  _shouldTrim;    /** Should whitespace be trimmed? */
