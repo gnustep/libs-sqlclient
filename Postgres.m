@@ -399,7 +399,7 @@ connectQuote(NSString *str)
 	    stmt, str];
 	}
       if (PQresultStatus(result) != PGRES_COMMAND_OK
-        && PQresultStatus(result) == PGRES_TUPLES_OK)
+        && PQresultStatus(result) != PGRES_TUPLES_OK)
 	{
 	  [NSException raise: SQLException format: @"Error executing %@: %s",
 	    stmt, PQresultErrorMessage(result)];
