@@ -3479,6 +3479,7 @@ validName(NSString *name)
             }
           else
             {
+              e = nil;
               name = [[name retain] autorelease];
             }
           while (nil != name)
