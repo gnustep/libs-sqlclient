@@ -3499,6 +3499,10 @@ validName(NSString *name)
                 }
               name = [e nextObject];
             }
+          if ([set count] == 0)
+            {
+              NSMapRemove(_observers, (void*)anObserver);
+            }
         }
     }
   NS_HANDLER
