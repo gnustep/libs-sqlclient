@@ -62,10 +62,8 @@
 #include	"SQLClient.h"
 
 #if	defined(GNUSTEP_BASE_LIBRARY)
-#include	<GNUstepBase/GSLock.h>
 #define	SUBCLASS_RESPONSIBILITY	[self subclassResponsibility: _cmd];
 #else
-#define	GSLazyRecursiveLock	NSRecursiveLock
 #define	SUBCLASS_RESPONSIBILITY	
 #endif
 
@@ -972,7 +970,7 @@ static unsigned int	maxConnections = 8;
     {
       clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
         NSNonRetainedObjectMapValueCallBacks, 0);
-      clientsMapLock = [GSLazyRecursiveLock new];
+      clientsMapLock = [NSRecursiveLock new];
       beginStatement = [[NSArray arrayWithObject: beginString] retain];
       commitStatement = [[NSArray arrayWithObject: commitString] retain];
       rollbackStatement = [[NSArray arrayWithObject: rollbackString] retain];
@@ -1076,7 +1074,7 @@ static unsigned int	maxConnections = 8;
 	  [self simpleExecute: beginStatement];
 	  /* NB.  We leave the lock locked ... until a matching -commit
 	   * or -rollback is called.  This prevents other threads from
-	   * intefering with this transaction.
+	   * interfering with this transaction.
 	   */
 	}
       NS_HANDLER
@@ -1407,7 +1405,7 @@ static unsigned int	maxConnections = 8;
   existing = (SQLClient*)NSMapGet(clientsMap, reference);
   if (existing == nil)
     {
-      lock = [GSLazyRecursiveLock new];	// Ensure thread-safety.
+      lock = [NSRecursiveLock new];	// Ensure thread-safety.
       [self setDebugging: [[self class] debugging]];
       [self setDurationLogging: [[self class] durationLogging]];
       [self setName: reference];	// Set name and store in cache.
