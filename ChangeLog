@@ -1,3 +1,8 @@
+2014-05-08 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* GNUmakefile: new subminor version for bugfix release 
+	* Version 1.7.1: released
+
 2014-04-12 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.m:
