@@ -1079,8 +1079,8 @@ static unsigned int	maxConnections = 8;
 	}
       NS_HANDLER
 	{
-	  [lock unlock];
 	  _inTransaction = NO;
+	  [lock unlock];
 	  [localException raise];
 	}
       NS_ENDHANDLER

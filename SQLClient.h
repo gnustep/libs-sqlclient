@@ -1134,7 +1134,7 @@ SQLCLIENT_PRIVATE
             selector: (SEL)aSelector
                 name: (NSString*)name;
 
-/** Posts a notification via the dastabase.  The name is an SQL identifier
+/** Posts a notification via the database.  The name is an SQL identifier
  * (for which observers may have registered) and the extra payload
  * information may be nil if not required.
  */
