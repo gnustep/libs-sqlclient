@@ -4,6 +4,7 @@
 	Fix tiny window in which a connection could be unlocked yet have
 	the flag set to say it is in a transaction (thus potentially
 	allowing a locking consistency error).
+	Add locking to protect setting/changing configuration.
 
 2014-05-08 Richard Frith-Macdonald  <rfm@gnu.org>
 

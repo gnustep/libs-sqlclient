@@ -1155,10 +1155,10 @@ static unsigned int	maxConnections = 8;
 
 - (BOOL) connect
 {
-  if (connected == NO)
+  if (NO == connected)
     {
       [lock lock];
-      if (connected == NO)
+      if (NO == connected)
 	{
 	  NS_DURING
 	    {
@@ -1199,9 +1199,9 @@ static unsigned int	maxConnections = 8;
 	    }
 	  NS_HANDLER
 	    {
-	      [lock unlock];
 	      _lastOperation = GSTickerTimeNow();
 	      _connectFails++;
+	      [lock unlock];
 	      [localException raise];
 	    }
 	  NS_ENDHANDLER
@@ -1315,7 +1315,7 @@ static unsigned int	maxConnections = 8;
 
 - (void) disconnect
 {
-  if (connected == YES)
+  if (YES == connected)
     {
       NSNotificationCenter  *nc;
 
@@ -1330,7 +1330,7 @@ static unsigned int	maxConnections = 8;
           _inTransaction = NO;
           [lock unlock];
         }
-      if (connected == YES)
+      if (YES == connected)
 	{
 	  NS_DURING
 	    {
@@ -1773,72 +1773,97 @@ static unsigned int	maxConnections = 8;
 
 - (void) setDatabase: (NSString*)s
 {
-  if ([s isEqual: _database] == NO)
+  [lock lock];
+  NS_DURING
     {
-      if (connected == YES)
-	{
-	  [self disconnect];
-	}
-      s = [s copy];
-      [_database release];
-      _database = s;
+      if ([s isEqual: _database] == NO)
+        {
+          if (connected == YES)
+            {
+              [self disconnect];
+            }
+          s = [s copy];
+          [_database release];
+          _database = s;
+        }
     }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 }
 
 - (void) setName: (NSString*)s
 {
-  if ([s isEqual: _name] == NO)
+  [lock lock];
+  NS_DURING
     {
-      [lock lock];
-      if ([s isEqual: _name] == YES)
-	{
-	  [lock unlock];
-	  return;
-	}
-      [clientsMapLock lock];
-      if (NSMapGet(clientsMap, s) != 0)
-	{
-	  [lock unlock];
-	  [clientsMapLock unlock];
-	  if ([self debugging] > 0)
-	    {
-	      [self debug: @"Error attempt to re-use client name %@", s];
-	    }
-	  return;
-	}
-      if (connected == YES)
-	{
-	  [self disconnect];
-	}
-      [self retain];
-      if (_name != nil)
-	{
-          NSMapRemove(clientsMap, (void*)_name);
+      if ([s isEqual: _name] == NO)
+        {
+          [clientsMapLock lock];
+          if (NSMapGet(clientsMap, s) != 0)
+            {
+              [clientsMapLock unlock];
+              [lock unlock];
+              if ([self debugging] > 0)
+                {
+                  [self debug: @"Error attempt to re-use client name %@", s];
+                }
+              NS_VOIDRETURN;
+            }
+          if (connected == YES)
+            {
+              [self disconnect];
+            }
+          if (_name != nil)
+            {
+              [[self retain] autorelease];
+              NSMapRemove(clientsMap, (void*)_name);
+            }
+          s = [s copy];
+          [_name release];
+          _name = s;
+          [_client release];
+          _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
+          NSMapInsert(clientsMap, (void*)_name, (void*)self);
+          [clientsMapLock unlock];
         }
-      s = [s copy];
-      [_name release];
-      _name = s;
-      [_client release];
-      _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
-      NSMapInsert(clientsMap, (void*)_name, (void*)self);
-      [clientsMapLock unlock];
-      [lock unlock];
-      [self release];
     }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 }
 
 - (void) setPassword: (NSString*)s
 {
-  if ([s isEqual: _password] == NO)
+  [lock lock];
+  NS_DURING
     {
-      if (connected == YES)
-	{
-	  [self disconnect];
-	}
-      s = [s copy];
-      [_password release];
-      _password = s;
+      if ([s isEqual: _password] == NO)
+        {
+          if (connected == YES)
+            {
+              [self disconnect];
+            }
+          s = [s copy];
+          [_password release];
+          _password = s;
+        }
     }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 }
 
 - (void) setShouldTrim: (BOOL)aFlag
@@ -1848,16 +1873,27 @@ static unsigned int	maxConnections = 8;
 
 - (void) setUser: (NSString*)s
 {
-  if ([s isEqual: _client] == NO)
+  [lock lock];
+  NS_DURING
     {
-      if (connected == YES)
-	{
-	  [self disconnect];
-	}
-      s = [s copy];
-      [_user release];
-      _user = s;
+      if ([s isEqual: _client] == NO)
+        {
+          if (connected == YES)
+            {
+              [self disconnect];
+            }
+          s = [s copy];
+          [_user release];
+          _user = s;
+        }
     }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 }
 
 - (NSInteger) simpleExecute: (NSArray*)info
@@ -2778,7 +2814,7 @@ static unsigned int	maxConnections = 8;
   GSCache	*c;
 
   [lock lock];
-  if (_cache == nil)
+  if (nil == _cache)
     {
       _cache = [GSCache new];
       if (_cacheThread != nil)
