@@ -951,7 +951,7 @@ SQLCLIENT_PRIVATE
  * inserted into the statement at an earlier stage by the -execute:,...
  * and -execute:with: methods.
  * </p>
- * <p>This method should lock the instance using the <em>lock</em>
+ * <p>Callers should lock the instance using the <em>lock</em>
  * instance variable for the duration of the operation, and unlock
  * it afterwards.
  * </p>
@@ -987,7 +987,7 @@ SQLCLIENT_PRIVATE
  * </p>
  * <p>NULL field items are returned as NSNull objects.
  * </p>
- * <p>This method should lock the instance using the <em>lock</em>
+ * <p>Callers should lock the instance using the <em>lock</em>
  * instance variable for the duration of the operation, and unlock
  * it afterwards.
  * </p>
