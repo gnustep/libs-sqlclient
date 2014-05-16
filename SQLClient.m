@@ -3486,7 +3486,18 @@ validName(NSString *name)
                       format: @"Notification payload is not a string"];
         }
     }
-  [self backendNotify: name payload: more];
+  [lock lock];
+  NS_DURING
+    {
+      [self backendNotify: name payload: more];
+    }
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 }
 
 - (void) removeObserver: (id)anObserver name: (NSString*)name
