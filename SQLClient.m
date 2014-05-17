@@ -1403,7 +1403,7 @@ static unsigned int	maxConnections = 8;
 
   [clientsMapLock lock];
   existing = (SQLClient*)NSMapGet(clientsMap, reference);
-  if (existing == nil)
+  if (nil == existing)
     {
       lock = [NSRecursiveLock new];	// Ensure thread-safety.
       [self setDebugging: [[self class] debugging]];
@@ -2194,142 +2194,154 @@ static unsigned int	maxConnections = 8;
  */
 - (void) _configure: (NSNotification*)n
 {
-  NSDictionary	*o = [n object];
+  NSDictionary	*o;
   NSDictionary	*d;
   NSString	*s;
   Class		c;
 
-  /*
-   * get dictionary containing config info for this client by name.
-   */
-  d = [o objectForKey: @"SQLClientReferences"];
-  if ([d isKindOfClass: [NSDictionary class]] == NO)
+  [lock lock];
+  NS_DURING
     {
-      [self debug: @"Unable to find SQLClientReferences config dictionary"];
-      d = nil;
-    }
-  d = [d objectForKey: _name];
-  if ([d isKindOfClass: [NSDictionary class]] == NO)
-    {
-      [self debug: @"Unable to find config for client '%@'", _name];
-      d = nil;
-    }
+      o = [n object];
+      /*
+       * get dictionary containing config info for this client by name.
+       */
+      d = [o objectForKey: @"SQLClientReferences"];
+      if ([d isKindOfClass: [NSDictionary class]] == NO)
+        {
+          [self debug: @"Unable to find SQLClientReferences config dictionary"];
+          d = nil;
+        }
+      d = [d objectForKey: _name];
+      if ([d isKindOfClass: [NSDictionary class]] == NO)
+        {
+          [self debug: @"Unable to find config for client '%@'", _name];
+          d = nil;
+        }
 
-  s = [d objectForKey: @"ServerType"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = @"Postgres";
-    }
+      s = [d objectForKey: @"ServerType"];
+      if ([s isKindOfClass: NSStringClass] == NO)
+        {
+          s = @"Postgres";
+        }
 
-  c = NSClassFromString([@"SQLClient" stringByAppendingString: s]);
-  if (c == nil)
-    {
-      NSString		*path;
-      NSBundle		*bundle;
-      NSArray		*paths;
-      NSMutableArray	*tried;
-      unsigned		count;
-
-      paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
-	NSAllDomainsMask, YES);
-      count = [paths count];
-      tried = [NSMutableArray arrayWithCapacity: count];
-      while (count-- > 0)
-	{
-	  path = [paths objectAtIndex: count];
-	  path = [path stringByAppendingPathComponent: @"Bundles"];
-	  path = [path stringByAppendingPathComponent: @"SQLClient"];
-	  path = [path stringByAppendingPathComponent: s];
-	  path = [path stringByAppendingPathExtension: @"bundle"];
-	  bundle = [NSBundle bundleWithPath: path];
-	  if (bundle != nil)
-	    {
-	      [tried addObject: path];
-	      if ((c = [bundle principalClass]) != nil)
-		{
-		  break;	// Found it.
-		}
-	    }
-	  /* Try alternative version with more libraries linked in.
-	   * In some systems and situations the dynamic linker needs
-	   * to haved the SQLClient, gnustep-base, and objc libraries
-	   * explicitly linked into the bundle, but in others it
-	   * requires them to not be linked. To handle that, we create
-	   * two versions of each bundle, the seond version has _libs
-	   * appended to the bundle name, and has the extra libraries linked.
-	   */
-	  path = [path stringByDeletingPathExtension];
-	  path = [path stringByAppendingString: @"_libs"];
-	  path = [path stringByAppendingPathExtension: @"bundle"];
-	  bundle = [NSBundle bundleWithPath: path];
-	  if (bundle != nil)
-	    {
-	      [tried addObject: path];
-	      if ((c = [bundle principalClass]) != nil)
-		{
-		  break;	// Found it.
-		}
-	    }
-	}
+      c = NSClassFromString([@"SQLClient" stringByAppendingString: s]);
       if (c == nil)
-	{
-	  if ([tried count] == 0)
-	    {
-	      [self debug: @"unable to load bundle for '%@' server type"
-		@" ... failed to locate bundle in %@", s, paths];
-	    }
-	  else
-	    {
-	      [self debug: @"unable to load backend class for '%@' server type"
-		@" ... dynamic library load failed in %@", s, tried];
-	    }
-	  return;
-	}
-    }
-  if (c != [self class])
-    {
-      [self disconnect];
+        {
+          NSString		*path;
+          NSBundle		*bundle;
+          NSArray		*paths;
+          NSMutableArray	*tried;
+          unsigned		count;
+
+          paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,
+            NSAllDomainsMask, YES);
+          count = [paths count];
+          tried = [NSMutableArray arrayWithCapacity: count];
+          while (count-- > 0)
+            {
+              path = [paths objectAtIndex: count];
+              path = [path stringByAppendingPathComponent: @"Bundles"];
+              path = [path stringByAppendingPathComponent: @"SQLClient"];
+              path = [path stringByAppendingPathComponent: s];
+              path = [path stringByAppendingPathExtension: @"bundle"];
+              bundle = [NSBundle bundleWithPath: path];
+              if (bundle != nil)
+                {
+                  [tried addObject: path];
+                  if ((c = [bundle principalClass]) != nil)
+                    {
+                      break;	// Found it.
+                    }
+                }
+              /* Try alternative version with more libraries linked in.
+               * In some systems and situations the dynamic linker needs
+               * to haved the SQLClient, gnustep-base, and objc libraries
+               * explicitly linked into the bundle, but in others it
+               * requires them to not be linked. To handle that, we create
+               * two versions of each bundle, the seond version has _libs
+               * appended to the bundle name, and has the extra libraries linked.
+               */
+              path = [path stringByDeletingPathExtension];
+              path = [path stringByAppendingString: @"_libs"];
+              path = [path stringByAppendingPathExtension: @"bundle"];
+              bundle = [NSBundle bundleWithPath: path];
+              if (bundle != nil)
+                {
+                  [tried addObject: path];
+                  if ((c = [bundle principalClass]) != nil)
+                    {
+                      break;	// Found it.
+                    }
+                }
+            }
+          if (c == nil)
+            {
+              if ([tried count] == 0)
+                {
+                  [self debug: @"unable to load bundle for '%@' server type"
+                    @" ... failed to locate bundle in %@", s, paths];
+                }
+              else
+                {
+                  [self debug: @"unable to load backend class for '%@' server type"
+                    @" ... dynamic library load failed in %@", s, tried];
+                }
+              return;
+            }
+        }
+      if (c != [self class])
+        {
+          [self disconnect];
 #ifdef	GNUSTEP
-      GSDebugAllocationRemove(object_getClass(self), self);
+          GSDebugAllocationRemove(object_getClass(self), self);
 #endif
-      object_setClass(self, c);
+          object_setClass(self, c);
 #ifdef	GNUSTEP
-      GSDebugAllocationAdd(object_getClass(self), self);
+          GSDebugAllocationAdd(object_getClass(self), self);
 #endif
-    }
+        }
 
-  s = [d objectForKey: @"Database"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = [o objectForKey: @"Database"];
+      s = [d objectForKey: @"Database"];
       if ([s isKindOfClass: NSStringClass] == NO)
-	{
-	  s = nil;
-	}
-    }
-  [self setDatabase: s];
+        {
+          s = [o objectForKey: @"Database"];
+          if ([s isKindOfClass: NSStringClass] == NO)
+            {
+              s = nil;
+            }
+        }
+      [self setDatabase: s];
 
-  s = [d objectForKey: @"User"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = [o objectForKey: @"User"];
+      s = [d objectForKey: @"User"];
       if ([s isKindOfClass: NSStringClass] == NO)
-	{
-	  s = @"";
-	}
-    }
-  [self setUser: s];
+        {
+          s = [o objectForKey: @"User"];
+          if ([s isKindOfClass: NSStringClass] == NO)
+            {
+              s = @"";
+            }
+        }
+      [self setUser: s];
 
-  s = [d objectForKey: @"Password"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = [o objectForKey: @"Password"];
+      s = [d objectForKey: @"Password"];
       if ([s isKindOfClass: NSStringClass] == NO)
-	{
-	  s = @"";
-	}
+        {
+          s = [o objectForKey: @"Password"];
+          if ([s isKindOfClass: NSStringClass] == NO)
+            {
+              s = @"";
+            }
+        }
+      [self setPassword: s];
     }
-  [self setPassword: s];
+  NS_HANDLER
+    {
+      [lock unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 }
 
 /** Internal method to populate the cache with the result of a query.

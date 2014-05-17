@@ -1238,7 +1238,11 @@ SQLCLIENT_PRIVATE
 
 /**
  * The default implementation calls NSLogv to log a debug message.<br />
- * Override this in a category to provide more sophisticated logging.
+ * Override this in a category to provide more sophisticated logging.<br />
+ * Do NOT override with code which can be slow or which calls (directly
+ * or indirectly) any SQLCLient methods, since this method will be used
+ * inside locked regions of the SQLClient code and you could cause
+ * deadlocks or long delays to other threads using the class.
  */
 - (void) debug: (NSString*)fmt, ...;
 
