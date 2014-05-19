@@ -1,3 +1,10 @@
+2014-05-19 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.m: More locking to try to protect all access to the
+	database connection.
+	* GNUmakefile: new subminor version for bugfix release 
+	* Version 1.7.2: released
+
 2014-05-13 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.m:
