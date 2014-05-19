@@ -2284,10 +2284,11 @@ static unsigned int	maxConnections = 8;
                 }
               else
                 {
-                  [self debug: @"unable to load backend class for '%@' server type"
-                    @" ... dynamic library load failed in %@", s, tried];
+                  [self debug: @"unable to load backend class for '%@' server"
+                    @" type ... dynamic library load failed in %@", s, tried];
                 }
-              return;
+              [lock unlock];
+              NS_VOIDRETURN;
             }
         }
       if (c != [self class])
