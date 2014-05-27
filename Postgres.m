@@ -439,8 +439,18 @@ connectQuote(NSString *str)
 
 - (void) _availableData: (NSNotification*)n
 {
-  PQconsumeInput(connection);
-  [self _checkNotifications];
+  [lock lock];
+  NS_DURING
+    {
+      PQconsumeInput(connection);
+      [self _checkNotifications];
+      [lock unlock];
+    }
+  NS_HANDLER
+    {
+      [lock unlock];
+    }
+  NS_ENDHANDLER
   [fileHandle waitForDataInBackgroundAndNotify];
 }
 

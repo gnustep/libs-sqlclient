@@ -1128,7 +1128,12 @@ SQLCLIENT_PRIVATE
  * If the 'Local' value is the boolean YES, the notification originated
  * as an action by this SQLClient instance.<br />
  * If the 'Payload' value is not nil, then it is a string providing extra
- * information about the notification.
+ * information about the notification.<br />
+ * NB. At the point when the observer is notified about an event the
+ * database client object will be locked and may not be used to query
+ * or modify the database (typically a database query will already be
+ * in progress).  The method handling the notification must therefore
+ * handle any database operations in a later timeout.
  */
 - (void) addObserver: (id)anObserver
             selector: (SEL)aSelector

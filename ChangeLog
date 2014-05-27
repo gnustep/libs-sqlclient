@@ -1,3 +1,12 @@
+2014-05-27 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.h: Warn about not using the database inside a
+	notification handler.
+	* Postgres.m: Add locking around database operations caused
+	by asynchronous arrival of a notification.
+	* GNUmakefile: new subminor version for bugfix release 
+	* Version 1.7.3: released
+
 2014-05-19 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.m: More locking to try to protect all access to the
