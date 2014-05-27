@@ -62,14 +62,12 @@ typedef struct	{
   PGconn	*_connection;
   BOOL		_escapeStrings;         /* Can we use E'...' syntax?    */
   int           _backendPID;
-  NSFileHandle  *_fileHandle;
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
 #define	backendPID		(cInfo->_backendPID)
 #define	connection		(cInfo->_connection)
 #define	escapeStrings	        (cInfo->_escapeStrings)
-#define	fileHandle	        (cInfo->_fileHandle)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -228,18 +226,6 @@ connectQuote(NSString *str)
 {
   if (extra != 0 && connection != 0)
     {
-      /* On disconnectionwe no longer want to watch for events from the
-       * postgres socket.
-       */
-      if (nil != fileHandle)
-        {
-          [[NSNotificationCenter defaultCenter] removeObserver: self
-                                                          name: nil
-                                                        object: fileHandle];
-          [fileHandle release];
-          fileHandle = nil;
-        }
-
       NS_DURING
 	{
 	  if ([self isInTransaction] == YES)
@@ -437,41 +423,9 @@ connectQuote(NSString *str)
   return rowCount;
 }
 
-- (void) _availableData: (NSNotification*)n
-{
-  [lock lock];
-  NS_DURING
-    {
-      PQconsumeInput(connection);
-      [self _checkNotifications];
-      [lock unlock];
-    }
-  NS_HANDLER
-    {
-      [lock unlock];
-    }
-  NS_ENDHANDLER
-  [fileHandle waitForDataInBackgroundAndNotify];
-}
-
 - (void) backendListen: (NSString*)name
 {
   [self execute: @"LISTEN ", name, nil];
-  if (nil == fileHandle)
-    {
-      NSNotificationCenter      *nc;
-      int                       desc;
-
-      desc = PQsocket(connection);
-      fileHandle = [[NSFileHandle alloc] initWithFileDescriptor: desc
-                                                 closeOnDealloc: NO];
-      nc = [NSNotificationCenter defaultCenter];
-      [nc addObserver: self
-             selector: @selector(_availableData:)
-                 name: NSFileHandleDataAvailableNotification
-               object: fileHandle];
-      [fileHandle waitForDataInBackgroundAndNotify];
-    }
 }
 
 - (void) backendNotify: (NSString*)name payload: (NSString*)more
