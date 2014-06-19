@@ -36,7 +36,7 @@ DOCUMENT_NAME=SQLClient
 
 SQLClient_INTERFACE_VERSION=1.7
 
-SQLClient_OBJC_FILES = SQLClient.m
+SQLClient_OBJC_FILES = SQLClient.m SQLClientPool.m
 SQLClient_LIBRARIES_DEPEND_UPON = -lPerformance
 SQLClient_HEADER_FILES = SQLClient.h
 SQLClient_AGSDOC_FILES = SQLClient.h

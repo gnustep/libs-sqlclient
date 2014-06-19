@@ -375,6 +375,7 @@ SQLCLIENT_PRIVATE
    * This should only be modified by the -setShouldTrim: method.
    */
   BOOL                  _shouldTrim;    /** Should whitespace be trimmed? */
+  BOOL                  _forUseInPool;  /** Should be used in a pool only */
   NSString		*_name;		/** Unique identifier for instance */
   NSString		*_client;	/** Identifier within backend */
   NSString		*_database;	/** The configured database name/host */
@@ -623,6 +624,13 @@ SQLCLIENT_PRIVATE
 - (id) initWithConfiguration: (NSDictionary*)config;
 
 /**
+ * Calls -initWithConfiguration:name:pool: passing NO to say the client is
+ * not in a pool.
+ */
+- (id) initWithConfiguration: (NSDictionary*)config
+			name: (NSString*)reference;
+
+/**
  * Initialise using the supplied configuration, or if that is nil, try to
  * use values from NSUserDefaults (and automatically update when the
  * defaults change).<br />
@@ -630,10 +638,10 @@ SQLCLIENT_PRIVATE
  * a nil name is supplied, defaults to the value of SQLClientName in the
  * configuration dictionary (or in the standard user defaults).  If there is
  * no value for SQLClientName, uses the string 'Database'.<br />
- * If a SQLClient instance already exists with the name used for this
- * instance, the receiver is deallocated and the existing instance is
- * retained and returned ... there may only ever be one instance for a
- * particular reference name.<br />
+ * If forUseInPool is NO and a SQLClient instance already exists with the
+ * name used for this instance, the receiver is deallocated and the existing
+ * instance is retained and returned ... there may only ever be one instance
+ * for a particular reference name which is not in a pool.<br />
  * <br />
  * The config argument (or the SQLClientReferences user default)
  * is a dictionary with names as keys and dictionaries
@@ -653,7 +661,8 @@ SQLCLIENT_PRIVATE
  * connect to a database on a different host over the network.
  */
 - (id) initWithConfiguration: (NSDictionary*)config
-			name: (NSString*)reference;
+			name: (NSString*)reference
+                        pool: (BOOL)forUseInPool;
 
 /** Two clients are considered equal if they refer to the same database
  * and are logged in as the same database user using the same protocol.
@@ -1367,11 +1376,58 @@ SQLCLIENT_PRIVATE
  * asynchronous query to update them will be run on the cache thread.<br />
  * The rule is that, if the item's age is more than twice its nominal
  * lifetime, it will be retrieved immediately, otherwise it will be
- * retrieved asynchrnonously.<br />
+ * retrieved asynchronously.<br />
  * Currently this may only be the main thread or nil.  Any attempt to set
  * another thread will use the main thread instead.
  */
 - (void) setCacheThread: (NSThread*)aThread;
+@end
+
+/** <p>An SQLClientPool instance may be used to create/control a pool of
+ * client objects.  Code may obtain autoreleased proxies to the clients
+ * from the pool and use them safe in the knowledge that they won't be
+ * used anywhere else ... as soon as the proxy is deallocated the client
+ * is returned to the pool.
+ * </p>
+ * <p>All clients in the pool share the same cache object, so query results
+ * cached by one client will be available to other clients in the pool.
+ * </p>
+ */
+@interface	SQLClientPool : NSObject
+{
+  NSConditionLock       *lock;  /** Controls access to the pool contents */
+  SQLClient             **c;    /** The clients of the pool. */
+  SQLClient             **p;    /** The proxies of the pool. */
+  int                   max;    /** Maximum connection count */
+  int                   min;    /** Minimum connection count */
+}
+
+/**
+ * Calls -initWithConfiguration:name:pool: passing NO to say the client is
+ * not in a pool.
+ */
+- (id) initWithConfiguration: (NSDictionary*)config
+			name: (NSString*)reference
+                         max: (int)maxConnections
+                         min: (int)minConnections;
+
+/** Fetches an (autoreleased) proxy to a client from the pool.
+ */
+- (SQLClient*) provideClient;
+
+/**
+ * Sets the cache for all the clients in the pool.
+ */
+- (void) setCache: (GSCache*)aCache;
+
+/** Takes the client form the provided proxy and places it back
+ * in the queue (so the proxy stops using it).  This happens automatically
+ * when the proxy is deallocated so you don't generally needs to do it.
+ * Returns YES if the supplied proxy referred to a client in the pool,
+ * NO otherwise.
+ */
+- (BOOL) swallowClient: (SQLClient*)proxy;
+
 @end
 
 /**

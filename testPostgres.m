@@ -42,6 +42,7 @@ int
 main()
 {
   NSAutoreleasePool	*pool = [NSAutoreleasePool new];
+  SQLClientPool         *sp;
   SQLClient		*db;
   NSUserDefaults	*defs;
   NSMutableArray	*records;
@@ -68,7 +69,11 @@ main()
       nil]
     ];
 
-  db = [SQLClient clientWithConfiguration: nil name: @"test"];
+  sp = [[SQLClientPool alloc] initWithConfiguration: nil
+                                               name: @"test"
+                                                max: 2
+                                                min: 1];
+  db = [[sp autorelease] provideClient];
 
   l = [Logger new];
   [[NSNotificationCenter defaultCenter] addObserver: l

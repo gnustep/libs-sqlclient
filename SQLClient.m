@@ -36,9 +36,9 @@
 #import	<Foundation/NSDictionary.h>
 #import	<Foundation/NSEnumerator.h>
 #import	<Foundation/NSException.h>
-#import	<Foundation/NSHashTable.h>
 #import	<Foundation/NSKeyValueCoding.h>
 #import	<Foundation/NSLock.h>
+#import	<Foundation/NSHashTable.h>
 #import	<Foundation/NSMapTable.h>
 #import	<Foundation/NSNotification.h>
 #import	<Foundation/NSNull.h>
@@ -104,237 +104,6 @@ static Class	NSSetClass = 0;
   [super dealloc];
 }
 @end
-
-@interface	SQLClientPool : NSObject
-{
-  unsigned	pool;
-  NSString	*name;
-  NSString	*serv;
-  NSString	*user;
-  NSString	*pass;
-  NSString	*path;
-  NSHashTable	*idle;
-  NSHashTable	*used;
-}
-- (BOOL) isSingle;
-- (BOOL) makeIdle: (SQLClient*)c;
-- (BOOL) makeUsed: (SQLClient*)c;
-- (void) setConfiguration: (NSDictionary*)o;
-@end
-
-@implementation	SQLClientPool
-- (void) dealloc
-{
-  if (idle != 0)
-    {
-      NSFreeHashTable(idle);
-      idle = 0;
-    }
-  if (used != 0)
-    {
-      NSFreeHashTable(used);
-      used = 0;
-    }
-  [name release]; name = nil;
-  [serv release]; serv = nil;
-  [user release]; user = nil;
-  [pass release]; pass = nil;
-  [path release]; path = nil;
-  [super dealloc];
-}
-
-- (id) initWithConfiguration: (NSDictionary*)config
-			name: (NSString*)reference
-{
-  name = [reference copy];
-  idle = NSCreateHashTable(NSNonRetainedObjectHashCallBacks, 16);
-  used = NSCreateHashTable(NSNonRetainedObjectHashCallBacks, 16);
-  [self setConfiguration: config];
-  return self;
-}
-
-- (BOOL) isSingle
-{
-  if (pool == 1)
-    {
-      return YES;
-    }
-  return NO;
-}
-
-- (BOOL) makeIdle: (SQLClient*)c
-{
-  if (NSHashGet(idle, (void*)c) == (void*)c)
-    {
-      return YES;				// Already idle
-    }
-  if (NSHashGet(used, (void*)c) == (void*)c)
-    {
-      NSHashRemove(used, (void*)c);
-    }
-  if (NSCountHashTable(idle) + NSCountHashTable(used) < pool)
-    {
-      NSHashInsert(idle, (void*)c);
-      return YES;
-    }
-  return NO;
-}
-
-- (BOOL) makeUsed: (SQLClient*)c
-{
-  if (NSHashGet(used, (void*)c) == (void*)c)
-    {
-      return YES;				// Already used
-    }
-  if (NSHashGet(idle, (void*)c) == (void*)c)
-    {
-      NSHashRemove(idle, (void*)c);
-    }
-  if (NSCountHashTable(idle) + NSCountHashTable(used) < pool)
-    {
-      NSHashInsert(used, (void*)c);
-      return YES;
-    }
-  return NO;
-}
-
-- (void) setConfiguration: (NSDictionary*)o
-{
-  NSDictionary	*d;
-  NSString	*s;
-  BOOL		change = NO;
-  int		capacity;
-
-  /*
-   * get dictionary containing config info for this client by name.
-   */
-  d = [o objectForKey: @"SQLClientReferences"];
-  if ([d isKindOfClass: [NSDictionary class]] == NO)
-    {
-      d = nil;
-    }
-  d = [d objectForKey: name];
-  if ([d isKindOfClass: [NSDictionary class]] == NO)
-    {
-      d = nil;
-    }
-
-  s = [d objectForKey: @"ServerType"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = @"Postgres";
-    }
-  if (s != serv && [s isEqual: serv] == NO)
-    {
-      s = [s copy];
-      [serv release];
-      serv = s;
-      change = YES;
-    }
-
-  s = [d objectForKey: @"Database"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = [o objectForKey: @"Database"];
-      if ([s isKindOfClass: NSStringClass] == NO)
-	{
-	  s = nil;
-	}
-    }
-  if (s != path && [s isEqual: path] == NO)
-    {
-      s = [s copy];
-      [path release];
-      path = s;
-      change = YES;
-    }
-
-  s = [d objectForKey: @"User"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = [o objectForKey: @"User"];
-      if ([s isKindOfClass: NSStringClass] == NO)
-	{
-	  s = @"";
-	}
-    }
-  if (s != user && [s isEqual: user] == NO)
-    {
-      s = [s copy];
-      [user release];
-      user = s;
-      change = YES;
-    }
-
-  s = [d objectForKey: @"Password"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = [o objectForKey: @"Password"];
-      if ([s isKindOfClass: NSStringClass] == NO)
-	{
-	  s = @"";
-	}
-    }
-  if (s != pass && [s isEqual: pass] == NO)
-    {
-      s = [s copy];
-      [pass release];
-      pass = s;
-      change = YES;
-    }
-
-  s = [d objectForKey: @"Password"];
-  if ([s isKindOfClass: NSStringClass] == NO)
-    {
-      s = @"1";
-    }
-  capacity = [s intValue];
-  if (capacity < 1) capacity = 1;
-  if (capacity > 100) capacity = 100;
-
-  if (change == YES)
-    {
-      NSResetHashTable(idle);
-      NSResetHashTable(used);
-    }
-  if (pool > capacity)
-    {
-      unsigned	ic = NSCountHashTable(idle);
-      unsigned	uc = NSCountHashTable(used);
-
-      if (ic + uc > capacity)
-        {
-	  NSHashEnumerator	e = NSEnumerateHashTable(idle);
-	  void			*c;
-
-	  while (ic + uc > capacity
-	    && (c = NSNextHashEnumeratorItem(&e)) != nil)
-	    {
-	      NSHashRemove(idle, c);
-	      ic--;
-	    }
-	  NSEndHashTableEnumeration(&e);
-	  if (uc > capacity)
-	    {
-	      NSHashEnumerator	e = NSEnumerateHashTable(used);
-	      void		*c;
-
-	      while (uc > capacity
-		&& (c = NSNextHashEnumeratorItem(&e)) != nil)
-		{
-		  NSHashRemove(used, c);
-		  uc--;
-		}
-	      NSEndHashTableEnumeration(&e);
-	    }
-        }
-    }
-  pool = capacity;
-}
-
-@end
-
-
 
 static Class aClass = 0;
 static Class rClass = 0;
@@ -866,8 +635,9 @@ static NSTimeInterval	classDuration = -1;
 /**
  * Container for all instances.
  */
+static NSHashTable	*clientsHash = 0;
 static NSMapTable	*clientsMap = 0;
-static NSRecursiveLock	*clientsMapLock = nil;
+static NSRecursiveLock	*clientsLock = nil;
 static NSString		*beginString = @"begin";
 static NSArray		*beginStatement = nil;
 static NSString		*commitString = @"commit";
@@ -898,11 +668,19 @@ static unsigned int	maxConnections = 8;
 
 + (NSArray*) allClients
 {
-  NSArray	*a;
+  NSMutableArray	*a;
+  NSHashEnumerator	e;
+  id                    o;
 
-  [clientsMapLock lock];
-  a = NSAllMapTableValues(clientsMap);
-  [clientsMapLock unlock];
+  [clientsLock lock];
+  a = [NSMutableArray arrayWithCapacity: NSCountHashTable(clientsHash)];
+  e = NSEnumerateHashTable(clientsHash);
+  while (nil != (o = (id)NSNextHashEnumeratorItem(&e)))
+    {
+      [a addObject: o];
+    }
+  NSEndHashTableEnumeration(&e);
+  [clientsLock unlock];
   return a;
 }
 
@@ -951,10 +729,10 @@ static unsigned int	maxConnections = 8;
 	}
     }
 
-  [clientsMapLock lock];
+  [clientsLock lock];
   existing = (SQLClient*)NSMapGet(clientsMap, reference);
   [[existing retain] autorelease];
-  [clientsMapLock unlock];
+  [clientsLock unlock];
   return existing;
 }
 
@@ -966,11 +744,12 @@ static unsigned int	maxConnections = 8;
   queryModes = [[NSArray alloc] initWithObjects: modes count: 1];
   GSTickerTimeNow();
   [SQLRecord class];	// Force initialisation
-  if (clientsMap == 0)
+  if (0 == clientsHash)
     {
+      clientsHash = NSCreateHashTable(NSNonOwnedPointerHashCallBacks, 0);
       clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
         NSNonRetainedObjectMapValueCallBacks, 0);
-      clientsMapLock = [NSRecursiveLock new];
+      clientsLock = [NSRecursiveLock new];
       beginStatement = [[NSArray arrayWithObject: beginString] retain];
       commitStatement = [[NSArray arrayWithObject: commitString] retain];
       rollbackStatement = [[NSArray arrayWithObject: rollbackString] retain];
@@ -992,15 +771,14 @@ static unsigned int	maxConnections = 8;
 
 + (void) purgeConnections: (NSDate*)since
 {
-  NSMapEnumerator	e;
-  NSString		*n;
+  NSHashEnumerator	e;
   SQLClient		*o;
   unsigned int		connectionCount = 0;
   NSTimeInterval	t = [since timeIntervalSinceReferenceDate];
 
-  [clientsMapLock lock];
-  e = NSEnumerateMapTable(clientsMap);
-  while (NSNextMapEnumeratorPair(&e, (void**)&n, (void**)&o) != 0)
+  [clientsLock lock];
+  e = NSEnumerateHashTable(clientsHash);
+  while (nil != (o = (SQLClient*)NSNextHashEnumeratorItem(&e)))
     {
       if (since != nil)
 	{
@@ -1016,8 +794,8 @@ static unsigned int	maxConnections = 8;
 	  connectionCount++;
 	}
     }
-  NSEndMapTableEnumeration(&e);
-  [clientsMapLock unlock];
+  NSEndHashTableEnumeration(&e);
+  [clientsLock unlock];
 
   while (connectionCount >= maxConnections)
     {
@@ -1025,9 +803,9 @@ static unsigned int	maxConnections = 8;
       NSTimeInterval	oldest = 0.0;
   
       connectionCount = 0;
-      [clientsMapLock lock];
-      e = NSEnumerateMapTable(clientsMap);
-      while (NSNextMapEnumeratorPair(&e, (void**)&n, (void**)&o))
+      [clientsLock lock];
+      e = NSEnumerateHashTable(clientsHash);
+      while (nil != (o = (SQLClient*)NSNextHashEnumeratorItem(&e)))
 	{
 	  if ([o connected] == YES)
 	    {
@@ -1041,8 +819,8 @@ static unsigned int	maxConnections = 8;
 		}
 	    }
 	}
-      NSEndMapTableEnumeration(&e);
-      [clientsMapLock unlock];
+      NSEndHashTableEnumeration(&e);
+      [clientsLock unlock];
       connectionCount--;
       if ([other debugging] > 0)
 	{
@@ -1233,12 +1011,13 @@ static unsigned int	maxConnections = 8;
 {
   NSNotificationCenter	*nc;
 
-  if (_name != nil)
+  [clientsLock lock];
+  NSHashRemove(clientsHash, (void*)self);
+  if (_name != nil && NO == _forUseInPool)
     {
-      [clientsMapLock lock];
       NSMapRemove(clientsMap, (void*)_name);
-      [clientsMapLock unlock];
     }
+  [clientsLock unlock];
   nc = [NSNotificationCenter defaultCenter];
   [nc removeObserver: self];
   [self disconnect];
@@ -1382,6 +1161,14 @@ static unsigned int	maxConnections = 8;
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
 {
+  return [self initWithConfiguration: config name: reference pool: NO];
+}
+
+
+- (id) initWithConfiguration: (NSDictionary*)config
+			name: (NSString*)reference
+                        pool: (BOOL)forUseInPool
+{
   NSNotification	*n;
   NSDictionary		*conf = config;
   id			existing;
@@ -1401,8 +1188,16 @@ static unsigned int	maxConnections = 8;
 	}
     }
 
-  [clientsMapLock lock];
-  existing = (SQLClient*)NSMapGet(clientsMap, reference);
+  [clientsLock lock];
+  _forUseInPool = (NO == forUseInPool) ? NO : YES;
+  if (YES == _forUseInPool)
+    {
+      existing = (SQLClient*)NSMapGet(clientsMap, reference);
+    }
+  else
+    {
+      existing = nil;
+    }
   if (nil == existing)
     {
       lock = [NSRecursiveLock new];	// Ensure thread-safety.
@@ -1426,6 +1221,7 @@ static unsigned int	maxConnections = 8;
 	object: conf
 	userInfo: nil];
 
+      NSHashInsert(clientsHash, (void*)self);
       [self _configure: n];	// Actually set up the configuration.
     }
   else
@@ -1433,7 +1229,7 @@ static unsigned int	maxConnections = 8;
       [self release];
       self = [existing retain];
     }
-  [clientsMapLock unlock];
+  [clientsLock unlock];
 
   return self;
 }
@@ -1733,12 +1529,12 @@ static unsigned int	maxConnections = 8;
    * it from the table so that no other thread will find it
    * and try to use it while it is being deallocated.
    */
-  [clientsMapLock lock];
+  [clientsLock lock];
   if (NSDecrementExtraRefCountWasZero(self))
     {
       [self dealloc];
     }
-  [clientsMapLock unlock];
+  [clientsLock unlock];
 }
 
 - (void) rollback
@@ -1803,24 +1599,27 @@ static unsigned int	maxConnections = 8;
     {
       if ([s isEqual: _name] == NO)
         {
-          [clientsMapLock lock];
-          if (NSMapGet(clientsMap, s) != 0)
+          [clientsLock lock];
+          if (NO == _forUseInPool)
             {
-              [clientsMapLock unlock];
-              [lock unlock];
-              if ([self debugging] > 0)
+              if (NSMapGet(clientsMap, s) != 0)
                 {
-                  [self debug: @"Error attempt to re-use client name %@", s];
+                  [clientsLock unlock];
+                  [lock unlock];
+                  if ([self debugging] > 0)
+                    {
+                      [self
+                        debug: @"Error attempt to re-use client name %@", s];
+                    }
+                  NS_VOIDRETURN;
                 }
-              NS_VOIDRETURN;
             }
           if (connected == YES)
             {
               [self disconnect];
             }
-          if (_name != nil)
+          if (NO == _forUseInPool && _name != nil)
             {
-              [[self retain] autorelease];
               NSMapRemove(clientsMap, (void*)_name);
             }
           s = [s copy];
@@ -1828,8 +1627,11 @@ static unsigned int	maxConnections = 8;
           _name = s;
           [_client release];
           _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
-          NSMapInsert(clientsMap, (void*)_name, (void*)self);
-          [clientsMapLock unlock];
+          if (NO == _forUseInPool && _name != nil)
+            {
+              NSMapInsert(clientsMap, (void*)_name, (void*)self);
+            }
+          [clientsLock unlock];
         }
     }
   NS_HANDLER
