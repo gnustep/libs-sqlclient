@@ -1412,8 +1412,15 @@ SQLCLIENT_PRIVATE
 }
 
 /**
- * Calls -initWithConfiguration:name:pool: passing NO to say the client is
- * not in a pool.
+ * Creates a pool of clients using a single client configuration.<br />
+ * Calls -initWithConfiguration:name:pool: (passing NO to say the client
+ * is not in a pool) top create each client.<br />
+ * The value of maxConnections is the size of the pool (ie the number of
+ * clients created) and thus the maximum number of concurrent connections
+ * to the database server.<br />
+ * The value of minConnections is the minimum number of connected clients
+ * normally expected to be in the pool.  The pool tries to ensure that it
+ * doesn't contain more than this number of idle connected clients.
  */
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
