@@ -341,6 +341,8 @@ extern NSTimeInterval	SQLClientTimeStart();
  */
 extern unsigned	SQLClientTimeTick();
 
+@class SQLClientPool;
+
 /**
  * <p>The SQLClient class encapsulates dynamic SQL access to relational
  * database systems.  A shared instance of the class is used for
@@ -398,6 +400,7 @@ SQLCLIENT_PRIVATE
   unsigned int		_connectFails;	/** The count of connection failures */
   NSMapTable            *_observers;    /** Observations of async events */
   NSCountedSet          *_names;        /** Track notification names */
+  SQLClientPool         *_pool;         /** The pool of the client (or nil) */
   /** Allow for extensions by allocating memory and pointing to it from
    * the _extra ivar.  That way we can avoid binary incompatibility between
    * minor releases.
@@ -639,7 +642,7 @@ SQLCLIENT_PRIVATE
  * a nil name is supplied, defaults to the value of SQLClientName in the
  * configuration dictionary (or in the standard user defaults).  If there is
  * no value for SQLClientName, uses the string 'Database'.<br />
- * If forUseInPool is NO and a SQLClient instance already exists with the
+ * If pool is nil and a SQLClient instance already exists with the
  * name used for this instance, the receiver is deallocated and the existing
  * instance is retained and returned ... there may only ever be one instance
  * for a particular reference name which is not in a pool.<br />
@@ -663,7 +666,7 @@ SQLCLIENT_PRIVATE
  */
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
-                        pool: (BOOL)forUseInPool;
+                        pool: (SQLClientPool*)pool;
 
 /** Two clients are considered equal if they refer to the same database
  * and are logged in as the same database user using the same protocol.
@@ -1395,7 +1398,7 @@ SQLCLIENT_PRIVATE
 /** <p>An SQLClientPool instance may be used to create/control a pool of
  * client objects.  Code may obtain autoreleased proxies to the clients
  * from the pool and use them safe in the knowledge that they won't be
- * used anywhere else ... as soon as the proxy is deallocated the client
+ * used anywhere else ... as soon as the client would be deallocated, it
  * is returned to the pool.
  * </p>
  * <p>All clients in the pool share the same cache object, so query results
@@ -1406,7 +1409,7 @@ SQLCLIENT_PRIVATE
 {
   NSConditionLock       *lock;  /** Controls access to the pool contents */
   SQLClient             **c;    /** The clients of the pool. */
-  SQLClient             **p;    /** The proxies of the pool. */
+  BOOL                  *u;     /** Whether the client is in use. */
   int                   max;    /** Maximum connection count */
   int                   min;    /** Minimum connection count */
   NSTimeInterval	_duration;      /** Duration logging threshold */
@@ -1429,13 +1432,13 @@ SQLCLIENT_PRIVATE
                          max: (int)maxConnections
                          min: (int)minConnections;
 
-/** Fetches an (autoreleased) proxy to a client from the pool.<br />
+/** Fetches an (autoreleased) client from the pool.<br />
  * This method blocks indefinitely waiting for a client to become
  * available in the pool.
  */
 - (SQLClient*) provideClient;
 
-/** Fetches an (autoreleased) proxy to a client from the pool.<br />
+/** Fetches an (autoreleased) client from the pool.<br />
  * If no client is or becomes available before the specified date then
  * the method returns nil.<br />
  * If when is nil then a date in the distant future is used so that
@@ -1461,16 +1464,15 @@ SQLCLIENT_PRIVATE
  */
 - (void) setDurationLogging: (NSTimeInterval)threshold;
 
-/** Takes the client form the provided proxy and places it back
- * in the queue (so the proxy stops using it).  This happens automatically
- * when the proxy is deallocated so you don't generally needs to do it.<br />
- * Returns YES if the supplied proxy referred to a client in the pool,
- * NO otherwise.<br />
+/** Puts the client back in the pool.  This happens automatically
+ * when a client from a pool would normally be deallocated so you don't
+ * generally need to do it.<br />
+ * Returns YES if the supplied client was from the pool, NO otherwise.<br />
  * If the swallowed client would take the count of idle client connections
  * in the pool above the configured minimum, the oldest (ie longest idle)
  * client in the pool is disconnected.
  */
-- (BOOL) swallowClient: (SQLClient*)proxy;
+- (BOOL) swallowClient: (SQLClient*)client;
 
 @end
 

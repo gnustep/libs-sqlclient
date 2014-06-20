@@ -73,6 +73,19 @@ main()
                                                 name: @"test"
                                                  max: 2
                                                  min: 1] autorelease];
+#if 0
+{
+  NSAutoreleasePool     *p = [NSAutoreleasePool new];
+  SQLClient             *c0;
+  SQLClient             *c1;
+
+  [sp setDebugging: 2];
+  c0 = [sp provideClient];
+  c1 = [sp provideClient];
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 25.0]];
+  [p release];
+}
+#endif
   db = [sp provideClient];
   [sp swallowClient: db];
   db = [sp provideClient];

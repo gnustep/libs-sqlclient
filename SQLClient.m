@@ -1020,7 +1020,7 @@ static unsigned int	maxConnections = 8;
 
   [clientsLock lock];
   NSHashRemove(clientsHash, (void*)self);
-  if (_name != nil && NO == _forUseInPool)
+  if (_name != nil && nil == _pool)
     {
       NSMapRemove(clientsMap, (void*)_name);
     }
@@ -1168,13 +1168,13 @@ static unsigned int	maxConnections = 8;
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
 {
-  return [self initWithConfiguration: config name: reference pool: NO];
+  return [self initWithConfiguration: config name: reference pool: nil];
 }
 
 
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
-                        pool: (BOOL)forUseInPool
+                        pool: (SQLClientPool*)pool
 {
   NSNotification	*n;
   NSDictionary		*conf = config;
@@ -1196,14 +1196,14 @@ static unsigned int	maxConnections = 8;
     }
 
   [clientsLock lock];
-  _forUseInPool = (NO == forUseInPool) ? NO : YES;
-  if (YES == _forUseInPool)
+  _pool = pool;
+  if (nil == _pool)
     {
-      existing = (SQLClient*)NSMapGet(clientsMap, reference);
+      existing = nil;
     }
   else
     {
-      existing = nil;
+      existing = (SQLClient*)NSMapGet(clientsMap, reference);
     }
   if (nil == existing)
     {
@@ -1584,7 +1584,14 @@ static unsigned int	maxConnections = 8;
   [clientsLock lock];
   if (NSDecrementExtraRefCountWasZero(self))
     {
-      [self dealloc];
+      if (nil != _pool)
+        {
+          [_pool swallowClient: self];
+        }
+      else
+        {
+          [self dealloc];
+        }
     }
   [clientsLock unlock];
 }
@@ -1652,7 +1659,7 @@ static unsigned int	maxConnections = 8;
       if ([s isEqual: _name] == NO)
         {
           [clientsLock lock];
-          if (NO == _forUseInPool)
+          if (nil == _pool)
             {
               if (NSMapGet(clientsMap, s) != 0)
                 {
@@ -1670,7 +1677,7 @@ static unsigned int	maxConnections = 8;
             {
               [self disconnect];
             }
-          if (NO == _forUseInPool && _name != nil)
+          if (nil == _pool && _name != nil)
             {
               NSMapRemove(clientsMap, (void*)_name);
             }
@@ -1679,7 +1686,7 @@ static unsigned int	maxConnections = 8;
           _name = s;
           [_client release];
           _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
-          if (NO == _forUseInPool && _name != nil)
+          if (nil == _pool && _name != nil)
             {
               NSMapInsert(clientsMap, (void*)_name, (void*)self);
             }
