@@ -76,10 +76,11 @@ NSString * const SQLClientDidDisconnectNotification
 static NSNull	*null = nil;
 static NSArray	*queryModes = nil;
 static NSThread	*mainThread = nil;
-static Class	NSStringClass = 0;
-static Class	NSArrayClass = 0;
-static Class	NSDateClass = 0;
-static Class	NSSetClass = 0;
+static Class	NSStringClass = Nil;
+static Class	NSArrayClass = Nil;
+static Class	NSDateClass = Nil;
+static Class	NSSetClass = Nil;
+static Class	SQLClientClass = Nil;
 
 @interface	_ConcreteSQLRecord : SQLRecord
 {
@@ -738,29 +739,34 @@ static unsigned int	maxConnections = 8;
 
 + (void) initialize
 {
-  static id	modes[1];
-  
-  modes[0] = NSDefaultRunLoopMode;
-  queryModes = [[NSArray alloc] initWithObjects: modes count: 1];
-  GSTickerTimeNow();
-  [SQLRecord class];	// Force initialisation
-  if (0 == clientsHash)
+  if (Nil == SQLClientClass && [SQLClient class] == self)
     {
-      clientsHash = NSCreateHashTable(NSNonOwnedPointerHashCallBacks, 0);
-      clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
-        NSNonRetainedObjectMapValueCallBacks, 0);
-      clientsLock = [NSRecursiveLock new];
-      beginStatement = [[NSArray arrayWithObject: beginString] retain];
-      commitStatement = [[NSArray arrayWithObject: commitString] retain];
-      rollbackStatement = [[NSArray arrayWithObject: rollbackString] retain];
-      NSStringClass = [NSString class];
-      NSArrayClass = [NSArray class];
-      NSSetClass = [NSSet class];
-      [NSTimer scheduledTimerWithTimeInterval: 1.0
-				       target: self
-				     selector: @selector(_tick:)
-				     userInfo: 0
-				      repeats: YES];
+      static id	modes[1];
+      
+      SQLClientClass = self;
+      modes[0] = NSDefaultRunLoopMode;
+      queryModes = [[NSArray alloc] initWithObjects: modes count: 1];
+      GSTickerTimeNow();
+      [SQLRecord class];	// Force initialisation
+      if (0 == clientsHash)
+        {
+          clientsHash = NSCreateHashTable(NSNonOwnedPointerHashCallBacks, 0);
+          clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
+            NSNonRetainedObjectMapValueCallBacks, 0);
+          clientsLock = [NSRecursiveLock new];
+          beginStatement = [[NSArray arrayWithObject: beginString] retain];
+          commitStatement = [[NSArray arrayWithObject: commitString] retain];
+          rollbackStatement
+            = [[NSArray arrayWithObject: rollbackString] retain];
+          NSStringClass = [NSString class];
+          NSArrayClass = [NSArray class];
+          NSSetClass = [NSSet class];
+          [NSTimer scheduledTimerWithTimeInterval: 1.0
+                                           target: self
+                                         selector: @selector(_tick:)
+                                         userInfo: 0
+                                          repeats: YES];
+        }
     }
 }
 
@@ -958,6 +964,7 @@ static unsigned int	maxConnections = 8;
                     }
                 }
 
+	      _lastStart = GSTickerTimeNow();
 	      [self backendConnect];
               /* On establishng a new connection, we must restore any
                * listen instructions in the backend.
@@ -1272,6 +1279,51 @@ static unsigned int	maxConnections = 8;
       return [NSDate dateWithTimeIntervalSinceReferenceDate: _lastOperation];
     }
   return nil;
+}
+
+- (SQLClient*) longestIdle: (SQLClient*)other
+{
+  NSTimeInterval        t0;
+  NSTimeInterval        t1;
+
+  NSAssert([other isKindOfClass: SQLClientClass], NSInvalidArgumentException);
+
+  t0 = _lastOperation;
+  if (t0 < _lastStart)
+    {
+      t0 = _lastStart;
+    }
+  if (NO == connected || 0 != _connectFails)
+    {
+      t0 = 0.0;
+    }
+
+  if (YES == [other isProxy])
+    {
+      t1 = 0.0;
+    }
+  else
+    {
+      t1 = other->_lastOperation;
+      if (t1 < other->_lastStart)
+        {
+          t1 = other->_lastStart;
+        }
+      if (NO == connected || 0 != other->_connectFails)
+        {
+          t1 = 0.0;
+        }
+    }
+
+  if (t0 <= 0.0 && t1 <= 0.0)
+    {
+      return nil;
+    }
+  if (t1 <= t0)
+    {
+      return other;
+    }
+  return self;
 }
 
 - (NSString*) name
@@ -1706,7 +1758,6 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
-      NSTimeInterval	start = 0.0;
       NSString	        *statement;
       BOOL              isCommit = NO;
       BOOL              isRollback = NO;
@@ -1722,10 +1773,7 @@ static unsigned int	maxConnections = 8;
           isRollback = YES;
         }
 
-      if (_duration >= 0)
-	{
-	  start = GSTickerTimeNow();
-	}
+      _lastStart = GSTickerTimeNow();
       result = [self backendExecute: info];
       _lastOperation = GSTickerTimeNow();
       [_statements addObject: statement];
@@ -1733,7 +1781,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  NSTimeInterval	d;
 
-	  d = _lastOperation - start;
+	  d = _lastOperation - _lastStart;
 	  if (d >= _duration)
 	    {
 	      if (isCommit || isRollback)
@@ -1814,19 +1862,14 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
-      NSTimeInterval	start = 0.0;
-
-      if (_duration >= 0)
-	{
-	  start = GSTickerTimeNow();
-	}
+      _lastStart = GSTickerTimeNow();
       result = [self backendQuery: stmt recordType: rtype listType: ltype];
       _lastOperation = GSTickerTimeNow();
       if (_duration >= 0)
 	{
 	  NSTimeInterval	d;
 
-	  d = _lastOperation - start;
+	  d = _lastOperation - _lastStart;
 	  if (d >= _duration)
 	    {
 	      debug = [NSString stringWithFormat:
@@ -2678,7 +2721,6 @@ static unsigned int	maxConnections = 8;
 {
   NSMutableArray	*result;
   NSMutableDictionary	*md;
-  NSTimeInterval	start;
   GSCache		*c;
   id			toCache;
 
@@ -2688,7 +2730,7 @@ static unsigned int	maxConnections = 8;
   md = [[NSThread currentThread] threadDictionary];
   [md setObject: rtype forKey: @"SQLClientRecordType"];
   [md setObject: ltype forKey: @"SQLClientListType"];
-  start = GSTickerTimeNow();
+  _lastStart = GSTickerTimeNow();
   c = [self cache];
   toCache = nil;
 
@@ -2733,7 +2775,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  NSTimeInterval	d;
 
-	  d = _lastOperation - start;
+	  d = _lastOperation - _lastStart;
 	  if (d >= _duration)
 	    {
 	      [self debug: @"Duration %g for query %@", d, stmt];

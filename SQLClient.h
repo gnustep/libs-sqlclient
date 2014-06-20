@@ -383,14 +383,15 @@ SQLCLIENT_PRIVATE
   NSString		*_user;		/** The configured user */
   NSMutableArray	*_statements;	/** Uncommitted statements */
   /**
-   * Timestamp of last operation.<br />
+   * Timestamp of completion of last operation.<br />
    * Maintained by -simpleExecute: -simpleQuery:recordType:listType:
    * and -cache:simpleQuery:recordType:listType:
    * Also set for a failed connection attempt, but not reported by the
    * -lastOperation method in that case.
    */
   NSTimeInterval	_lastOperation;	
-  NSTimeInterval	_duration;
+  NSTimeInterval	_lastStart;	/** Last op start or connect */
+  NSTimeInterval	_duration;      /** Duration logging threshold */
   unsigned int		_debugging;	/** The current debugging level */
   GSCache		*_cache;	/** The cache for query results */
   NSThread		*_cacheThread;	/** Thread for cache queries */
@@ -686,6 +687,14 @@ SQLCLIENT_PRIVATE
  * count as an operation.
  */
 - (NSDate*) lastOperation;
+
+/** Compares the receiver with the other client to see which one has been
+ * inactive but connected for longest (if they are connected) and returns
+ * that instance.<br />
+ * If neither is idle but connected, the method returns nil.<br />
+ * In a tie, the method returns the other instance.
+ */
+- (SQLClient*) longestIdle: (SQLClient*)other;
 
 /**
  * Return the database reference name for this instance (or nil).

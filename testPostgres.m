@@ -69,11 +69,13 @@ main()
       nil]
     ];
 
-  sp = [[SQLClientPool alloc] initWithConfiguration: nil
-                                               name: @"test"
-                                                max: 2
-                                                min: 1];
-  db = [[sp autorelease] provideClient];
+  sp = [[[SQLClientPool alloc] initWithConfiguration: nil
+                                                name: @"test"
+                                                 max: 2
+                                                 min: 1] autorelease];
+  db = [sp provideClient];
+  [sp swallowClient: db];
+  db = [sp provideClient];
 
   l = [Logger new];
   [[NSNotificationCenter defaultCenter] addObserver: l
