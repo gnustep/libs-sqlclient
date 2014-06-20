@@ -1,5 +1,10 @@
 2014-06-20 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* GNUmakefile: bump version to 1.8.0 for next release (will break
+	binary compatibility due to changes for pools adding ivars).
+
+2014-06-20 Richard Frith-Macdonald  <rfm@gnu.org>
+
         * SQLClient.h: Add SQLClientPool, new method to check idle clients
 	and new initialiser.
         * SQLClient.m: Changes to support pools of clients and permit a pool
