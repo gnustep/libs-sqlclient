@@ -1,3 +1,12 @@
+2014-06-20 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.h: Add SQLClientPool, new method to check idle clients
+	and new initialiser.
+        * SQLClient.m: Changes to support pools of clients and permit a pool
+	to contain multiple clients with the same config.
+	* SQLClientPool.m: new class to provide a pool of clients with the
+	same config.
+
 2014-05-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
         * SQLClient.h: Warn about not using the database inside a

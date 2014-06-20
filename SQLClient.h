@@ -1409,6 +1409,8 @@ SQLCLIENT_PRIVATE
   SQLClient             **p;    /** The proxies of the pool. */
   int                   max;    /** Maximum connection count */
   int                   min;    /** Minimum connection count */
+  NSTimeInterval	_duration;      /** Duration logging threshold */
+  unsigned int		_debugging;	/** The current debugging level */
 }
 
 /**
@@ -1427,20 +1429,46 @@ SQLCLIENT_PRIVATE
                          max: (int)maxConnections
                          min: (int)minConnections;
 
-/** Fetches an (autoreleased) proxy to a client from the pool.
+/** Fetches an (autoreleased) proxy to a client from the pool.<br />
+ * This method blocks indefinitely waiting for a client to become
+ * available in the pool.
  */
 - (SQLClient*) provideClient;
+
+/** Fetches an (autoreleased) proxy to a client from the pool.<br />
+ * If no client is or becomes available before the specified date then
+ * the method returns nil.<br />
+ * If when is nil then a date in the distant future is used so that
+ * the method will effectively wait forever to get a client.
+ */
+- (SQLClient*) provideClientBeforeDate: (NSDate*)when;
 
 /**
  * Sets the cache for all the clients in the pool.
  */
 - (void) setCache: (GSCache*)aCache;
 
+/**
+ * Sets the cache thread for all the clients in the pool.
+ */
+- (void) setCacheThread: (NSThread*)aThread;
+
+/** Set the debugging level for all clients in the pool.
+ */
+- (void) setDebugging: (unsigned int)level;
+
+/** Set the duration logging threshold for all clients in the pool.
+ */
+- (void) setDurationLogging: (NSTimeInterval)threshold;
+
 /** Takes the client form the provided proxy and places it back
  * in the queue (so the proxy stops using it).  This happens automatically
- * when the proxy is deallocated so you don't generally needs to do it.
+ * when the proxy is deallocated so you don't generally needs to do it.<br />
  * Returns YES if the supplied proxy referred to a client in the pool,
- * NO otherwise.
+ * NO otherwise.<br />
+ * If the swallowed client would take the count of idle client connections
+ * in the pool above the configured minimum, the oldest (ie longest idle)
+ * client in the pool is disconnected.
  */
 - (BOOL) swallowClient: (SQLClient*)proxy;
 
