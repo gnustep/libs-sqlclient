@@ -336,6 +336,8 @@ main()
       NSLog(@"Records - %@", [GSCache class]);
     }
 
+  NSLog(@"Pool stats:\n%@", [sp statistics]);
+
   [pool release];
   return 0;
 }

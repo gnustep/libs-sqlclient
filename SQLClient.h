@@ -1414,6 +1414,12 @@ SQLCLIENT_PRIVATE
   int                   min;    /** Minimum connection count */
   NSTimeInterval	_duration;      /** Duration logging threshold */
   unsigned int		_debugging;	/** The current debugging level */
+  uint64_t              _immediate;     /** Immediate client provisions */
+  uint64_t              _delayed;       /** Count of delayed provisions */
+  uint64_t              _failed;        /** Count of timed out provisions */
+  NSTimeInterval        _longest;       /** Count of longest delay */
+  NSTimeInterval        _delayWaits;    /** Time waiting for provisions */
+  NSTimeInterval        _failWaits;     /** Time waiting for timewouts */
 }
 
 /**
@@ -1463,6 +1469,10 @@ SQLCLIENT_PRIVATE
 /** Set the duration logging threshold for all clients in the pool.
  */
 - (void) setDurationLogging: (NSTimeInterval)threshold;
+
+/** Returns a string describing the usage of the pool.
+ */
+- (NSString*) statistics;
 
 /** Puts the client back in the pool.  This happens automatically
  * when a client from a pool would normally be deallocated so you don't
