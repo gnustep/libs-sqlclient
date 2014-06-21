@@ -181,6 +181,7 @@
 #import	<Foundation/NSArray.h>
 #import	<Foundation/NSObject.h>
 
+@class	NSConditionLock;
 @class	NSCountedSet;
 @class	NSMapTable;
 @class	NSMutableDictionary;
