@@ -380,13 +380,10 @@
 - (BOOL) swallowClient: (SQLClient*)client
 {
   BOOL  found = NO;
-  int   idle = 0;
-  int   used = 0;
-  int   cond = 0;
   int   index;
 
   [self _lock];
-  for (index = 0; index < max; index++)
+  for (index = 0; index < max && NO == found; index++)
     {
       if (YES == u[index] && client == c[index])
         {
@@ -394,7 +391,29 @@
           [c[index] retain];
           found = YES;
         }
+    }
+  [self _unlock];
+  return found;
+}
 
+@end
+
+@implementation SQLClientPool (Private)
+
+- (void) _lock
+{
+  [lock lock];
+}
+
+- (void) _unlock
+{
+  int   idle = 0;
+  int   used = 0;
+  int   cond = 0;
+  int   index;
+
+  for (index = 0; index < max; index++)
+    {
       /* Check to see if this client is free to be taken from the pool.
        * Also, if a client is connected but not in use, we call it idle.
        */
@@ -447,31 +466,6 @@
       idle--;
     }
   [lock unlockWithCondition: cond];
-  return found;
-}
-
-@end
-
-@implementation SQLClientPool (Private)
-
-- (void) _lock
-{
-  [lock lock];
-}
-
-- (void) _unlock
-{
-  int   index;
-
-  for (index = 0; index < max; index++)
-    {
-      if (NO == u[index])
-        {
-          [lock unlockWithCondition: 1];
-          return;
-        }
-    }
-  [lock unlockWithCondition: 0];
 }
 
 @end

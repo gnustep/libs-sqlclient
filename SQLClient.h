@@ -378,7 +378,6 @@ SQLCLIENT_PRIVATE
    * This should only be modified by the -setShouldTrim: method.
    */
   BOOL                  _shouldTrim;    /** Should whitespace be trimmed? */
-  BOOL                  _forUseInPool;  /** Should be used in a pool only */
   NSString		*_name;		/** Unique identifier for instance */
   NSString		*_client;	/** Identifier within backend */
   NSString		*_database;	/** The configured database name/host */
