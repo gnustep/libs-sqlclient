@@ -1198,9 +1198,9 @@ static unsigned int	maxConnections = 8;
 
   [clientsLock lock];
   _pool = pool;
-  if (nil == _pool)
+  if (nil != _pool)
     {
-      existing = nil;
+      existing = nil;   // Pool, object ... can't already exist
     }
   else
     {
