@@ -49,6 +49,10 @@
 }
 @end
 
+@interface SQLClientPool (Private)
+- (void) _lock;
+- (void) _unlock;
+@end
 
 @implementation	SQLClientPool
 
@@ -69,7 +73,8 @@
   u = 0;
   [lock unlock];
   DESTROY(lock);
-
+  DESTROY(_config);
+  DESTROY(_name);
   if (0 != clients)
     {
       for (i = 0; i < count; i++)
@@ -94,41 +99,12 @@
                          max: (int)maxConnections
                          min: (int)minConnections
 {
-  NSAssert(minConnections > 0, NSInvalidArgumentException);
-  NSAssert(maxConnections >= minConnections, NSInvalidArgumentException);
-  NSAssert(maxConnections <= 100, NSInvalidArgumentException);
-
   if (nil != (self = [super init]))
     {
-      GSCache   *cache = nil;
-      int       i;
-
-      max = maxConnections;
-      min = minConnections;
-      c = calloc(max, sizeof(SQLClient*));
-      u = calloc(max, sizeof(BOOL));
-      
-      for (i = 0; i < max; i++)
-        {
-          c[i] = [[SQLClient alloc] initWithConfiguration: config
-                                                     name: reference
-                                                     pool: self];
-
-          /* All the clients in the pool should share the same cache.
-           */
-          if (0 == i)
-            {
-              cache = [c[i] cache];
-            }
-          else
-            {
-              [c[i] setCache: cache];
-            }
-        }
-      /* We start the condition lock with condition '1' to indicate
-       * that there are clients ion the pool that we can provide.
-       */
-      lock = [[NSConditionLock alloc] initWithCondition: 1];
+      ASSIGN(_config, config);
+      ASSIGNCOPY(_name, reference);
+      lock = [[NSConditionLock alloc] initWithCondition: 0];
+      [self setMax: maxConnections min: minConnections];
     }
   return self;
 }
@@ -263,52 +239,118 @@
 {
   int   index;
 
-  /* We don't allow a nil cache for the pool (each client would creae its
+  /* We don't allow a nil cache for the pool (each client would create its
    * own cache on demand). So we treat a nil cache as a request to create
    * a new cache with the default config.
    */
+  [self _lock];
   if (nil == aCache)
     {
       [c[0] setCache: nil];
       aCache = [c[0] cache];
     }
-
   for (index = 0; index < max; index++)
     {
       [c[index] setCache: aCache];
     }
+  [self _unlock];
 }
 
 - (void) setCacheThread: (NSThread*)aThread
 {
   int   index;
 
+  [self _lock];
   for (index = 0; index < max; index++)
     {
       [c[index] setCacheThread: aThread];
     }
+  [self _unlock];
 }
 
 - (void) setDebugging: (unsigned int)level
 {
   int   index;
 
+  [self _lock];
   _debugging = level;
   for (index = 0; index < max; index++)
     {
       [c[index] setDebugging: _debugging];
     }
+  [self _unlock];
 }
 
 - (void) setDurationLogging: (NSTimeInterval)threshold
 {
   int   index;
 
+  [self _lock];
   _duration = threshold;
   for (index = 0; index < max; index++)
     {
       [c[index] setDurationLogging: _duration];
     }
+  [self _unlock];
+}
+
+- (void) setMax: (int)maxConnections min: (int)minConnections
+{
+  int   index;
+
+  if (minConnections < 1) minConnections = 1;
+  if (maxConnections > 100) maxConnections = 100;
+  if (minConnections > maxConnections) minConnections = maxConnections;
+
+  [self _lock];
+  if (maxConnections != max)
+    {
+      GSCache   *cache = nil;
+
+      if (max > 0)
+        {
+          while (max > maxConnections)
+            {
+              max--;
+              if (YES == u[max])
+                {
+                  [c[max] _clearPool: self];
+                }
+              else
+                {
+                  [c[max] release];
+                }
+            }
+          c = realloc(c, maxConnections * sizeof(SQLClient*));
+          u = realloc(u, maxConnections * sizeof(BOOL));
+        }
+      else
+        {
+          c = calloc(maxConnections, sizeof(SQLClient*));
+          u = calloc(maxConnections, sizeof(BOOL));
+        }
+      for (index = max; index < maxConnections; index++)
+        {
+          u[index] = NO;
+          c[index] = [[SQLClient alloc] initWithConfiguration: _config
+                                                         name: _name
+                                                         pool: self];
+
+          /* All the clients in the pool should share the same cache.
+           */
+          if (0 == index)
+            {
+              cache = [c[index] cache];
+            }
+          else
+            {
+              [c[index] setCache: cache];
+            }
+        }
+    }
+  max = maxConnections;
+  min = minConnections;
+  [self _unlock];
 }
 
 - (NSString*) statistics
@@ -343,7 +385,7 @@
   int   cond = 0;
   int   index;
 
-  [lock lock];
+  [self _lock];
   for (index = 0; index < max; index++)
     {
       if (YES == u[index] && client == c[index])
@@ -406,6 +448,30 @@
     }
   [lock unlockWithCondition: cond];
   return found;
+}
+
+@end
+
+@implementation SQLClientPool (Private)
+
+- (void) _lock
+{
+  [lock lock];
+}
+
+- (void) _unlock
+{
+  int   index;
+
+  for (index = 0; index < max; index++)
+    {
+      if (NO == u[index])
+        {
+          [lock unlockWithCondition: 1];
+          return;
+        }
+    }
+  [lock unlockWithCondition: 0];
 }
 
 @end

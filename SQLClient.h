@@ -1413,6 +1413,8 @@ SQLCLIENT_PRIVATE
   BOOL                  *u;     /** Whether the client is in use. */
   int                   max;    /** Maximum connection count */
   int                   min;    /** Minimum connection count */
+  NSDictionary          *_config;       /** The pool configuration object */
+  NSString              *_name;         /** The pool configuration name */
   NSTimeInterval	_duration;      /** Duration logging threshold */
   unsigned int		_debugging;	/** The current debugging level */
   uint64_t              _immediate;     /** Immediate client provisions */
@@ -1426,7 +1428,7 @@ SQLCLIENT_PRIVATE
 /**
  * Creates a pool of clients using a single client configuration.<br />
  * Calls -initWithConfiguration:name:pool: (passing NO to say the client
- * is not in a pool) top create each client.<br />
+ * is not in a pool) to create each client.<br />
  * The value of maxConnections is the size of the pool (ie the number of
  * clients created) and thus the maximum number of concurrent connections
  * to the database server.<br />
@@ -1470,6 +1472,20 @@ SQLCLIENT_PRIVATE
 /** Set the duration logging threshold for all clients in the pool.
  */
 - (void) setDurationLogging: (NSTimeInterval)threshold;
+
+/** Sets the pool size limits (number of connections we try to maintain).<br />
+ * The value of maxConnections is the size of the pool (ie the number of
+ * clients created) and thus the maximum number of concurrent connections
+ * to the database server.<br />
+ * The value of minConnections is the minimum number of connected clients
+ * normally expected to be in the pool.  The pool tries to ensure that it
+ * doesn't contain more than this number of idle connected clients.<br />
+ * The value of maxConnections must be greater than or equal to that of
+ * minConnections and may not be greater than 100.
+ * The value of minConnections must be less than or equal to that of
+ * maxConnections and may not be less than 1.
+ */
+- (void) setMax: (int)maxConnections min: (int)minConnections;
 
 /** Returns a string describing the usage of the pool.
  */

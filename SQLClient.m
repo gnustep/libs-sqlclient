@@ -1020,7 +1020,8 @@ static unsigned int	maxConnections = 8;
 
   [clientsLock lock];
   NSHashRemove(clientsHash, (void*)self);
-  if (_name != nil && nil == _pool)
+  if (_name != nil
+    && (SQLClient*)NSMapGet(clientsMap, (void*)_name) == self)
     {
       NSMapRemove(clientsMap, (void*)_name);
     }
@@ -1677,7 +1678,8 @@ static unsigned int	maxConnections = 8;
             {
               [self disconnect];
             }
-          if (nil == _pool && _name != nil)
+          if (_name != nil
+            && (SQLClient*)NSMapGet(clientsMap, (void*)_name) == self)
             {
               NSMapRemove(clientsMap, (void*)_name);
             }
