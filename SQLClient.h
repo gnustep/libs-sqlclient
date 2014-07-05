@@ -1440,6 +1440,14 @@ SQLCLIENT_PRIVATE
                          max: (int)maxConnections
                          min: (int)minConnections;
 
+/** Return the maximum number of database connections in the pool.
+ */
+- (int) maxConnections;
+
+/** Return the minimum number of database connections in the pool.
+ */
+- (int) minConnections;
+
 /** Fetches an (autoreleased) client from the pool.<br />
  * This method blocks indefinitely waiting for a client to become
  * available in the pool.

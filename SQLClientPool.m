@@ -109,6 +109,16 @@
   return self;
 }
 
+- (int) maxConnections
+{
+  return max;
+}
+
+- (int) minConnections
+{
+  return min;
+}
+
 - (SQLClient*) provideClient
 {
   return [self provideClientBeforeDate: nil];
@@ -462,9 +472,30 @@
                 }
             }
         }
-      [oldest disconnect];
+      NS_DURING
+        [oldest disconnect];
+      NS_HANDLER
+        NSLog(@"Failed to disconnect %@ ... %@", oldest, localException);
+      NS_ENDHANDLER
       idle--;
     }
+
+  /* If we have fewer connections than we want, connect clients until we
+   * are back up to the minimum.
+   */
+  for (index = 0; index < max && (used + idle) < min; index++)
+    {
+      if (NO == u[index] && NO == [c[index] connected])
+        {
+          NS_DURING
+            [c[index] connect];
+          NS_HANDLER
+            NSLog(@"Failed to connect %@ ... %@", c[index], localException);
+          NS_ENDHANDLER
+          idle++;
+        }
+    }
+
   [lock unlockWithCondition: cond];
 }
 
