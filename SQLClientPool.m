@@ -56,6 +56,24 @@
 
 @implementation	SQLClientPool
 
+- (int) availableConnections
+{
+  int   available;
+  int   index;
+
+  [self _lock];
+  available = index = max;
+  while (index-- > 0)
+    {
+      if (YES ==  u[index])
+        {
+          available--;
+        }
+    }
+  [self _unlock];
+  return available;
+}
+
 - (void) dealloc
 {
   SQLClient     **clients;

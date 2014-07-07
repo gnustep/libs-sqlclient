@@ -1424,6 +1424,10 @@ SQLCLIENT_PRIVATE
   NSTimeInterval        _failWaits;     /** Time waiting for timewouts */
 }
 
+/** Returns the count of currently available connections in the pool.
+ */
+- (int) availableConnections;
+
 /**
  * Creates a pool of clients using a single client configuration.<br />
  * Calls -initWithConfiguration:name:pool: (passing NO to say the client
