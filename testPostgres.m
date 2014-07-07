@@ -75,15 +75,22 @@ main()
                                                  min: 1] autorelease];
 #if 0
 {
-  NSAutoreleasePool     *p = [NSAutoreleasePool new];
+  NSAutoreleasePool     *p;
   SQLClient             *c0;
   SQLClient             *c1;
 
   [sp setDebugging: 2];
+  p = [NSAutoreleasePool new];
   c0 = [sp provideClient];
   c1 = [sp provideClient];
-  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 25.0]];
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
   [p release];
+  p = [NSAutoreleasePool new];
+  c0 = [sp provideClient];
+  c1 = [sp provideClient];
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
+  [p release];
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 25.0]];
 }
 #endif
   db = [sp provideClient];

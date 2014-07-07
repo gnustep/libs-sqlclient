@@ -97,11 +97,8 @@
     {
       for (i = 0; i < count; i++)
         {
-          if (YES == used[i])
-            {
-              [clients[i] _clearPool: self];
-            }
-          else
+          [clients[i] _clearPool: self];
+          if (NO == used[i])
             {
               [clients[i] release];
             }
@@ -260,6 +257,10 @@
     }
   u[found] = YES;
   [lock unlockWithCondition: cond];
+  if (_debugging > 2)
+    {
+      NSLog(@"%@ provides %p", self, c[found]);
+    }
   return [c[found] autorelease];
 }
 
@@ -340,11 +341,8 @@
           while (max > maxConnections)
             {
               max--;
-              if (YES == u[max])
-                {
-                  [c[max] _clearPool: self];
-                }
-              else
+              [c[max] _clearPool: self];
+              if (NO == u[max])
                 {
                   [c[max] release];
                 }
@@ -416,11 +414,21 @@
       if (YES == u[index] && client == c[index])
         {
           u[index] = NO;
-          [c[index] retain];
           found = YES;
         }
     }
   [self _unlock];
+  if (_debugging > 2)
+    {
+      if (YES == found)
+        {
+          NSLog(@"%@ swallows %p", self, client);
+        }
+      else
+        {
+          NSLog(@"%@ rejects %p", self, client);
+        }
+    }
   return found;
 }
 
