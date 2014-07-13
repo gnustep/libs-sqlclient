@@ -1,3 +1,8 @@
+2014-07-11  Yavor Doganov  <yavor@gnu.org>
+
+	* GNUmakefile (SQLClient_LIBRARIES_DEPEND_UPON): Add $(FND_LIBS)
+	and $(OBJC_LIBS).
+
 2014-06-20 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* GNUmakefile: bump version to 1.8.0 for next release (will break
