@@ -21,7 +21,7 @@ include $(GNUSTEP_MAKEFILES)/common.make
 -include config.make
 
 PACKAGE_NAME = SQLClient
-PACKAGE_VERSION = 1.8.0
+PACKAGE_VERSION = 1.8.1
 CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
 CVS_TAG_NAME = SQLClient
 SVN_BASE_URL=svn+ssh://svn.gna.org/svn/gnustep/libs
@@ -49,7 +49,7 @@ SQLClient_HEADER_FILES_INSTALL_DIR = SQLClient
 
 BUNDLE_NAME=
 
-BUNDLE_INSTALL_DIR=$(GNUSTEP_BUNDLES)/SQLClient
+BUNDLE_INSTALL_DIR=$(GNUSTEP_BUNDLES)/SQLClient$(SQLClient_INTERFACE_VERSION)
 
 # In some systems and situations the dynamic linker needs to haved the
 # SQLClient, gnustep-base, and objc libraries explicityly linked into

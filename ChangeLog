@@ -1,3 +1,11 @@
+2014-07-17  Yavor Doganov  <yavor@gnu.org>
+
+	Install bundles in a versioned directory.
+	* GNUmakefile (BUNDLE_INSTALL_DIR): Append the interface version.
+	* GNUmakefile.preamble (ADDITIONAL_CPPFLAGS): Define.
+	* SQLClient.m (-_configure:): Load bundles from the versioned
+	directory.
+
 2014-07-11  Yavor Doganov  <yavor@gnu.org>
 
 	* GNUmakefile (SQLClient_LIBRARIES_DEPEND_UPON): Add $(FND_LIBS)

@@ -2096,7 +2096,8 @@ static unsigned int	maxConnections = 8;
             {
               path = [paths objectAtIndex: count];
               path = [path stringByAppendingPathComponent: @"Bundles"];
-              path = [path stringByAppendingPathComponent: @"SQLClient"];
+              path = [path stringByAppendingPathComponent:
+			     @"SQLClient"SOVERSION""];
               path = [path stringByAppendingPathComponent: s];
               path = [path stringByAppendingPathExtension: @"bundle"];
               bundle = [NSBundle bundleWithPath: path];

@@ -12,7 +12,7 @@
 #
 
 # Additional flags to pass to the preprocessor
-# ADDITIONAL_CPPFLAGS += 
+ADDITIONAL_CPPFLAGS += -DSOVERSION=\"$(SQLClient_INTERFACE_VERSION)\"
 
 # Additional flags to pass to the Objective-C compiler
 # ADDITIONAL_OBJCFLAGS += 
