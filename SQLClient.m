@@ -3203,13 +3203,7 @@ static unsigned int	maxConnections = 8;
 }
 
 /* Try to merge the prepared statement p with an earlier statement in the
- * transaction.  We search up to 5 earlier statements and we merge if;
- * a. We have something like 'INSERT INTO table (fields) VALUES (values)'
- * where everything up to 'VALUES' is the same, so we can built a multiline
- * insert like 'INSERT INTO table (fields) VALUES (values1),(values2),...'
- * b. We have something like 'UPDATE table SET settings WHERE condition'
- * where everything up to the condition is the same, so we can build
- * 'UPDATE table SET settings WHERE condition1 OR (condition2) OR ...'
+ * transaction.  We search up to 5 earlier statements and we merge if we can.
  */
 - (void) _merge: (NSMutableArray*)p
 {
@@ -3264,7 +3258,9 @@ static unsigned int	maxConnections = 8;
                             }
                           else
                             {
-                              m = [[os mutableCopy] autorelease];
+                              m = [NSMutableString
+                                stringWithCapacity: [os length] * 100];
+                              [m appendString: os];
                             }
                           [m appendString: @","];
                           [m appendString: s];
@@ -3281,6 +3277,10 @@ static unsigned int	maxConnections = 8;
         }
 
       r = [s rangeOfString: @"UPDATE" options: NSCaseInsensitiveSearch];
+      if (0 == r.length)
+        {
+          r = [s rangeOfString: @"DELETE" options: NSCaseInsensitiveSearch];
+        }
       if (r.length > 0 && 0 == r.location)
         {
           r = [s rangeOfString: @"WHERE" options: NSCaseInsensitiveSearch];
@@ -3329,7 +3329,9 @@ static unsigned int	maxConnections = 8;
                                 }
                               else
                                 {
-                                  m = [[os mutableCopy] autorelease];
+                                  m = [NSMutableString
+                                    stringWithCapacity: l * 100];
+                                  [m appendString: os];
                                 }
                             }
                           else
@@ -3339,8 +3341,9 @@ static unsigned int	maxConnections = 8;
                                * new statement in which it is bracketed.
                                */
                               os = [os substringFromIndex: pos];
-                              m = [NSMutableString stringWithFormat:
-                                @"%@(%@)", t, os];
+                              m = [NSMutableString
+                                stringWithCapacity: l * 100];
+                              [m appendFormat: @"%@(%@)", t, os];
                             }
                           [m appendString: @" OR "];
                           [m appendString: s];

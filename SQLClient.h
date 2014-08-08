@@ -1658,10 +1658,10 @@ SQLCLIENT_PRIVATE
  * merged into something of the form:
  * INSERT INTO table (fieldnames) VALUES (values1),(values2),...;
  * </p>
- * <p>Or may use this with an update statement of the form:<br />
- * UPDATE table SET settings WHERE condition;<br />
+ * <p>Or may use this with an update or delete statement of the form:<br />
+ * command table SET settings WHERE condition;<br />
  * So that statements may be merged into:<br />
- * UPDATE table SET setting WHERE (condition1) OR (condition2) OR ...;
+ * command table SET settings WHERE (condition1) OR (condition2) OR ...;
  * </p>
  * If no opportunity for merging is found, the new statement is simply
  * added to the transaction.<br />
@@ -1671,7 +1671,10 @@ SQLCLIENT_PRIVATE
  * for eligibility.<br />
  * 3. Merging is done only if the statement up to the string 'VALUES'
  * (for insert) or 'WHERE' (for update) matches.<br />
- * 4. This is a simple text match rather than sql syntactic analysis,
+ * 4. Merging into any of the last 5 statements may of course change the
+ * order of statements in the transaction, so care must be taken not to
+ * use this feature where that migfht matter.<br />
+ * 5. This is a simple text match rather than sql syntactic analysis,
  * so it's possible to confuse the process with complex statements.
  */
 - (void) merge: (NSString*)stmt,...;
