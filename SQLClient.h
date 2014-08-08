@@ -1572,7 +1572,7 @@ SQLCLIENT_PRIVATE
 - (id) copyWithZone: (NSZone*)z;
 
 /**
- * Returns the number of individual statements ond/r subsidiary transactions
+ * Returns the number of individual statements and/or subsidiary transactions
  * which have been added to the receiver.  For a count of the total number
  * of statements, use the -totalCount method.
  */
@@ -1648,6 +1648,40 @@ SQLCLIENT_PRIVATE
  * database client as the receiver.
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
+
+/**
+ * Like -add:... but, if the new statement can be merged with a recently
+ * added one, this does that rather than adding as a separate statement.
+ * <p>You may use this with an insert statement of the form:<br />
+ * INSERT INTO table (fieldnames) VALUES (values);<br />
+ * For databases which support multiline inserts such that they can be
+ * merged into something of the form:
+ * INSERT INTO table (fieldnames) VALUES (values1),(values2),...;
+ * </p>
+ * <p>Or may use this with an update statement of the form:<br />
+ * UPDATE table SET settings WHERE condition;<br />
+ * So that statements may be merged into:<br />
+ * UPDATE table SET setting WHERE (condition1) OR (condition2) OR ...;
+ * </p>
+ * If no opportunity for merging is found, the new statement is simply
+ * added to the transaction.<br />
+ * Caveats:<br />
+ * 1. databases may not actually support multiline insert.<br />
+ * 2. Only the most recent five statements in a transaction are checked
+ * for eligibility.<br />
+ * 3. Merging is done only if the statement up to the string 'VALUES'
+ * (for insert) or 'WHERE' (for update) matches.<br />
+ * 4. This is a simple text match rather than sql syntactic analysis,
+ * so it's possible to confuse the process with complex statements.
+ */
+- (void) merge: (NSString*)stmt,...;
+
+/**
+ * Like -add:with: but, if the new statement can be merged with a recently
+ * added one, this does that rather than adding as a separate statement.
+ * See -merge:,... for meore details.
+ */
+- (void) merge: (NSString*)stmt with: (NSDictionary*)values;
 
 /** Remove the index'th transaction or statement from the receiver.
  */

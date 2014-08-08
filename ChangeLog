@@ -1,3 +1,9 @@
+2014-08-08 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Add merging of insert/update statements in a transaction.
+	
 2014-07-17  Yavor Doganov  <yavor@gnu.org>
 
 	Install bundles in a versioned directory.
