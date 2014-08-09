@@ -2947,20 +2947,184 @@ static unsigned int	maxConnections = 8;
     }
 }
 
+/* Try to merge the prepared statement p with an earlier statement in the
+ * transaction.  We search up to 5 earlier statements and we merge if we can.
+ */
+- (void) _merge: (NSMutableArray*)p
+{
+  if (_count > 0 && _merge > 0)
+    {
+      static NSCharacterSet     *w = nil;
+      NSString  *s;
+      NSRange   r;
+
+      s = [p objectAtIndex: 0];         // Get SQL part of array
+
+      if (nil == w)
+        {
+          w = [[NSCharacterSet whitespaceAndNewlineCharacterSet] retain];
+        }
+
+      r = [s rangeOfString: @"INSERT" options: NSCaseInsensitiveSearch];
+      if (r.length > 0 && 0 == r.location)
+        {
+          r = [s rangeOfString: @"VALUES" options: NSCaseInsensitiveSearch];
+          if (r.length > 0)
+            {
+              NSUInteger        l = [s length];
+              NSUInteger        pos = NSMaxRange(r);
+
+              while (pos < l
+                && [w characterIsMember: [s characterAtIndex: pos]])
+                {
+                  pos++;
+                }
+              if (pos < l && [s characterAtIndex: pos] == '(')
+                {
+                  NSString              *t = [s substringToIndex: pos];
+                  NSUInteger            index = _count;
+                  NSUInteger            attempts = 0;
+
+                  s = [s substringFromIndex: pos];
+                  while (index-- > 0 && attempts++ < _merge)
+                    {
+                      NSMutableArray    *o;
+                      NSString          *os;
+
+                      o = [_info objectAtIndex: index];
+                      os = [o objectAtIndex: 0];
+                      if ([os hasPrefix: t])
+                        {
+                          NSMutableString       *m;
+
+                          if ([os isKindOfClass: [NSMutableString class]])
+                            {
+                              m = (NSMutableString*)os;
+                            }
+                          else
+                            {
+                              m = [NSMutableString
+                                stringWithCapacity: [os length] * 100];
+                              [m appendString: os];
+                            }
+                          [m appendString: @","];
+                          [m appendString: s];
+                          [o replaceObjectAtIndex: 0 withObject: m];
+                          for (index = 1; index < [p count]; index++)
+                            {
+                              [o addObject: [p objectAtIndex: index]];
+                            }
+                          return;
+                        }
+                    }
+                }
+            }
+        }
+
+      r = [s rangeOfString: @"UPDATE" options: NSCaseInsensitiveSearch];
+      if (0 == r.length)
+        {
+          r = [s rangeOfString: @"DELETE" options: NSCaseInsensitiveSearch];
+        }
+      if (r.length > 0 && 0 == r.location)
+        {
+          r = [s rangeOfString: @"WHERE" options: NSCaseInsensitiveSearch];
+          if (r.length > 0)
+            {
+              NSUInteger        l = [s length];
+              NSUInteger        pos = NSMaxRange(r);
+
+              while (pos < l
+                && [w characterIsMember: [s characterAtIndex: pos]])
+                {
+                  pos++;
+                }
+              if (pos < l && [s characterAtIndex: pos] == '(')
+                {
+                  NSString              *t = [s substringToIndex: pos];
+                  NSUInteger            index = _count;
+                  NSUInteger            attempts = 0;
+
+                  /* Get the condition after the WHERE and if it's not
+                   * in brackets, add them so the merge can work.
+                   */
+                  s = [s substringFromIndex: pos];
+                  if ([s characterAtIndex: 0] != '(')
+                    {
+                      s = [NSString stringWithFormat: @"(%@)", s];
+                    }
+                    
+                  while (index-- > 0 && attempts++ < _merge)
+                    {
+                      NSMutableArray    *o;
+                      NSString          *os;
+
+                      o = [_info objectAtIndex: index];
+                      os = [o objectAtIndex: 0];
+                      if ([os hasPrefix: t])
+                        {
+                          NSMutableString       *m;
+
+                          l = [os length];
+                          if ([os characterAtIndex: l - 1] == ')')
+                            {
+                              if ([os isKindOfClass: [NSMutableString class]])
+                                {
+                                  m = (NSMutableString*)os;
+                                }
+                              else
+                                {
+                                  m = [NSMutableString
+                                    stringWithCapacity: l * 100];
+                                  [m appendString: os];
+                                }
+                            }
+                          else
+                            {
+                              /* The condition of the WHERE clause was not
+                               * bracketed, so we extract it and build a
+                               * new statement in which it is bracketed.
+                               */
+                              os = [os substringFromIndex: pos];
+                              m = [NSMutableString
+                                stringWithCapacity: l * 100];
+                              [m appendFormat: @"%@(%@)", t, os];
+                            }
+                          [m appendString: @" OR "];
+                          [m appendString: s];
+                          [o replaceObjectAtIndex: 0 withObject: m];
+                          for (index = 1; index < [p count]; index++)
+                            {
+                              [o addObject: [p objectAtIndex: index]];
+                            }
+                          return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+  [_info addObject: p];
+  _count++;
+}
+
 - (void) add: (NSString*)stmt,...
 {
-  va_list       ap;
+  va_list               ap;
+  NSMutableArray        *p;
 
   va_start (ap, stmt);
-  [_info addObject: [_db _prepare: stmt args: ap]];
-  _count++;
+  p = [_db _prepare: stmt args: ap];
   va_end (ap);
+  [self _merge: p];
 }
 
 - (void) add: (NSString*)stmt with: (NSDictionary*)values
 {
-  [_info addObject: [_db _substitute: stmt with: values]];
-  _count++;
+  NSMutableArray        *p;
+
+  p = [_db _substitute: stmt with: values];
+  [self _merge: p];
 }
 
 - (void) append: (SQLTransaction*)other
@@ -2973,10 +3137,25 @@ static unsigned int	maxConnections = 8;
 		      format: @"[%@-%@] database client missmatch",
 	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
 	}
-      other = [other copy];
-      [_info addObject: other];
-      _count += other->_count;
-      [other release];
+      if (_merge > 0)
+        {
+          unsigned      index;
+
+          /* Merging of statements is turned on ... try to merge statements
+           * from other transaction rather than simply appending a copy of it.
+           */
+          for (index = 0; index < other->_count; index++)
+            {
+              [self _merge: [other->_info objectAtIndex: index]];
+            }
+        }
+      else
+        {
+          other = [other copy];
+          [_info addObject: other];
+          _count += other->_count;
+          [other release];
+        }
     }
 }
 
@@ -3202,186 +3381,6 @@ static unsigned int	maxConnections = 8;
   [trn release];
 }
 
-/* Try to merge the prepared statement p with an earlier statement in the
- * transaction.  We search up to 5 earlier statements and we merge if we can.
- */
-- (void) _merge: (NSMutableArray*)p
-{
-  if (_count > 0)
-    {
-      static NSCharacterSet     *w = nil;
-      NSString  *s;
-      NSRange   r;
-
-      s = [p objectAtIndex: 0];         // Get SQL part of array
-
-      if (nil == w)
-        {
-          w = [[NSCharacterSet whitespaceAndNewlineCharacterSet] retain];
-        }
-
-      r = [s rangeOfString: @"INSERT" options: NSCaseInsensitiveSearch];
-      if (r.length > 0 && 0 == r.location)
-        {
-          r = [s rangeOfString: @"VALUES" options: NSCaseInsensitiveSearch];
-          if (r.length > 0)
-            {
-              NSUInteger        l = [s length];
-              NSUInteger        pos = NSMaxRange(r);
-
-              while (pos < l
-                && [w characterIsMember: [s characterAtIndex: pos]])
-                {
-                  pos++;
-                }
-              if (pos < l && [s characterAtIndex: pos] == '(')
-                {
-                  NSString              *t = [s substringToIndex: pos];
-                  NSUInteger            index = _count;
-                  NSUInteger            attempts = 0;
-
-                  s = [s substringFromIndex: pos];
-                  while (index-- > 0 && attempts++ < 5)
-                    {
-                      NSMutableArray    *o;
-                      NSString          *os;
-
-                      o = [_info objectAtIndex: index];
-                      os = [o objectAtIndex: 0];
-                      if ([os hasPrefix: t])
-                        {
-                          NSMutableString       *m;
-
-                          if ([os isKindOfClass: [NSMutableString class]])
-                            {
-                              m = (NSMutableString*)os;
-                            }
-                          else
-                            {
-                              m = [NSMutableString
-                                stringWithCapacity: [os length] * 100];
-                              [m appendString: os];
-                            }
-                          [m appendString: @","];
-                          [m appendString: s];
-                          [o replaceObjectAtIndex: 0 withObject: m];
-                          for (index = 1; index < [p count]; index++)
-                            {
-                              [o addObject: [p objectAtIndex: index]];
-                            }
-                          return;
-                        }
-                    }
-                }
-            }
-        }
-
-      r = [s rangeOfString: @"UPDATE" options: NSCaseInsensitiveSearch];
-      if (0 == r.length)
-        {
-          r = [s rangeOfString: @"DELETE" options: NSCaseInsensitiveSearch];
-        }
-      if (r.length > 0 && 0 == r.location)
-        {
-          r = [s rangeOfString: @"WHERE" options: NSCaseInsensitiveSearch];
-          if (r.length > 0)
-            {
-              NSUInteger        l = [s length];
-              NSUInteger        pos = NSMaxRange(r);
-
-              while (pos < l
-                && [w characterIsMember: [s characterAtIndex: pos]])
-                {
-                  pos++;
-                }
-              if (pos < l && [s characterAtIndex: pos] == '(')
-                {
-                  NSString              *t = [s substringToIndex: pos];
-                  NSUInteger            index = _count;
-                  NSUInteger            attempts = 0;
-
-                  /* Get the condition after the WHERE and if it's not
-                   * in brackets, add them so the merge can work.
-                   */
-                  s = [s substringFromIndex: pos];
-                  if ([s characterAtIndex: 0] != '(')
-                    {
-                      s = [NSString stringWithFormat: @"(%@)", s];
-                    }
-                    
-                  while (index-- > 0 && attempts++ < 5)
-                    {
-                      NSMutableArray    *o;
-                      NSString          *os;
-
-                      o = [_info objectAtIndex: index];
-                      os = [o objectAtIndex: 0];
-                      if ([os hasPrefix: t])
-                        {
-                          NSMutableString       *m;
-
-                          l = [os length];
-                          if ([os characterAtIndex: l - 1] == ')')
-                            {
-                              if ([os isKindOfClass: [NSMutableString class]])
-                                {
-                                  m = (NSMutableString*)os;
-                                }
-                              else
-                                {
-                                  m = [NSMutableString
-                                    stringWithCapacity: l * 100];
-                                  [m appendString: os];
-                                }
-                            }
-                          else
-                            {
-                              /* The condition of the WHERE clause was not
-                               * bracketed, so we extract it and build a
-                               * new statement in which it is bracketed.
-                               */
-                              os = [os substringFromIndex: pos];
-                              m = [NSMutableString
-                                stringWithCapacity: l * 100];
-                              [m appendFormat: @"%@(%@)", t, os];
-                            }
-                          [m appendString: @" OR "];
-                          [m appendString: s];
-                          [o replaceObjectAtIndex: 0 withObject: m];
-                          for (index = 1; index < [p count]; index++)
-                            {
-                              [o addObject: [p objectAtIndex: index]];
-                            }
-                          return;
-                        }
-                    }
-                }
-            }
-        }
-    }
-  [_info addObject: p];
-  _count++;
-}
-
-- (void) merge: (NSString*)stmt,...
-{
-  va_list               ap;
-  NSMutableArray        *p;
-
-  va_start (ap, stmt);
-  p = [_db _prepare: stmt args: ap];
-  va_end (ap);
-  [self _merge: p];
-}
-
-- (void) merge: (NSString*)stmt with: (NSDictionary*)values
-{
-  NSMutableArray        *p;
-
-  p = [_db _substitute: stmt with: values];
-  [self _merge: p];
-}
-
 - (void) removeTransactionAtIndex: (unsigned)index
 {
   id	o;
@@ -3408,6 +3407,14 @@ static unsigned int	maxConnections = 8;
 {
   [_info removeAllObjects];
   _count = 0;
+}
+
+- (uint8_t) setMerge: (uint8_t)history
+{
+  uint8_t       old = _merge;
+
+  _merge = history;
+  return old;
 }
 
 - (unsigned) totalCount

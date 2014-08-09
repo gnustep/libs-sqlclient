@@ -1,3 +1,11 @@
+2014-08-09 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Redesign merging to give control over the number of statements
+	merged and to make merging an attribute of the transaction
+	rather than something done by a specific method.
+	
 2014-08-08 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

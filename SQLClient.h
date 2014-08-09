@@ -1537,6 +1537,7 @@ SQLCLIENT_PRIVATE
   unsigned		_count;
   BOOL                  _batch;
   BOOL                  _stop;
+  uint8_t               _merge;
 }
 
 /**
@@ -1649,10 +1650,25 @@ SQLCLIENT_PRIVATE
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
 
+/** Remove the index'th transaction or statement from the receiver.
+ */
+- (void) removeTransactionAtIndex: (unsigned)index;
+
 /**
- * Like -add:... but, if the new statement can be merged with a recently
- * added one, this does that rather than adding as a separate statement.
- * <p>You may use this with an insert statement of the form:<br />
+ * Resets the transaction, removing all previously added statements.
+ * This allows the transaction object to be re-used for multiple
+ * transactions.
+ */
+- (void) reset;
+
+/** <p>Use this method to enable merging of statemements subsequently added
+ * or appended to the receiver.  The history argument specifies how many
+ * of the most recent statements in the transaction should be checked for
+ * merging in a new statement, with a value of zero meaning that no
+ * merging is done.<br />
+ * Returns the previous setting for the transaction.
+ * </p>
+ * <p>You may use this feature with an insert statement of the form:<br />
  * INSERT INTO table (fieldnames) VALUES (values);<br />
  * For databases which support multiline inserts such that they can be
  * merged into something of the form:
@@ -1667,35 +1683,15 @@ SQLCLIENT_PRIVATE
  * added to the transaction.<br />
  * Caveats:<br />
  * 1. databases may not actually support multiline insert.<br />
- * 2. Only the most recent five statements in a transaction are checked
- * for eligibility.<br />
- * 3. Merging is done only if the statement up to the string 'VALUES'
+ * 2. Merging is done only if the statement up to the string 'VALUES'
  * (for insert) or 'WHERE' (for update) matches.<br />
- * 4. Merging into any of the last 5 statements may of course change the
- * order of statements in the transaction, so care must be taken not to
- * use this feature where that migfht matter.<br />
- * 5. This is a simple text match rather than sql syntactic analysis,
+ * 3. Merging into any of the last N statements (where N is greater than 1)
+ * may of course change the order of statements in the transaction,
+ * so care must be taken not to use this feature where that might matter.<br />
+ * 4. This is a simple text match rather than sql syntactic analysis,
  * so it's possible to confuse the process with complex statements.
  */
-- (void) merge: (NSString*)stmt,...;
-
-/**
- * Like -add:with: but, if the new statement can be merged with a recently
- * added one, this does that rather than adding as a separate statement.
- * See -merge:,... for meore details.
- */
-- (void) merge: (NSString*)stmt with: (NSDictionary*)values;
-
-/** Remove the index'th transaction or statement from the receiver.
- */
-- (void) removeTransactionAtIndex: (unsigned)index;
-
-/**
- * Resets the transaction, removing all previously added statements.
- * This allows the transaction object to be re-used for multiple
- * transactions.
- */
-- (void) reset;
+- (uint8_t) setMerge: (uint8_t)history;
 
 /**
  * Returns the total count of statements in this transaction including
