@@ -211,7 +211,15 @@ connectQuote(NSString *str)
                    * the server will warn about backslashes even
                    * in properly quoted strings, so turn it off.
                    */
-                  [self execute: @"SET escape_string_warning=off", nil];
+                  if (strcmp(p, "on") == 0)
+                    {
+                      [self execute: @"SET escape_string_warning=off", nil];
+                    }
+                  else
+                    {
+                      [self execute: @"SET standard_conforming_strings=on;"
+                        @"SET escape_string_warning=off", nil];
+                    }
                 }
               else
                 {
