@@ -194,6 +194,10 @@ connectQuote(NSString *str)
 	    {
 	      const char	*p;
 
+              backendPID = PQbackendPID(connection);
+
+	      connected = YES;
+
 	      p = PQparameterStatus(connection, "standard_conforming_strings");
               if (p != 0)
                 {
@@ -201,11 +205,17 @@ connectQuote(NSString *str)
                 }
               else
                 {
-                  escapeStrings = NO;
+                  p = PQparameterStatus(connection, "escape_string_warning");
+                  if (p != 0)
+                    {
+                      escapeStrings = YES;
+                    }
+                  else
+                    {
+                      escapeStrings = NO;
+                    }
                 }
-              backendPID = PQbackendPID(connection);
 
-	      connected = YES;
 	      if ([self debugging] > 0)
 		{
 		  [self debug: @"Connected to '%@'", [self name]];
