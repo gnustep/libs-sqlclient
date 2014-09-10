@@ -568,8 +568,8 @@ SQLCLIENT_PRIVATE
 
 /**
  * Return a flag to say whether a connection to the database server is
- * currently live.  This is mostly useful for debug/reporting, but is
- * used internally to keep track of active connections.
+ * currently live (the value of the 'connected' instance variable).<br />
+ * This is mostly useful for debug/reporting.
  */
 - (BOOL) connected;
 

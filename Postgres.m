@@ -392,7 +392,10 @@ connectQuote(NSString *str)
             {
               str = [NSString stringWithCString: cstr];
             }
-	  [self disconnect];
+          if (YES == connected)
+            {
+              [self disconnect];
+            }
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -412,7 +415,7 @@ connectQuote(NSString *str)
     {
       NSString	*n = [localException name];
 
-      if ([n isEqual: SQLConnectionException] == YES) 
+      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
 	{
 	  [self disconnect];
 	}
@@ -525,7 +528,10 @@ static unsigned int trim(char *str)
             {
               str = [NSString stringWithCString: cstr];
             }
-	  [self disconnect];
+          if (YES == connected)
+            {
+              [self disconnect];
+            }
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -642,7 +648,7 @@ static unsigned int trim(char *str)
     {
       NSString	*n = [localException name];
 
-      if ([n isEqual: SQLConnectionException] == YES) 
+      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
 	{
 	  [self disconnect];
 	}
@@ -993,7 +999,10 @@ static unsigned int trim(char *str)
 {
   if (extra != 0)
     {
-      [self disconnect];
+      if (YES == connected)
+        {
+          [self disconnect];
+        }
       NSZoneFree(NSDefaultMallocZone(), extra);
     }
   [super dealloc];

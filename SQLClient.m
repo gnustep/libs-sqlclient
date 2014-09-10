@@ -790,7 +790,7 @@ static unsigned int	maxConnections = 8;
 	{
 	  NSTimeInterval	when = o->_lastOperation;
 
-	  if (when < t)
+	  if (when < t && YES == o->connected)
 	    {
 	      [o disconnect];
 	    }
@@ -813,7 +813,7 @@ static unsigned int	maxConnections = 8;
       e = NSEnumerateHashTable(clientsHash);
       while (nil != (o = (SQLClient*)NSNextHashEnumeratorItem(&e)))
 	{
-	  if ([o connected] == YES)
+	  if (YES == o->connected)
 	    {
 	      NSTimeInterval	when = o->_lastOperation;
 
@@ -1028,7 +1028,7 @@ static unsigned int	maxConnections = 8;
   [clientsLock unlock];
   nc = [NSNotificationCenter defaultCenter];
   [nc removeObserver: self];
-  [self disconnect];
+  if (YES == connected) [self disconnect];
   [lock release]; lock = nil;
   [_client release]; _client = nil;
   [_database release]; _database = nil;
@@ -1634,7 +1634,7 @@ static unsigned int	maxConnections = 8;
     {
       if ([s isEqual: _database] == NO)
         {
-          if (connected == YES)
+          if (YES == connected)
             {
               [self disconnect];
             }
@@ -1674,7 +1674,7 @@ static unsigned int	maxConnections = 8;
                   NS_VOIDRETURN;
                 }
             }
-          if (connected == YES)
+          if (YES == connected)
             {
               [self disconnect];
             }
@@ -1711,7 +1711,7 @@ static unsigned int	maxConnections = 8;
     {
       if ([s isEqual: _password] == NO)
         {
-          if (connected == YES)
+          if (YES == connected)
             {
               [self disconnect];
             }
@@ -1741,7 +1741,7 @@ static unsigned int	maxConnections = 8;
     {
       if ([s isEqual: _user] == NO)
         {
-          if (connected == YES)
+          if (YES == connected)
             {
               [self disconnect];
             }
@@ -2148,7 +2148,10 @@ static unsigned int	maxConnections = 8;
         }
       if (c != [self class])
         {
-          [self disconnect];
+          if (YES == connected)
+            {
+              [self disconnect];
+            }
 #ifdef	GNUSTEP
           GSDebugAllocationRemove(object_getClass(self), self);
 #endif
