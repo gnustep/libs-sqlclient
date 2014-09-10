@@ -201,19 +201,21 @@ connectQuote(NSString *str)
 	      p = PQparameterStatus(connection, "standard_conforming_strings");
               if (p != 0)
                 {
+                  /* The standard conforming strings setting exists,
+                   * so the E'...' syntax must exist and we can use
+                   * it for byte arrays.
+                   */
                   escapeStrings = YES;
+
+                  /* If the escape_string_warning setting is on,
+                   * the server will warn about backslashes even
+                   * in properly quoted strings, so turn it off.
+                   */
+                  [self execute: @"SET escape_string_warning=off", nil];
                 }
               else
                 {
-                  p = PQparameterStatus(connection, "escape_string_warning");
-                  if (p != 0)
-                    {
-                      escapeStrings = YES;
-                    }
-                  else
-                    {
-                      escapeStrings = NO;
-                    }
+                  escapeStrings = NO;
                 }
 
 	      if ([self debugging] > 0)
