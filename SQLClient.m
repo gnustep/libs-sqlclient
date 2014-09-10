@@ -1739,7 +1739,7 @@ static unsigned int	maxConnections = 8;
   [lock lock];
   NS_DURING
     {
-      if ([s isEqual: _client] == NO)
+      if ([s isEqual: _user] == NO)
         {
           if (connected == YES)
             {

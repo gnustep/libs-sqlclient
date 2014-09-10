@@ -1,3 +1,9 @@
+2014-09-10 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m:
+	Fix error in [-setUser:] ... was checking wrong instance variable
+	to see if the user changed.
+
 2014-08-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
