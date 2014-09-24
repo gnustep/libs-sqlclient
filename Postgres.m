@@ -400,10 +400,6 @@ connectQuote(NSString *str)
             {
               str = [NSString stringWithCString: cstr];
             }
-          if (YES == connected)
-            {
-              [self disconnect];
-            }
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -423,13 +419,13 @@ connectQuote(NSString *str)
     {
       NSString	*n = [localException name];
 
-      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
-	{
-	  [self disconnect];
-	}
       if (result != 0)
 	{
 	  PQclear(result);
+	}
+      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
+	{
+	  [self disconnect];
 	}
       [localException retain];
       [arp release];
@@ -535,10 +531,6 @@ static unsigned int trim(char *str)
           if (nil == str)
             {
               str = [NSString stringWithCString: cstr];
-            }
-          if (YES == connected)
-            {
-              [self disconnect];
             }
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
@@ -656,13 +648,13 @@ static unsigned int trim(char *str)
     {
       NSString	*n = [localException name];
 
-      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
-	{
-	  [self disconnect];
-	}
       if (result != 0)
 	{
 	  PQclear(result);
+	}
+      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
+	{
+	  [self disconnect];
 	}
       [records release];
       records = nil;
