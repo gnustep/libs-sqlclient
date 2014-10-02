@@ -1,3 +1,7 @@
+2014-10-02 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: On exception during SQLTransaction -execute, roll back.
+
 2014-09-24 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: An SQL exception/error should not automatically

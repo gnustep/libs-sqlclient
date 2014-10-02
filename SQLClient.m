@@ -3234,7 +3234,18 @@ static unsigned int	maxConnections = 8;
       NS_HANDLER
 	{
           [info release];
-	  [localException raise];
+          if ([_db isInTransaction] == NO)
+            {
+              NS_DURING
+                {
+                  [_db simpleExecute: rollbackStatement];
+                }
+              NS_HANDLER
+                {
+                }
+              NS_ENDHANDLER
+            }
+          [localException raise];
 	}
       NS_ENDHANDLER
     }
