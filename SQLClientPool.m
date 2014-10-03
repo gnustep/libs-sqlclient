@@ -183,7 +183,14 @@
       locked = NO;
       while (NO == locked && now < end)
         {
-          if ([when earlierDate: until] == until)
+          now = [NSDate timeIntervalSinceReferenceDate];
+          if (now >= end)
+            {
+              /* End date is passed ... try to get the lock immediately.
+               */
+              locked = [lock tryLockWhenCondition: 1];
+            }
+          else if ([when earlierDate: until] == until)
             { 
               locked = [lock lockWhenCondition: 1 beforeDate: until];
             }
@@ -191,7 +198,6 @@
             { 
               locked = [lock lockWhenCondition: 1 beforeDate: when];
             }
-          now = [NSDate timeIntervalSinceReferenceDate];
           dif = now - start;
           if (NO == locked && now < end)
             {
