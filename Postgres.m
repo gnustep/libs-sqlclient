@@ -170,10 +170,17 @@ connectQuote(NSString *str)
 	      [m appendString: @" password="];
 	      [m appendString: str];
 	    }
+	  str = connectQuote([self clientName]);
+	  if (str != nil)
+	    {
+	      [m appendString: @" application_name="];
+	      [m appendString: str];
+	    }
 
 	  if ([self debugging] > 0)
 	    {
-	      [self debug: @"Connect to '%@' as %@", m, [self name]];
+	      [self debug: @"Connect to '%@' as %@ (%@)",
+                m, [self name], [self clientName]];
 	    }
 	  connection = PQconnectdb([m UTF8String]);
 	  if (PQstatus(connection) != CONNECTION_OK)
