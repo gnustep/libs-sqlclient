@@ -648,12 +648,53 @@ static NSArray		*rollbackStatement = nil;
 
 
 @interface	SQLClient (Private)
+
+/**
+ * Internal method to handle configuration using the notification object.
+ * This object may be either a configuration front end or a user defaults
+ * object ... so we have to be careful that we work with both.
+ */
 - (void) _configure: (NSNotification*)n;
+
+/** Internal method to make the client instance lock available to
+ * an associated SQLTransaction
+ */
+- (NSRecursiveLock*) _lock;
+
+/** Internal method to populate the cache with the result of a query.
+ */
 - (void) _populateCache: (CacheQuery*)a;
+
+/**
+ * Internal method to build an sql string by quoting any non-string objects
+ * and concatenating the resulting strings in a nil terminated list.<br />
+ * Returns an array containing the statement as the first object and
+ * any NSData objects following.  The NSData objects appear in the
+ * statement strings as the marker sequence - <code>'?'''?'</code>
+ */
 - (NSMutableArray*) _prepare: (NSString*)stmt args: (va_list)args;
+
+/** Internal method called to record the 'main' thread in which automated
+ * cache updates are to be performed.
+ */
 - (void) _recordMainThread;
+
+/**
+ * Internal method to substitute values from the dictionary into
+ * a string containing markup identifying where the values should
+ * appear by name.  Non-string objects in the dictionary are quoted.<br />
+ * Returns an array containing the statement as the first object and
+ * any NSData objects following.  The NSData objects appear in the
+ * statement strings as the marker sequence - <code>'?'''?'</code>
+ */
 - (NSMutableArray*) _substitute: (NSString*)str with: (NSDictionary*)vals;
+
+/*
+ * Called at one second intervals to ensure that our current timestamp
+ * is reasonably accurate.
+ */
 + (void) _tick: (NSTimer*)t;
+
 @end
 
 @interface	SQLClient (GSCacheDelegate)
@@ -2041,11 +2082,6 @@ static unsigned int	maxConnections = 8;
 
 @implementation	SQLClient (Private)
 
-/**
- * Internal method to handle configuration using the notification object.
- * This object may be either a configuration front end or a user defaults
- * object ... so we have to be careful that we work with both.
- */
 - (void) _configure: (NSNotification*)n
 {
   NSDictionary	*o;
@@ -2203,8 +2239,11 @@ static unsigned int	maxConnections = 8;
   [lock unlock];
 }
 
-/** Internal method to populate the cache with the result of a query.
- */
+- (NSRecursiveLock*) _lock
+{
+  return lock;
+}
+
 - (void) _populateCache: (CacheQuery*)a
 {
   GSCache	*cache;
@@ -2232,13 +2271,6 @@ static unsigned int	maxConnections = 8;
 	  lifetime: a->lifetime];
 }
 
-/**
- * Internal method to build an sql string by quoting any non-string objects
- * and concatenating the resulting strings in a nil terminated list.<br />
- * Returns an array containing the statement as the first object and
- * any NSData objects following.  The NSData objects appear in the
- * statement strings as the marker sequence - <code>'?'''?'</code>
- */
 - (NSMutableArray*) _prepare: (NSString*)stmt args: (va_list)args
 {
   NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
@@ -2285,14 +2317,6 @@ static unsigned int	maxConnections = 8;
   mainThread = [NSThread currentThread];
 }
 
-/**
- * Internal method to substitute values from the dictionary into
- * a string containing markup identifying where the values should
- * appear by name.  Non-string objects in the dictionary are quoted.<br />
- * Returns an array containing the statement as the first object and
- * any NSData objects following.  The NSData objects appear in the
- * statement strings as the marker sequence - <code>'?'''?'</code>
- */
 - (NSMutableArray*) _substitute: (NSString*)str with: (NSDictionary*)vals
 {
   unsigned int		l = [str length];
@@ -2467,10 +2491,6 @@ static unsigned int	maxConnections = 8;
   return ma;
 }
 
-/*
- * Called at one second intervals to ensure that our current timestamp
- * is reasonably accurate.
- */
 + (void) _tick: (NSTimer*)t
 {
   (void) GSTickerTimeNow();
@@ -3201,8 +3221,11 @@ static unsigned int	maxConnections = 8;
   if (_count > 0)
     {
       NSMutableArray    *info = nil;
-      BOOL              wrap = [_db isInTransaction] ? NO : YES;
+      NSRecursiveLock   *dbLock = [_db _lock];
+      BOOL              wrap;
 
+      [dbLock lock];
+      wrap = [_db isInTransaction] ? NO : YES;
       NS_DURING
 	{
           NSMutableString   *sql;
@@ -3231,6 +3254,7 @@ static unsigned int	maxConnections = 8;
 
           [_db simpleExecute: info];
           [info release]; info = nil;
+          [dbLock unlock];
 	}
       NS_HANDLER
 	{
@@ -3250,6 +3274,7 @@ static unsigned int	maxConnections = 8;
                 }
               NS_ENDHANDLER
             }
+          [dbLock unlock];
           [e raise];
 	}
       NS_ENDHANDLER
@@ -3268,6 +3293,9 @@ static unsigned int	maxConnections = 8;
 
   if (_count > 0)
     {
+      NSRecursiveLock   *dbLock = [_db _lock];
+
+      [dbLock lock];
       NS_DURING
         {
           [self execute];
@@ -3370,6 +3398,7 @@ static unsigned int	maxConnections = 8;
             }
         }
       NS_ENDHANDLER
+      [dbLock unlock];
     }
   return executed;
 }

@@ -1,3 +1,10 @@
+2014-10-07 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Add locking of the database client by SQLTransaction
+	in case another thread tries to use the client whjile the transaction
+	is using it (ie between an attempted transaction and a rollback if
+	it fails).
+
 2014-10-02 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: On exception during SQLTransaction -execute, roll back.
