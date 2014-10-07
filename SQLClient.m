@@ -3201,6 +3201,7 @@ static unsigned int	maxConnections = 8;
   if (_count > 0)
     {
       NSMutableArray    *info = nil;
+      BOOL              wrap = [_db isInTransaction] ? NO : YES;
 
       NS_DURING
 	{
@@ -3216,14 +3217,14 @@ static unsigned int	maxConnections = 8;
           sql = [[NSMutableString alloc] initWithCapacity: sqlSize + 13];
           [info addObject: sql];
           [sql release];
-          if ([_db isInTransaction] == NO)
+          if (YES == wrap)
             {
               [sql appendString: @"begin;"];
             }
 
           [self _addSQL: sql andArgs: info];
 
-          if ([_db isInTransaction] == NO)
+          if (YES == wrap)
             {
               [sql appendString: @"commit;"];
             }
@@ -3233,8 +3234,10 @@ static unsigned int	maxConnections = 8;
 	}
       NS_HANDLER
 	{
+          NSException   *e = localException;
+
           [info release];
-          if ([_db isInTransaction] == NO)
+          if (YES == wrap)
             {
               NS_DURING
                 {
@@ -3242,10 +3245,12 @@ static unsigned int	maxConnections = 8;
                 }
               NS_HANDLER
                 {
+                  [_db disconnect];
+                  NSLog(@"Disconnected due to failed rollback after %@", e);
                 }
               NS_ENDHANDLER
             }
-          [localException raise];
+          [e raise];
 	}
       NS_ENDHANDLER
     }
