@@ -429,8 +429,9 @@ SQLCLIENT_PRIVATE
 + (SQLClient*) existingClient: (NSString*)reference;
 
 /**
- * Return the maximum number of simultaneous database connections
- * permitted (set by +setMaxConnections: and defaults to 8)
+ * Returns the maximum number of simultaneous database connections
+ * permitted (set by +setMaxConnections: and defaults to 8) for
+ * connections outside of SQLClientPool instances.
  */
 + (unsigned int) maxConnections;
 
@@ -447,6 +448,9 @@ SQLCLIENT_PRIVATE
  * idle connections, but you can also pass a date in the future to
  * close all connections.
  * </p>
+ * <p>Purging does not apply to connections made by SQLClientPool
+ * instances.
+ * </p>
  */
 + (void) purgeConnections: (NSDate*)since;
 
@@ -456,6 +460,9 @@ SQLCLIENT_PRIVATE
  * </p>
  * <p>This value is used by the +purgeConnections: method to determine how
  * many connections should be disconnected when it is called.
+ * </p>
+ * <p>Connections used by SQLClientPool instances are not considered by
+ * this maximum.
  * </p>
  */
 + (void) setMaxConnections: (unsigned int)c;

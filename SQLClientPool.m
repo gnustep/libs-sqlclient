@@ -49,6 +49,10 @@
 }
 @end
 
+@interface SQLClientPool (Adjust)
++ (void) _adjustPoolConnections: (int)n;
+@end
+
 @interface SQLClientPool (Private)
 - (void) _lock;
 - (void) _unlock;
@@ -106,6 +110,7 @@
       free(clients);
       free(used);
     }
+  [SQLClientPool _adjustPoolConnections: -count];
   [super dealloc];
 }
 
@@ -331,6 +336,7 @@
 
 - (void) setMax: (int)maxConnections min: (int)minConnections
 {
+  int   old;
   int   index;
 
   if (minConnections < 1) minConnections = 1;
@@ -338,6 +344,7 @@
   if (minConnections > maxConnections) minConnections = maxConnections;
 
   [self _lock];
+  old = max;
   if (maxConnections != max)
     {
       GSCache   *cache = nil;
@@ -379,8 +386,9 @@
               [c[index] setCache: cache];
             }
         }
+      max = maxConnections;
+      [SQLClientPool _adjustPoolConnections: max - old];
     }
-  max = maxConnections;
   min = minConnections;
   [self _unlock];
 }

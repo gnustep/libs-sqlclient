@@ -1,3 +1,12 @@
+2014-10-13 Richard Frith-Macdonald  <rfm@gnu.org>
+
+        * SQLClient.h:
+        * SQLClient.m:
+        * SQLClientPool.m:
+	Keep connections in pools outside the normal count of maximum number
+	of concurrent connections.  If we are using a pool then we must
+	assume we want the pool to operate to its configured capacity.
+
 2014-10-07 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Add locking of the database client by SQLTransaction

@@ -707,6 +707,7 @@ static NSArray		*rollbackStatement = nil;
 @implementation	SQLClient
 
 static unsigned int	maxConnections = 8;
+static int	        poolConnections = 0;
 
 + (NSArray*) allClients
 {
@@ -844,7 +845,7 @@ static unsigned int	maxConnections = 8;
   NSEndHashTableEnumeration(&e);
   [clientsLock unlock];
 
-  while (connectionCount >= maxConnections)
+  while (connectionCount >= (maxConnections + poolConnections))
     {
       SQLClient		*other = nil;
       NSTimeInterval	oldest = 0.0;
@@ -872,7 +873,7 @@ static unsigned int	maxConnections = 8;
       if ([other debugging] > 0)
 	{
 	  [other debug:
-	    @"Force disconnect of '%@' because pool size (%d) reached",
+	    @"Force disconnect of '%@' because max connections (%u) reached",
 	    other, maxConnections]; 
 	}
       [other disconnect];
@@ -3782,5 +3783,24 @@ validName(NSString *name)
     }
   return [values[0] retain];
 }
+@end
+
+@implementation	SQLClientPool (Adjust)
+
++ (void) _adjustPoolConnections: (int)n
+{
+  unsigned      err = 0;
+
+  [clientsLock lock];
+  poolConnections += n;
+  if (poolConnections < 0)
+    {
+      err -= poolConnections;
+      poolConnections = 0;
+    }
+  [clientsLock unlock];
+  NSAssert(0 == err, NSInvalidArgumentException);
+}
+
 @end
 
