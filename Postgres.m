@@ -586,7 +586,15 @@ static unsigned int trim(char *str)
 			  switch (types[j])
 			    {
 			      case 1082:	// Date
-			      case 1083:	// Time
+				v = [self dbToDateFromBuffer: p
+						      length: trim(p)];
+				break;
+        
+			      case 1083:	// Time (treat as string)
+				trim(p);
+				v = [NSString stringWithUTF8String: p];
+                                break;
+
 			      case 1114:	// Timestamp without time zone.
 			      case 1184:	// Timestamp with time zone.
 				v = [self dbToDateFromBuffer: p

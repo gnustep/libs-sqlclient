@@ -1,4 +1,9 @@
-2014-11.04 Richard Frith-Macdonald  <rfm@gnu.org>
+2014-11-19 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* GNUmakefile: bump version to 1.8.2 for bugfix release.
+	* Postgres.m: Fix error handling TIME fields.
+
+2014-11-04 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* GNUmakefile: bump version to 1.8.1 for connection pool tweaks.
 

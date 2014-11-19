@@ -21,7 +21,7 @@ include $(GNUSTEP_MAKEFILES)/common.make
 -include config.make
 
 PACKAGE_NAME = SQLClient
-PACKAGE_VERSION = 1.8.1
+PACKAGE_VERSION = 1.8.2
 CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
 CVS_TAG_NAME = SQLClient
 SVN_BASE_URL=svn+ssh://svn.gna.org/svn/gnustep/libs
