@@ -2539,21 +2539,7 @@ static int	        poolConnections = 0;
 
 @implementation	SQLClient(Convenience)
 
-- (SQLTransaction*) batch: (BOOL)stopOnFailure
-{
-  SQLTransaction        *transaction;
-
-  transaction = (SQLTransaction*)NSAllocateObject([SQLTransaction class], 0,
-    NSDefaultMallocZone());
- 
-  transaction->_db = [self retain];
-  transaction->_info = [NSMutableArray new];
-  transaction->_batch = YES;
-  transaction->_stop = stopOnFailure;
-  return [(SQLTransaction*)transaction autorelease];
-}
-
-- (NSMutableArray*) columns: (NSMutableArray*)records
++ (NSMutableArray*) columns: (NSMutableArray*)records
 {
   SQLRecord		*r = [records lastObject];
   unsigned		rowCount = [records count];
@@ -2588,6 +2574,36 @@ static int	        poolConnections = 0;
 	}
     }
   return m;
+}
+
++ (void) singletons: (NSMutableArray*)records
+{
+  unsigned	c = [records count];
+
+  while (c-- > 0)
+    {
+      [records replaceObjectAtIndex: c
+			 withObject: [[records objectAtIndex: c] lastObject]];
+    }
+}
+
+- (SQLTransaction*) batch: (BOOL)stopOnFailure
+{
+  SQLTransaction        *transaction;
+
+  transaction = (SQLTransaction*)NSAllocateObject([SQLTransaction class], 0,
+    NSDefaultMallocZone());
+ 
+  transaction->_db = [self retain];
+  transaction->_info = [NSMutableArray new];
+  transaction->_batch = YES;
+  transaction->_stop = stopOnFailure;
+  return [(SQLTransaction*)transaction autorelease];
+}
+
+- (NSMutableArray*) columns: (NSMutableArray*)records
+{
+  return [SQLClient columns: records];
 }
 
 - (SQLRecord*) queryRecord: (NSString*)stmt, ...
@@ -2649,13 +2665,7 @@ static int	        poolConnections = 0;
 
 - (void) singletons: (NSMutableArray*)records
 {
-  unsigned	c = [records count];
-
-  while (c-- > 0)
-    {
-      [records replaceObjectAtIndex: c
-			 withObject: [[records objectAtIndex: c] lastObject]];
-    }
+  [SQLClient singletons: records];
 }
 
 - (SQLTransaction*) transaction

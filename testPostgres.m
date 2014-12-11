@@ -95,6 +95,7 @@ main()
 #endif
   db = [sp provideClient];
   [sp swallowClient: db];
+  [sp queryString: @"SELECT CURRENT_TIMESTAMP", nil];
   db = [sp provideClient];
 
   l = [Logger new];

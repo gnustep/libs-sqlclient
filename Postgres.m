@@ -1032,8 +1032,20 @@ static unsigned int trim(char *str)
 #ifdef	HAVE_PQESCAPESTRINGCONN
   int		err;
 
-  [self connect];
-  l = PQescapeStringConn(connection, (char*)(to + 1), [d bytes], l, &err);
+  [lock lock];
+  NS_DURING
+    {
+      [self connect];
+      l = PQescapeStringConn(connection, (char*)(to + 1), [d bytes], l, &err);
+    }
+  NS_HANDLER
+    {
+      [lock unlock];
+      NSZoneFree(NSDefaultMallocZone(), to);
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [lock unlock];
 #else
   l = PQescapeString(to + 1, [d bytes], l);
 #endif

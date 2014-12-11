@@ -542,59 +542,319 @@
 
 @end
 
-@implementation SQLClientPool (Proxying)
+@interface      SQLClient (Private)
+- (NSMutableArray*) _prepare: (NSString*)stmt args: (va_list)args;
+@end
 
-static BOOL
-selIsBad(SEL aSelector)
+@implementation SQLClientPool (ConvenienceMethods)
+
+- (NSString*) buildQuery: (NSString*)stmt, ...
 {
-  const char    *n = sel_getName(aSelector);
+  SQLClient     *db = [self provideClient];
+  NSString	*sql = nil;
+  va_list	ap;
 
-  if (strncmp(n, "set", 3) == 0)
-    {
-      return YES;
-    }
-  if (strncmp(n, "backend", 7) == 0)
-    {
-      return YES;
-    }
-  if (strcmp(n, "begin") == 0)
-    {
-      return YES;
-    }
-  return NO;
-}
-
-- (void) forwardInvocation: (NSInvocation*)anInvocation
-{
-  SQLClient     *db;
-
-  db = [self provideClient];
-  [anInvocation invokeWithTarget: db];
+  /*
+   * First check validity and concatenate parts of the query.
+   */
+  va_start (ap, stmt);
+  sql = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
   [self swallowClient: db];
+
+  return sql;
 }
 
-- (NSMethodSignature*) methodSignatureForSelector: (SEL)aSelector
+- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  NSMethodSignature     *methodSig;
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db buildQuery: stmt with: values];
 
-  methodSig = [super methodSignatureForSelector: aSelector];
-  if (nil == methodSig && 0 != c && NO == selIsBad(aSelector))
-    {
-      methodSig = [c[0] methodSignatureForSelector: aSelector];
-    }
-  return methodSig;
-}
-
-- (BOOL) respondsToSelector: (SEL)aSelector
-{
-  BOOL  result;
-
-  result = [super respondsToSelector: aSelector];
-  if (NO == result && 0 != c && NO == selIsBad(aSelector))
-    {
-      result = [c[0] respondsToSelector: aSelector];
-    }
+  [self swallowClient: db];
   return result;
+}
+
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt,...
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result;
+  va_list	        ap;
+
+  va_start (ap, stmt);
+  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
+  result = [db cache: seconds simpleQuery: stmt];
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt
+		     with: (NSDictionary*)values
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result = [db cache: seconds query: stmt with: values];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result = [db cache: seconds simpleQuery: stmt];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) cache: (int)seconds
+	      simpleQuery: (NSString*)stmt
+	       recordType: (id)rtype
+	         listType: (id)ltype
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result;
+
+  result = [db cache: seconds
+         simpleQuery: stmt
+          recordType: rtype
+            listType: ltype];
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) columns: (NSMutableArray*)records
+{
+  return [SQLClient columns: records];
+}
+
+- (NSInteger) execute: (NSString*)stmt, ...
+{
+  SQLClient     *db = [self provideClient];
+  NSInteger     result;
+  NSArray	*info;
+  va_list	ap;
+
+  va_start (ap, stmt);
+  info = [db _prepare: stmt args: ap];
+  va_end (ap);
+  result = [db simpleExecute: info];
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values
+{
+  SQLClient     *db = [self provideClient];
+  NSInteger     result = [db execute: stmt with: values];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) query: (NSString*)stmt, ...
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray	*result = nil;
+  va_list		ap;
+
+  /*
+   * First check validity and concatenate parts of the query.
+   */
+  va_start (ap, stmt);
+  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
+  result = [db simpleQuery: stmt];
+  [self swallowClient: db];
+
+  return result;
+}
+
+- (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result = [db query: stmt with: values];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (SQLRecord*) queryRecord: (NSString*)stmt, ...
+{
+  SQLClient     *db = [self provideClient];
+  NSArray	*result = nil;
+  SQLRecord	*record;
+  va_list	ap;
+
+  va_start (ap, stmt);
+  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
+  result = [db simpleQuery: stmt];
+  [self swallowClient: db];
+
+  if ([result count] > 1)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"Query returns more than one record -\n%@\n", stmt];
+    }
+  record = [result lastObject];
+  if (record == nil)
+    {
+      [NSException raise: SQLEmptyException
+		  format: @"Query returns no data -\n%@\n", stmt];
+    }
+  return record;
+}
+
+- (NSString*) queryString: (NSString*)stmt, ...
+{
+  SQLClient     *db = [self provideClient];
+  NSArray	*result = nil;
+  SQLRecord	*record;
+  va_list	ap;
+
+  va_start (ap, stmt);
+  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  va_end (ap);
+  result = [db simpleQuery: stmt];
+  [self swallowClient: db];
+
+  if ([result count] > 1)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"Query returns more than one record -\n%@\n", stmt];
+    }
+  record = [result lastObject];
+  if (record == nil)
+    {
+      [NSException raise: SQLEmptyException
+		  format: @"Query returns no data -\n%@\n", stmt];
+    }
+  if ([record count] > 1)
+    {
+      [NSException raise: NSInvalidArgumentException
+		  format: @"Query returns multiple fields -\n%@\n", stmt];
+    }
+  return [[record lastObject] description];
+}
+
+- (NSString*) quote: (id)obj
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quote: obj];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSString*) quotef: (NSString*)fmt, ...
+{
+  SQLClient     *db = [self provideClient];
+  va_list	ap;
+  NSString	*str;
+  NSString	*quoted;
+
+  va_start(ap, fmt);
+  str = [[NSString allocWithZone: NSDefaultMallocZone()]
+    initWithFormat: fmt arguments: ap];
+  va_end(ap);
+  quoted = [self quoteString: str];
+  [self swallowClient: db];
+  [str release];
+  return quoted;
+}
+
+- (NSString*) quoteBigInteger: (int64_t)i
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quoteBigInteger: i];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSString*) quoteCString: (const char *)s
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quoteCString: s];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSString*) quoteChar: (char)chr
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quoteChar: chr];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSString*) quoteFloat: (float)f
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quoteFloat: f];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSString*) quoteInteger: (int)i
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quoteInteger: i];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSString*) quoteString: (NSString *)s
+{
+  SQLClient     *db = [self provideClient];
+  NSString      *result = [db quoteString: s];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSInteger) simpleExecute: (NSArray*)info
+{
+  SQLClient     *db = [self provideClient];
+  NSInteger     result = [db simpleExecute: info];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) simpleQuery: (NSString*)stmt
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result = [db simpleQuery: stmt];
+
+  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableArray*) simpleQuery: (NSString*)stmt
+		     recordType: (id)rtype
+		       listType: (id)ltype
+{
+  SQLClient             *db = [self provideClient];
+  NSMutableArray        *result;
+
+  result = [db simpleQuery: stmt
+                recordType: rtype
+                  listType: ltype];
+  [self swallowClient: db];
+  return result;
+}
+
+- (void) singletons: (NSMutableArray*)records
+{
+  [SQLClient singletons: records];
 }
 
 @end

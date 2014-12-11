@@ -1187,6 +1187,24 @@ SQLCLIENT_PRIVATE
 @interface	SQLClient (Convenience)
 
 /**
+ * Convenience method to deal with the results of a query converting the
+ * normal array of records into an array of record columns.  Each column
+ * in the array is an array containing all the values from that column.
+ */
++ (NSMutableArray*) columns: (NSMutableArray*)records;
+
+/**
+ * Convenience method to deal with the results of a query where each
+ * record contains a single field ... it converts the array of records
+ * returned by the query to an array containing the fields.<br />
+ * NB. This does not check that the contents of the records array are
+ * actually instances of [SQLRecord], so you must ensure you don't
+ * call it more than once on the same array (something that may happen
+ * if you retrieve the array using a cache based query).
+ */
++ (void) singletons: (NSMutableArray*)records;
+
+/**
  * Returns a transaction object configured to handle batching and
  * execute part of a batch of statements if execution of the whole
  * using the [SQLTransaction-executeBatch] method fails.<br />
@@ -1196,10 +1214,7 @@ SQLCLIENT_PRIVATE
  */
 - (SQLTransaction*) batch: (BOOL)stopOnFailure;
 
-/**
- * Convenience method to deal with the results of a query converting the
- * normal array of records into an array of record columns.  Each column
- * in the array is an array containing all the values from that column.
+/** The same as the [SQLClient+columns:] method.
  */
 - (NSMutableArray*) columns: (NSMutableArray*)records;
 
@@ -1218,14 +1233,7 @@ SQLCLIENT_PRIVATE
  */
 - (NSString*) queryString: (NSString*)stmt,...;
 
-/**
- * Convenience method to deal with the results of a query where each
- * record contains a single field ... it converts the array of records
- * returned by the query to an array containing the fields.<br />
- * NB. This does not check that the contents of the records array are
- * actually instances of [SQLRecord], so you must ensure you don't
- * call it more than once on the same array (something that may happen
- * if you retrieve the array using a cache based query).
+/** The same as the [SQLClient+singletons:] method.
  */
 - (void) singletons: (NSMutableArray*)records;
 
@@ -1529,6 +1537,47 @@ SQLCLIENT_PRIVATE
  */
 - (BOOL) swallowClient: (SQLClient*)client;
 
+@end
+
+/** This category lists the convenience methods provided by a pool instance
+ * for proxying messages to a one-off client instance in the pool.<br />
+ * The behavior of each method is, of course, as documentf for instances
+ * of the [SQLClient] class.
+ */
+@interface      SQLClientPool (Convenience)
+- (NSString*) buildQuery: (NSString*)stmt,...;
+- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt,...;
+- (NSMutableArray*) cache: (int)seconds
+		    query: (NSString*)stmt
+		     with: (NSDictionary*)values;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) cache: (int)seconds
+	      simpleQuery: (NSString*)stmt
+	       recordType: (id)rtype
+	         listType: (id)ltype;
+- (NSMutableArray*) columns: (NSMutableArray*)records;
+- (NSInteger) execute: (NSString*)stmt,...;
+- (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values;
+- (NSMutableArray*) query: (NSString*)stmt,...;
+- (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values;
+- (SQLRecord*) queryRecord: (NSString*)stmt,...;
+- (NSString*) queryString: (NSString*)stmt,...;
+- (NSString*) quote: (id)obj;
+- (NSString*) quotef: (NSString*)fmt, ...;
+- (NSString*) quoteBigInteger: (int64_t)i;
+- (NSString*) quoteCString: (const char *)s;
+- (NSString*) quoteChar: (char)c;
+- (NSString*) quoteFloat: (float)f;
+- (NSString*) quoteInteger: (int)i;
+- (NSString*) quoteString: (NSString *)s;
+- (NSInteger) simpleExecute: (NSArray*)info;
+- (void) singletons: (NSMutableArray*)records;
+- (NSMutableArray*) simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) simpleQuery: (NSString*)stmt
+		     recordType: (id)rtype
+		       listType: (id)ltype;
 @end
 
 /**
