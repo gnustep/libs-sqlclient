@@ -1411,6 +1411,16 @@ SQLCLIENT_PRIVATE
  * <p>All clients in the pool share the same cache object, so query results
  * cached by one client will be available to other clients in the pool.
  * </p>
+ * <p>As a convenience, an SQLClientPool instance acts as a proxy for the
+ * clients it contains, so you may (where it makes sense) send the same
+ * messages to a pool that you would send to an individual client, and the
+ * pool will temporarily allocate one of its clients to handle it.<br />
+ * In this case the client will be returned to the pool immediately
+ * after the message has been handled (and subsequent messages may go
+ * to a different client), so you can't change settings or send any other
+ * method which would be required to be followed up by another message to
+ * the same client.
+ * </p>
  */
 @interface	SQLClientPool : NSObject
 {

@@ -29,6 +29,7 @@
 #import	<Foundation/NSAutoreleasePool.h>
 #import	<Foundation/NSDebug.h>
 #import	<Foundation/NSException.h>
+#import	<Foundation/NSInvocation.h>
 #import	<Foundation/NSLock.h>
 #import	<Foundation/NSString.h>
 
@@ -537,6 +538,63 @@
     }
 
   [lock unlockWithCondition: cond];
+}
+
+@end
+
+@implementation SQLClientPool (Proxying)
+
+static BOOL
+selIsBad(SEL aSelector)
+{
+  const char    *n = sel_getName(aSelector);
+
+  if (strncmp(n, "set", 3) == 0)
+    {
+      return YES;
+    }
+  if (strncmp(n, "backend", 7) == 0)
+    {
+      return YES;
+    }
+  if (strcmp(n, "begin") == 0)
+    {
+      return YES;
+    }
+  return NO;
+}
+
+- (void) forwardInvocation: (NSInvocation*)anInvocation
+{
+  SQLClient     *db;
+
+  db = [self provideClient];
+  [anInvocation invokeWithTarget: db];
+  [self swallowClient: db];
+}
+
+- (NSMethodSignature*) methodSignatureForSelector: (SEL)aSelector
+{
+  NSMethodSignature     *methodSig;
+
+  methodSig = [super methodSignatureForSelector: aSelector];
+  if (nil == methodSig && 0 != c && NO == selIsBad(aSelector))
+    {
+      methodSig = [c[0] methodSignatureForSelector: aSelector];
+    }
+  return methodSig;
+}
+
+- (BOOL) respondsToSelector: (SEL)aSelector
+{
+  BOOL  result;
+
+  result = [super respondsToSelector: aSelector];
+  if (NO == result && 0 != c && NO == selIsBad(aSelector))
+    {
+      result = [c[0] respondsToSelector: aSelector];
+    }
+  return result;
 }
 
 @end
