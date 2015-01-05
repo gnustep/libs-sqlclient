@@ -152,6 +152,9 @@
   int   index;
   int   cond = 0;
 
+  /* If we haven't been given a timeout, we should wait for a client
+   * indefinitely ... so we set the timeout to be in the distant future.
+   */
   if (nil == when)
     {
       static NSDate     *future = nil;
@@ -166,7 +169,7 @@
   /* We want to log stuff if we don't get a client quickly.
    * Ideally we get the lock straight away,
    * but if not we want to log every ten seconds (and possibly
-   * when we begin waiting.
+   * when we begin waiting).
    */
   if (YES == [lock tryLockWhenCondition: 1])
     {
@@ -490,35 +493,6 @@
               idle++;
             }
         }
-    }
-
-  /* If we have more idle client connections than we want,
-   * disconnect the longest idle first.
-   */
-  while (idle > 0 && (used + idle) > min)
-    {
-      SQLClient *oldest = nil;
-
-      for (index = 0; index < max; index++)
-        {
-          if (NO == u[index] && YES == [c[index] connected])
-            {
-              if (nil == oldest)
-                {
-                  oldest = c[index];
-                }
-              else
-                {
-                  oldest = [oldest longestIdle: c[index]];
-                }
-            }
-        }
-      NS_DURING
-        [oldest disconnect];
-      NS_HANDLER
-        NSLog(@"Failed to disconnect %@ ... %@", oldest, localException);
-      NS_ENDHANDLER
-      idle--;
     }
 
   /* If we have fewer connections than we want, connect clients until we

@@ -1515,7 +1515,7 @@ SQLCLIENT_PRIVATE
  * to the database server.<br />
  * The value of minConnections is the minimum number of connected clients
  * normally expected to be in the pool.  The pool tries to ensure that it
- * doesn't contain more than this number of idle connected clients.<br />
+ * contains at least this number of connected clients.<br />
  * The value of maxConnections must be greater than or equal to that of
  * minConnections and may not be greater than 100.
  * The value of minConnections must be less than or equal to that of
@@ -1530,10 +1530,7 @@ SQLCLIENT_PRIVATE
 /** Puts the client back in the pool.  This happens automatically
  * when a client from a pool would normally be deallocated so you don't
  * generally need to do it.<br />
- * Returns YES if the supplied client was from the pool, NO otherwise.<br />
- * If the swallowed client would take the count of idle client connections
- * in the pool above the configured minimum, the oldest (ie longest idle)
- * client in the pool is disconnected.
+ * Returns YES if the supplied client was from the pool, NO otherwise.
  */
 - (BOOL) swallowClient: (SQLClient*)client;
 
