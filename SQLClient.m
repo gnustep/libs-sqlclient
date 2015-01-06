@@ -134,14 +134,22 @@ static Class rClass = 0;
 
 - (NSArray*) allKeys
 {
-  unsigned	count = [self count];
-  id		buf[count];
+  NSUInteger	count = [self count];
 
-  while (count-- > 0)
+  if (count > 0)
     {
-      buf[count] = [self keyAtIndex: count];
+      id	buf[count];
+
+      while (count-- > 0)
+        {
+          buf[count] = [self keyAtIndex: count];
+        }
+      return [NSArray arrayWithObjects: buf count: count];
     }
-  return [NSArray arrayWithObjects: buf count: count];
+  else
+    {
+      return [NSArray array];
+    }
 }
 
 - (id) copyWithZone: (NSZone*)z
@@ -157,15 +165,23 @@ static Class rClass = 0;
 
 - (NSMutableDictionary*) dictionary
 {
-  unsigned		count = [self count];
-  id			keys[count];
-  id			vals[count];
+  NSUInteger		count = [self count];
 
-  [self getKeys: keys];
-  [self getObjects: vals];
-  return [NSMutableDictionary dictionaryWithObjects: vals
-					    forKeys: keys
-					      count: count];
+  if (count > 0)
+    {
+      id	keys[count];
+      id        vals[count];
+
+      [self getKeys: keys];
+      [self getObjects: vals];
+      return [NSMutableDictionary dictionaryWithObjects: vals
+                                                forKeys: keys
+                                                  count: count];
+    }
+  else
+    {
+      return [NSMutableDictionary dictionary];
+    }
 }
 
 - (void) getKeys: (id*)buf
@@ -209,37 +225,38 @@ static Class rClass = 0;
 
 - (id) objectForKey: (NSString*)key
 {
-  unsigned	count = [self count];
-  unsigned	pos;
-  id		keys[count];
+  NSUInteger    count = [self count];
 
-  [self getKeys: keys];
-  for (pos = 0; pos < count; pos++)
+  if (count > 0)
     {
-      if ([key isEqualToString: keys[pos]] == YES)
-        {
-	  break;
-	}
-    }
-  if (pos == count)
-    {
+      NSUInteger        pos;
+      id	        keys[count];
+
+      [self getKeys: keys];
       for (pos = 0; pos < count; pos++)
-	{
-	  if ([key caseInsensitiveCompare: keys[pos]] == NSOrderedSame)
-	    {
-	      break;
-	    }
-	}
-    }
+        {
+          if ([key isEqualToString: keys[pos]] == YES)
+            {
+              break;
+            }
+        }
+      if (pos == count)
+        {
+          for (pos = 0; pos < count; pos++)
+            {
+              if ([key caseInsensitiveCompare: keys[pos]] == NSOrderedSame)
+                {
+                  break;
+                }
+            }
+        }
 
-  if (pos == count)
-    {
-      return nil;
+      if (pos != count)
+        {
+          return [self objectAtIndex: pos];
+        }
     }
-  else
-    {
-      return [self objectAtIndex: pos];
-    }
+  return nil;
 }
 
 - (void) replaceObjectAtIndex: (NSUInteger)index withObject: (id)anObject
@@ -249,52 +266,61 @@ static Class rClass = 0;
 
 - (void) setObject: (id)anObject forKey: (NSString*)aKey
 {
-  unsigned	count = [self count];
-  unsigned	pos;
-  id		keys[count];
+  NSUInteger	count = [self count];
 
-  if (anObject == nil)
+  if (count > 0)
     {
-      anObject = null;
-    }
-  [self getKeys: keys];
-  for (pos = 0; pos < count; pos++)
-    {
-      if ([aKey isEqualToString: keys[pos]] == YES)
+      NSUInteger	pos;
+      id		keys[count];
+
+      if (anObject == nil)
         {
-	  break;
-	}
-    }
-  if (pos == count)
-    {
+          anObject = null;
+        }
+      [self getKeys: keys];
       for (pos = 0; pos < count; pos++)
-	{
-	  if ([aKey caseInsensitiveCompare: keys[pos]] == NSOrderedSame)
-	    {
-	      break;
-	    }
-	}
-    }
+        {
+          if ([aKey isEqualToString: keys[pos]] == YES)
+            {
+              break;
+            }
+        }
+      if (pos == count)
+        {
+          for (pos = 0; pos < count; pos++)
+            {
+              if ([aKey caseInsensitiveCompare: keys[pos]] == NSOrderedSame)
+                {
+                  break;
+                }
+            }
+        }
 
-  if (pos == count)
-    {
-      [NSException raise: NSInvalidArgumentException
-		  format: @"Bad key (%@) in -setObject:forKey:", aKey];
+      if (pos == count)
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"Bad key (%@) in -setObject:forKey:", aKey];
+        }
+      else
+        {
+          [self replaceObjectAtIndex: pos withObject: anObject];
+        }
     }
   else
     {
-      [self replaceObjectAtIndex: pos withObject: anObject];
+      [NSException raise: NSInvalidArgumentException
+		  format: @"Bad key (%@) in -setObject:forKey:", aKey];
     }
 }
 
 - (NSUInteger) sizeInBytes: (NSMutableSet*)exclude
 {
   NSUInteger	size = [super sizeInBytes: exclude];
+  NSUInteger	count = [self count];
 
-  if (size > 0)
+  if (size > 0 && count > 0)
     {
       NSUInteger	pos;
-      NSUInteger	count = [self count];
       id	        vals[count];
 
       [self getObjects: vals];
@@ -750,10 +776,10 @@ static int	        poolConnections = 0;
     }
 
   o = [self existingClient: reference];
-  if (o == nil)
+  if (nil == o)
     {
-      o = [[SQLClient alloc] initWithConfiguration: config name: reference];
-      [o autorelease];
+      o = [[[SQLClient alloc] initWithConfiguration: config name: reference]
+        autorelease];
     }
   return o;
 }
@@ -1637,6 +1663,12 @@ static int	        poolConnections = 0;
         }
     }
   [clientsLock unlock];
+}
+
+- (id) retain
+{
+  NSIncrementExtraRefCount(self);
+  return self;
 }
 
 - (void) rollback
@@ -3699,8 +3731,11 @@ validName(NSString *name)
 
 - (id) initWithCapacity: (NSUInteger)capacity
 {
-  DESTROY(content);
-  content = [[NSMutableDictionary alloc] initWithCapacity: capacity];
+  if (nil != (self = [super init]))
+    {
+      DESTROY(content);
+      content = [[NSMutableDictionary alloc] initWithCapacity: capacity];
+    }
   return self;
 }
 
@@ -3752,9 +3787,12 @@ validName(NSString *name)
 
 - (id) initWithCapacity: (NSUInteger)capacity
 {
-  DESTROY(content);
-  content = [[NSCountedSet alloc] initWithCapacity: capacity];
-  added = 0;
+  if (nil != (self = [super init]))
+    {
+      DESTROY(content);
+      content = [[NSCountedSet alloc] initWithCapacity: capacity];
+      added = 0;
+    }
   return self;
 }
 
