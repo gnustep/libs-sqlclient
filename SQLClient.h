@@ -717,6 +717,19 @@ SQLCLIENT_PRIVATE
 - (NSString*) password;
 
 /**
+ * This is the method used to convert a query or statement to a standard
+ * form used internally by other methods.<br />
+ * This works to build an sql string by quoting any non-string objects
+ * and concatenating the resulting strings in a nil terminated list.<br />
+ * Returns an array containing the statement as the first object and
+ * any NSData objects following.  The NSData objects appear in the
+ * statement strings as the marker sequence - <code>'?'''?'</code><br />
+ * If the returned array contains a single object, that object is a
+ * simple SQL query/statement.
+ */
+- (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
+
+/**
  * <p>Perform arbitrary query <em>which returns values.</em>
  * </p>
  * <p>This method handles its arguments in the same way as the -buildQuery:,...
@@ -1331,6 +1344,11 @@ SQLCLIENT_PRIVATE
  */
 - (GSCache*) cache;
 
+/** Returns an autoreleased mutable copy of the cached object corresponding
+ * to the supplied query/statement (or nil if no such object is cached).
+ */
+- (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt;
+
 /**
  * Calls -cache:simpleQuery:recordType:listType: with the default
  * record class, array class, and with a query string formed from
@@ -1356,8 +1374,8 @@ SQLCLIENT_PRIVATE
 
 /**
  * If the result of the query is already cached and has not expired,
- * return it. Otherwise, perform the query and cache the result
- * giving it the specified lifetime in seconds.<br />
+ * return an autoreleased mutable copy. Otherwise, perform the query
+ * and cache the result giving it the specified lifetime in seconds.<br />
  * If seconds is negative, the query is performed irrespective of
  * whether it is already cached, and its absolute value is used to
  * set the lifetime of the results.<br />
@@ -1373,7 +1391,10 @@ SQLCLIENT_PRIVATE
  * to add records to the list.<br />
  * If ltype is nil then the [NSMutableArray] class is used.<br />
  * The list produced by this argument is used as the return value of
- * this method.<br />
+ * this method.<br /> 
+ * NB. cache lookups for the instance created from ltype will be provided
+ * by sending -mutableCopy and -autorelease messages to the original
+ * instance.<br />
  * If a cache thread has been set using the -setCacheThread: method, and the
  * -cache:simpleQuery:recordType:listType: method is called from a
  * thread other than the cache thread, then any query to retrieve

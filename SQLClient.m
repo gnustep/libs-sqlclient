@@ -691,15 +691,6 @@ static NSArray		*rollbackStatement = nil;
  */
 - (void) _populateCache: (CacheQuery*)a;
 
-/**
- * Internal method to build an sql string by quoting any non-string objects
- * and concatenating the resulting strings in a nil terminated list.<br />
- * Returns an array containing the statement as the first object and
- * any NSData objects following.  The NSData objects appear in the
- * statement strings as the marker sequence - <code>'?'''?'</code>
- */
-- (NSMutableArray*) _prepare: (NSString*)stmt args: (va_list)args;
-
 /** Internal method called to record the 'main' thread in which automated
  * cache updates are to be performed.
  */
@@ -954,7 +945,7 @@ static int	        poolConnections = 0;
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  sql = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  sql = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   return sql;
@@ -1211,7 +1202,7 @@ static int	        poolConnections = 0;
   va_list	ap;
 
   va_start (ap, stmt);
-  info = [self _prepare: stmt args: ap];
+  info = [self prepare: stmt args: ap];
   va_end (ap);
   return [self simpleExecute: info];
 }
@@ -1405,6 +1396,47 @@ static int	        poolConnections = 0;
   return _password;
 }
 
+- (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
+{
+  NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
+  NSString		*tmp = va_arg(args, NSString*);
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
+
+  if (tmp != nil)
+    {
+      NSMutableString	*s = [NSMutableString stringWithCapacity: 1024];
+
+      [s appendString: stmt];
+      /*
+       * Append any values from the nil terminated varargs
+       */ 
+      while (tmp != nil)
+	{
+	  if ([tmp isKindOfClass: NSStringClass] == NO)
+	    {
+	      if ([tmp isKindOfClass: [NSData class]] == YES)
+		{
+		  [ma addObject: tmp];
+		  [s appendString: @"'?'''?'"];	// Marker.
+		}
+	      else
+		{
+		  [s appendString: [self quote: tmp]];
+		}
+	    }
+	  else
+	    {
+	      [s appendString: tmp];
+	    }
+	  tmp = va_arg(args, NSString*);
+	}
+      stmt = s;
+    }
+  [ma insertObject: stmt atIndex: 0];
+  [arp release];
+  return ma;
+}
+
 - (NSMutableArray*) query: (NSString*)stmt, ...
 {
   va_list		ap;
@@ -1414,7 +1446,7 @@ static int	        poolConnections = 0;
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   result = [self simpleQuery: stmt];
@@ -2304,47 +2336,6 @@ static int	        poolConnections = 0;
 	  lifetime: a->lifetime];
 }
 
-- (NSMutableArray*) _prepare: (NSString*)stmt args: (va_list)args
-{
-  NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
-  NSString		*tmp = va_arg(args, NSString*);
-  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
-
-  if (tmp != nil)
-    {
-      NSMutableString	*s = [NSMutableString stringWithCapacity: 1024];
-
-      [s appendString: stmt];
-      /*
-       * Append any values from the nil terminated varargs
-       */ 
-      while (tmp != nil)
-	{
-	  if ([tmp isKindOfClass: NSStringClass] == NO)
-	    {
-	      if ([tmp isKindOfClass: [NSData class]] == YES)
-		{
-		  [ma addObject: tmp];
-		  [s appendString: @"'?'''?'"];	// Marker.
-		}
-	      else
-		{
-		  [s appendString: [self quote: tmp]];
-		}
-	    }
-	  else
-	    {
-	      [s appendString: tmp];
-	    }
-	  tmp = va_arg(args, NSString*);
-	}
-      stmt = s;
-    }
-  [ma insertObject: stmt atIndex: 0];
-  [arp release];
-  return ma;
-}
-
 - (void) _recordMainThread
 {
   mainThread = [NSThread currentThread];
@@ -2645,7 +2636,7 @@ static int	        poolConnections = 0;
   SQLRecord	*record;
 
   va_start (ap, stmt);
-  stmt = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   result = [self simpleQuery: stmt];
@@ -2671,7 +2662,7 @@ static int	        poolConnections = 0;
   SQLRecord	*record;
 
   va_start (ap, stmt);
-  stmt = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   result = [self simpleQuery: stmt];
@@ -2761,13 +2752,24 @@ static int	        poolConnections = 0;
   return [c autorelease];
 }
 
+- (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt
+{
+  NSMutableArray        *result = [[self cache] objectForKey: stmt];
+
+  if (result != nil)
+    {
+      result = [[result mutableCopy] autorelease];
+    }
+  return result;
+}
+
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...
 {
   va_list		ap;
 
   va_start (ap, stmt);
-  stmt = [[self _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   return [self cache: seconds simpleQuery: stmt];
@@ -3180,7 +3182,7 @@ static int	        poolConnections = 0;
   NSMutableArray        *p;
 
   va_start (ap, stmt);
-  p = [_db _prepare: stmt args: ap];
+  p = [_db prepare: stmt args: ap];
   va_end (ap);
   [self _merge: p];
 }

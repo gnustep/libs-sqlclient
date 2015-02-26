@@ -1,5 +1,15 @@
 2014-12-11 Richard Frith-Macdonald  <rfm@gnu.org>
 
+        * SQLClient.h:
+        * SQLClient.m:
+	* GNUmakefile:
+	Expose method to prepare a statement and a convenience method to
+	check for an existing cached value (using a prepared statement
+	as the cache key).
+	Bumped version to 1.8.3.
+
+2014-12-11 Richard Frith-Macdonald  <rfm@gnu.org>
+
 	* Postgres.m: Fix minor thread safety issue.
         * SQLClient.h:
         * SQLClient.m:
