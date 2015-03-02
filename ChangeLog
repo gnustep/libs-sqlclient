@@ -4,6 +4,8 @@
 	support standard conforming strings.  This allows us to always turn
 	on standard conforming strings and be able to quote string and bytea
 	objects whether the database connection has been established or not.
+	* GNUmakefile:
+	Bumped version to 1.8.4.
 
 2014-12-11 Richard Frith-Macdonald  <rfm@gnu.org>
 
