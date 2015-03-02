@@ -60,14 +60,12 @@
 
 typedef struct	{
   PGconn	*_connection;
-  BOOL		_escapeStrings;         /* Can we use E'...' syntax?    */
   int           _backendPID;
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
 #define	backendPID		(cInfo->_backendPID)
 #define	connection		(cInfo->_connection)
-#define	escapeStrings	        (cInfo->_escapeStrings)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -208,12 +206,6 @@ connectQuote(NSString *str)
 	      p = PQparameterStatus(connection, "standard_conforming_strings");
               if (p != 0)
                 {
-                  /* The standard conforming strings setting exists,
-                   * so the E'...' syntax must exist and we can use
-                   * it for byte arrays.
-                   */
-                  escapeStrings = YES;
-
                   /* If the escape_string_warning setting is on,
                    * the server will warn about backslashes even
                    * in properly quoted strings, so turn it off.
@@ -230,7 +222,10 @@ connectQuote(NSString *str)
                 }
               else
                 {
-                  escapeStrings = NO;
+                  PQfinish(connection);
+                  connection = 0;
+                  connected = NO;
+		  [self debug: @"Postgres without standard conforming strings"];
                 }
 
 	      if ([self debugging] > 0)
@@ -701,10 +696,7 @@ static unsigned int trim(char *str)
   unsigned		length = 0;
   unsigned		i;
 
-  if (YES == escapeStrings)
-    {
-      ptr[length++] = 'E';
-    }
+  ptr[length++] = 'E';
   ptr[length++] = '\'';
   for (i = 0; i < sLen; i++)
     {
@@ -744,10 +736,7 @@ static unsigned int trim(char *str)
   unsigned int	length = sLen + 2;
   unsigned int	i;
 
-  if (YES == escapeStrings)
-    {
-      length++;         // Allow for leading 'E'
-    }
+  length++;         // Allow for leading 'E'
   for (i = 0; i < sLen; i++)
     {
       unsigned char	c = src[i];
@@ -1029,6 +1018,22 @@ static unsigned int trim(char *str)
   unsigned	l = [d length];
   unsigned char	*to = NSZoneMalloc(NSDefaultMallocZone(), (l * 2) + 3);
 
+#if 1
+  const char    *from = (const char*)[d bytes];
+  unsigned      i = 0;
+  unsigned      j = 0;
+
+  to[j++] = '\'';
+  while (i < l)
+    {
+      if ('\'' == (to[j++] = from[i++]))
+        {
+          to[j++] = '\'';
+        }
+    }
+  to[j++] = '\'';
+  l = j - 2;
+#else
 #ifdef	HAVE_PQESCAPESTRINGCONN
   int		err;
 
@@ -1036,7 +1041,8 @@ static unsigned int trim(char *str)
   NS_DURING
     {
       [self connect];
-      l = PQescapeStringConn(connection, (char*)(to + 1), [d bytes], l, &err);
+      l = PQescapeStringConn(connection,
+        (char*)(to + 1), [d bytes], l, &err);
     }
   NS_HANDLER
     {
@@ -1051,6 +1057,8 @@ static unsigned int trim(char *str)
 #endif
   to[0] = '\'';
   to[l + 1] = '\'';
+#endif
+
   s = [[NSString alloc] initWithBytesNoCopy: to
 				     length: l + 2
 				   encoding: NSUTF8StringEncoding
