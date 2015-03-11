@@ -120,7 +120,7 @@ main()
 	    @"Delivery TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, "
 	    @"Reference CHAR(128), "
 	    @"Destination CHAR(15) NOT NULL, "
-	    @"Payload CHAR(250) DEFAULT '' NOT NULL"
+	    @"Payload CHAR(250) DEFAULT '' NOT NULL,"
 	    @")",
 	    nil];
 	  [db execute:
@@ -155,8 +155,11 @@ main()
             }
 	  [db execute: @"INSERT INTO Queue (Consumer, Destination,"
             @" ServiceID, Payload) VALUES (",
-	    [db quote: name], @", ", [db quote: destination], @", ", sid, @", ",
-	    @"'helo there'", @")", nil];
+	    [db quote: name], @", ",
+            [db quote: destination], @", ",
+            sid, @", ",
+	    @"'helo there'",
+            @")", nil];
 	  [arp release];
 	}
       NSLog(@"End producing");
@@ -252,25 +255,54 @@ main()
 	@"intval int, "
 	@"when1 timestamp with time zone, "
 	@"when2 timestamp, "
-	@"b bytea"
+	@"b bytea,"
+        @"extra1 int[],"
+        @"extra2 varchar[],"
+        @"extra3 bytea[],"
+        @"extra4 boolean[],"
+        @"extra5 timestamp[]"
 	@")",
 	nil];
 
-      if (1 != [db execute: @"insert into xxx "
-	@"(k, char1, boolval, intval, when1, when2, b) "
+      if (1 != [db execute: @"insert into xxx (k, char1, boolval, intval,"
+        @" when1, when2, b, extra1, extra2, extra3, extra4, extra5) "
 	@"values ("
-	@"'hello', "
+	@"'{hello', "
 	@"'X', "
 	@"TRUE, "
 	@"1, "
 	@"CURRENT_TIMESTAMP, "
 	@"CURRENT_TIMESTAMP, ",
-	data,
-	@")",
+	data, @", ",
+        [db quoteArray:
+          [NSArray arrayWithObjects: @"1", @"2", [NSNull null], nil]
+              toString: nil
+        quotingStrings: NO], @", ",
+        [db quoteArray:
+          [NSArray arrayWithObjects: @"on,e", @"t'wo", @"many", nil]
+              toString: nil
+        quotingStrings: YES], @", ",
+        [db quoteArray:
+          [NSArray arrayWithObjects: data, nil]
+              toString: nil
+        quotingStrings: YES], @", ",
+        [db quoteArray:
+          [NSArray arrayWithObjects: @"TRUE", @"FALSE", nil]
+              toString: nil
+        quotingStrings: NO], @", ",
+        [db quoteArray:
+          [NSArray arrayWithObjects: [NSDate date], nil]
+              toString: nil
+        quotingStrings: YES], @")",
 	nil])
         {
           NSLog(@"Insert failed to return row count");
         }
+
+[db setDebugging: 9];
+[db query: @"select * from xxx", nil];
+[db setDebugging: 0];
+
       [db execute: @"insert into xxx "
 	@"(k, char1, boolval, intval, when1, when2, b) "
 	@"values ("

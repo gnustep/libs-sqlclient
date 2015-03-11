@@ -1567,6 +1567,15 @@ static int	        poolConnections = 0;
   return quoted;
 }
 
+- (NSMutableString*) quoteArray: (NSArray *)a
+                       toString: (NSMutableString *)s
+                 quotingStrings: (BOOL)q
+{
+  [NSException raise: NSGenericException
+    format: @"%@ not supported for this database", NSStringFromSelector(_cmd)]; 
+  return nil;
+}
+
 - (NSString*) quoteBigInteger: (int64_t)i
 {
   return [NSString stringWithFormat: @"%"PRId64, i];

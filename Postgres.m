@@ -485,6 +485,221 @@ static unsigned int trim(char *str)
   return (str - start);
 }
 
+- (char*) parseIntoArray: (NSMutableArray *)a type: (int)t from: (char*)p
+{
+  p++;  /* Step past '{' */
+  while (*p && *p != '}')
+    {
+      id        v = nil;
+
+      /* Ignore leading space before field data.
+       */
+      while (isspace(*p))
+        {
+          p++;
+        }
+      if ('{' == *p)
+        {
+          /* Found a nested array.
+           */
+          v = [[NSMutableArray alloc] initWithCapacity: 10];
+          p = [self parseIntoArray: v type: t from: p]; 
+        }
+      else if ('\"' == *p)
+        {
+          char  *start = ++p;
+          int   len = 0;
+        
+          /* Found something quoted (char, varchar, text, bytea etc)
+           */
+          while (*p != '\0' && *p != '\"')
+            {
+              if ('\'' == *p)
+                {
+                  p++;
+                }
+              p++;
+              len++;
+            }
+          if ('\"' == *p)
+            {
+              *p++ = '\0';
+            }
+          if (len == (p - start + 1))
+            {
+              v = [[NSString alloc] initWithUTF8String: start];
+            }
+          else
+            {
+              char      *buf;
+              char      *ptr;
+              int       i;
+
+              buf = malloc(len+1);
+              ptr = start;
+              i  = 0;
+              while (*ptr != '\0')
+                {
+                  if ('\\' == *ptr)
+                    {
+                      ptr++;
+                    }
+                  buf[i++] = *ptr++;
+                }
+              buf[len] = '\0';
+              if ('D' == t)
+                {
+                  /* This is expected to be bytea data
+                   */
+                  v = [[self dataFromBLOB: buf] retain];
+                }
+              else
+                {
+                  v = [NSString alloc];
+                  v = [v initWithBytesNoCopy: buf
+                                      length: len
+                                    encoding: NSUTF8StringEncoding
+                                freeWhenDone: YES];
+                }
+            }
+        }
+      else
+        {
+          char  *start = p;
+          char  save;
+          int   len;
+
+          /* This is an unquoted field ... could be NULL or a boolean,
+           * or a numeric field, or a timestamp or just a simple string.
+           */
+          while (*p != '\0' && *p != ',' && *p != '}')
+            {
+              p++;
+            }
+          save = *p;
+          *p = '\0'; 
+          len = trim(start);
+          if (strcmp(start, "NULL") == 0)
+            {
+              v = null;
+            }
+          else if ('T' == t)
+            {
+              v = [[self dbToDateFromBuffer: start length: len] retain];
+            }
+          else if ('D' == t)
+            {
+              v = [[self dataFromBLOB: start] retain];
+            }
+          else if ('B' == t)
+            {
+              if (*start == 't')
+                v = @"YES";
+              else
+                v = @"NO";
+            }
+          else
+            {
+              v = [[NSString alloc] initWithUTF8String: start];
+            }
+          *p = save;
+        }
+      if (nil != v)
+        {
+          [a addObject: v];
+          [v release];
+        }
+      if (',' == *p)
+        {
+          p++;
+        }
+    }
+  if ('}' == *p)
+    {
+      p++;
+    }
+  return p;
+}
+
+- (id) parseField: (char *)p type: (int)t
+{
+  char  arrayType = 0;
+
+  switch (t)
+    {
+      case 1082:	// Date
+        return [self dbToDateFromBuffer: p length: trim(p)];
+
+      case 1083:	// Time (treat as string)
+        trim(p);
+        return [NSString stringWithUTF8String: p];
+
+      case 1114:	// Timestamp without time zone.
+      case 1184:	// Timestamp with time zone.
+        return [self dbToDateFromBuffer: p length: trim(p)];
+
+      case 16:		// BOOL
+        if (*p == 't')
+          {
+            return @"YES";
+          }
+        else
+          {
+            return @"NO";
+          }
+
+      case 17:		// BYTEA
+        return [self dataFromBLOB: p];
+
+      case 18:          // "char"
+        return [NSString stringWithUTF8String: p];
+
+      case 20:          // INT8
+      case 21:          // INT2
+      case 23:          // INT4
+        trim(p);
+        return [NSString stringWithUTF8String: p];
+        break;
+
+      case 1182:	// DATE ARRAY
+      case 1115:	// TS without TZ ARRAY
+      case 1185:	// TS with TZ ARRAY
+        if (0 == arrayType) arrayType = 'T';    // Timestamp
+      case 1000:        // BOOL ARRAY
+        if (0 == arrayType) arrayType = 'B';    // Boolean
+      case 1001:        // BYTEA ARRAY
+        if (0 == arrayType) arrayType = 'D';    // Data
+      case 1005:        // INT2 ARRAY
+      case 1007:        // INT4 ARRAY
+      case 1016:        // INT8 ARRAY
+      case 1021:        // FLOAT ARRAY
+      case 1022:        // DOUBLE ARRAY
+      case 1002:        // CHAR ARRAY
+      case 1009:        // TEXT ARRAY
+      case 1015:        // VARCHAR ARRAY
+        if ('{' == *p)
+          {
+            NSMutableArray      *a;
+
+            a = [NSMutableArray arrayWithCapacity: 10];
+            p = [self parseIntoArray: a type: arrayType from: p];
+            if ([self debugging] > 2)
+              {
+                NSLog(@"Parsed array is %@", a);
+              }
+            return a;
+          }
+
+      case 25:          // TEXT
+      default:
+        if (YES == _shouldTrim)
+          {
+            trim(p);
+          }
+        return [NSString stringWithUTF8String: p];
+    }
+}
+
 - (NSMutableArray*) backendQuery: (NSString*)stmt
 		      recordType: (id)rtype
 		        listType: (id)ltype
@@ -542,17 +757,17 @@ static unsigned int trim(char *str)
 	  int		recordCount = PQntuples(result);
 	  int		fieldCount = PQnfields(result);
 	  NSString	*keys[fieldCount];
-	  int		types[fieldCount];
-	  int		modifiers[fieldCount];
-	  int		formats[fieldCount];
+	  int		ftype[fieldCount];
+	  int		fmod[fieldCount];
+	  int		fformat[fieldCount];
 	  int		i;
 
 	  for (i = 0; i < fieldCount; i++)
 	    {
 	      keys[i] = [NSString stringWithUTF8String: PQfname(result, i)];
-	      types[i] = PQftype(result, i);
-	      modifiers[i] = PQfmod(result, i);
-	      formats[i] = PQfformat(result, i);
+	      ftype[i] = PQftype(result, i);
+	      fmod[i] = PQfmod(result, i);
+	      fformat[i] = PQfformat(result, i);
 	    }
 
 	  records = [[ltype alloc] initWithCapacity: recordCount];
@@ -574,69 +789,17 @@ static unsigned int trim(char *str)
 		      if ([self debugging] > 1)
 			{ 
 			  [self debug: @"%@ type:%d mod:%d size: %d\n",
-			    keys[j], types[j], modifiers[j], size];
+			    keys[j], ftype[j], fmod[j], size];
 			}
-		      if (formats[j] == 0)	// Text
+		      if (fformat[j] == 0)	// Text
 			{
-			  switch (types[j])
-			    {
-			      case 1082:	// Date
-				v = [self dbToDateFromBuffer: p
-						      length: trim(p)];
-				break;
-        
-			      case 1083:	// Time (treat as string)
-				trim(p);
-				v = [NSString stringWithUTF8String: p];
-                                break;
-
-			      case 1114:	// Timestamp without time zone.
-			      case 1184:	// Timestamp with time zone.
-				v = [self dbToDateFromBuffer: p
-						      length: trim(p)];
-				break;
-
-			      case 16:		// BOOL
-				if (*p == 't')
-				  {
-				    v = @"YES";
-				  }
-				else
-				  {
-				    v = @"NO";
-				  }
-				break;
-
-			      case 17:		// BYTEA
-				v = [self dataFromBLOB: p];
-				break;
-
-                              case 18:          // "char"
-				v = [NSString stringWithUTF8String: p];
-                                break;
-
-                              case 20:          // INT8
-                              case 21:          // INT2
-                              case 23:          // INT4
-				trim(p);
-				v = [NSString stringWithUTF8String: p];
-				break;
-
-                              case 25:          // TEXT
-			      default:
-                                if (YES == _shouldTrim)
-                                  {
-                                    trim(p);
-                                  }
-				v = [NSString stringWithUTF8String: p];
-				break;
-			    }
+                          v = [self parseField: p type: ftype[j]];
 			}
 		      else			// Binary
 			{
 			  NSLog(@"Binary data treated as NSNull "
 			    @"in %@ type:%d mod:%d size:%d\n",
-			    keys[j], types[j], modifiers[j], size);
+			    keys[j], ftype[j], fmod[j], size);
 			}
 		    }
 		  values[j] = v;
@@ -1010,6 +1173,66 @@ static unsigned int trim(char *str)
       NSZoneFree(NSDefaultMallocZone(), extra);
     }
   [super dealloc];
+}
+
+- (NSMutableString*) quoteArray: (NSArray *)a
+                       toString: (NSMutableString *)s
+                 quotingStrings: (BOOL)q
+{
+  NSUInteger    count;
+  NSUInteger    index;
+
+  NSAssert([a isKindOfClass: [NSArray class]], NSInvalidArgumentException);
+  if (nil == s)
+    {
+      s = [NSMutableString stringWithCapacity: 1000];
+    }
+  [s appendString: @"ARRAY["];
+  count = [a count];
+  for (index = 0; index < count; index++)
+    {
+      id        o = [a objectAtIndex: index];
+
+      if (index > 0)
+        {
+          [s appendString: @","];
+        }
+      if ([o isKindOfClass: [NSArray class]])
+        {
+          [self quoteArray: (NSArray *)o toString: s quotingStrings: q];
+        }
+      else if ([o isKindOfClass: [NSString class]])
+        {
+          if (YES == q)
+            {
+              o = [self quoteString: (NSString*)o];
+            }
+          [s appendString: (NSString*)o];
+        }
+      else if ([o isKindOfClass: [NSDate class]])
+        {
+          [s appendString: [self quote: (NSString*)o]];
+          [s appendString: @"::timestamp"];
+        }
+      else if ([o isKindOfClass: [NSData class]])
+        {
+          unsigned      len = [self lengthOfEscapedBLOB: o];
+          uint8_t       *buf;
+
+          buf = malloc(len+1);
+          [self copyEscapedBLOB: o into: buf];
+          buf[len] = '\0';
+          [s appendFormat: @"%s::bytea", buf];
+          free(buf);
+        }
+      else
+        {
+          o = [self quote: (NSString*)o];
+          [s appendString: (NSString*)o];
+        }
+    }
+  [s appendString: @"]"];
+  return s;
 }
 
 - (NSString*) quoteString: (NSString *)s

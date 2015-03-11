@@ -796,6 +796,18 @@ SQLCLIENT_PRIVATE
  */
 - (NSString*) quotef: (NSString*)fmt, ...;
 
+/* Produce a quoted string from an array on databases where arrays are
+ * supported (currently only Postgres).<br />
+ * If the s argument is not nil, the quoted array is appended to it rather
+ * than being produced in a new string (this method uses that feature to
+ * recursively quote nested arrays).<br />
+ * The q argument determines whether string values found in the array
+ * are quoted or added literally.
+ */
+- (NSMutableString*) quoteArray: (NSArray *)a
+                       toString: (NSMutableString *)s
+                 quotingStrings: (BOOL)q;
+
 /**
  * Convert a big (64 bit) integer to a string suitable for use in an SQL query.
  */

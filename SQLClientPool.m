@@ -516,10 +516,6 @@
 
 @end
 
-@interface      SQLClient (Private)
-- (NSMutableArray*) _prepare: (NSString*)stmt args: (va_list)args;
-@end
-
 @implementation SQLClientPool (ConvenienceMethods)
 
 - (NSString*) buildQuery: (NSString*)stmt, ...
@@ -532,7 +528,7 @@
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  sql = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  sql = [[db prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
   [self swallowClient: db];
 
@@ -556,7 +552,7 @@
   va_list	        ap;
 
   va_start (ap, stmt);
-  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
   result = [db cache: seconds simpleQuery: stmt];
   [self swallowClient: db];
@@ -612,7 +608,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  info = [db _prepare: stmt args: ap];
+  info = [db prepare: stmt args: ap];
   va_end (ap);
   result = [db simpleExecute: info];
   [self swallowClient: db];
@@ -638,7 +634,7 @@
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
   result = [db simpleQuery: stmt];
   [self swallowClient: db];
@@ -663,7 +659,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
   result = [db simpleQuery: stmt];
   [self swallowClient: db];
@@ -690,7 +686,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[db _prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
   result = [db simpleQuery: stmt];
   [self swallowClient: db];
