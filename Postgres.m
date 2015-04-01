@@ -35,6 +35,7 @@
 #import	<Foundation/NSFileHandle.h>
 #import	<Foundation/NSProcessInfo.h>
 #import	<Foundation/NSNotification.h>
+#import	<Foundation/NSNotificationQueue.h>
 #import	<Foundation/NSUserDefaults.h>
 #import	<Foundation/NSMapTable.h>
 #import	<Foundation/NSLock.h>
@@ -279,8 +280,8 @@ connectQuote(NSString *str)
 
 - (void) _checkNotifications
 {
-  static NSNotificationCenter   *nc;
-  PGnotify                      *notify;
+  NSNotificationQueue   *nq = nil;
+  PGnotify              *notify;
 
   while ((notify = PQnotifies(connection)) != 0)
     {
@@ -328,11 +329,14 @@ connectQuote(NSString *str)
                                           userInfo: (NSDictionary*)userInfo];
           [name release];
           [userInfo release];
-          if (nil == nc)
+
+          if (nil == nq)
             {
-              nc = [[NSNotificationCenter defaultCenter] retain];
+              nq = [NSNotificationQueue defaultQueue];
             }
-          [nc postNotification: n];
+          /* Post asynchronously
+           */
+          [nq enqueueNotification: n postingStyle: NSPostASAP];
         }
       NS_HANDLER
         {
@@ -523,9 +527,9 @@ static unsigned int trim(char *str)
             }
           if ('\"' == *p)
             {
-              *p++ = '\0';
+              *p = '\0';
             }
-          if (len == (p - start + 1))
+          if (len == (p - start))
             {
               v = [[NSString alloc] initWithUTF8String: start];
             }
@@ -562,6 +566,7 @@ static unsigned int trim(char *str)
                                 freeWhenDone: YES];
                 }
             }
+          *p++ = '\"';
         }
       else
         {
@@ -677,6 +682,7 @@ static unsigned int trim(char *str)
       case 1002:        // CHAR ARRAY
       case 1009:        // TEXT ARRAY
       case 1015:        // VARCHAR ARRAY
+      case 1263:        // CSTRING ARRAY
         if ('{' == *p)
           {
             NSMutableArray      *a;
@@ -1212,7 +1218,7 @@ static unsigned int trim(char *str)
       else if ([o isKindOfClass: [NSDate class]])
         {
           [s appendString: [self quote: (NSString*)o]];
-          [s appendString: @"::timestamp"];
+          [s appendString: @"::timestamp with time zone"];
         }
       else if ([o isKindOfClass: [NSData class]])
         {

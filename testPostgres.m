@@ -260,7 +260,7 @@ main()
         @"extra2 varchar[],"
         @"extra3 bytea[],"
         @"extra4 boolean[],"
-        @"extra5 timestamp[]"
+        @"extra5 timestamp with time zone[]"
 	@")",
 	nil];
 

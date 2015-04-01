@@ -488,6 +488,13 @@ SQLCLIENT_PRIVATE
  */
 - (void) begin;
 
+/** This grabs the receiver for use by the current thread.<br />
+ * If limit is nil or in the past, makes a single immediate attempt.<br />
+ * Returns NO if it fails to obtain a lock by the specified date.<br /> 
+ * Must be matched by an -unlock if it succeeds.
+ */
+- (BOOL) lockBeforeDate: (NSDate*)limit;
+
 /**
  * <p>Build an sql query string using the supplied arguments.
  * </p>
@@ -787,7 +794,12 @@ SQLCLIENT_PRIVATE
  * YYYY-MM-DD hh:mm:ss.mmm ?ZZZZ<br />
  * NSData objects are not quoted ... they must not appear in queries, and
  * where used for insert/update operations, they need to be passed to the
- * -backendExecute: method unchanged.
+ * -backendExecute: method unchanged.<br />
+ * NSArray and NSSet objects are quoted as sets containing the quoted
+ * elements from the array/set.  If you want to use SQL arrays (and your
+ * database backend supports it) you must explicitly use the
+ * -quoteArray:toString:quotingString: to convert an NSArray to a literal
+ * database array representation.
  */
 - (NSString*) quote: (id)obj;
 
@@ -927,6 +939,10 @@ SQLCLIENT_PRIVATE
 - (NSMutableArray*) simpleQuery: (NSString*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype;
+
+/** Releases a lock previously obtained using -lockbeforeDate:
+ */
+- (void) unlock;
 
 /**
  * Return the database user for this instance (or nil).
@@ -1088,7 +1104,8 @@ SQLCLIENT_PRIVATE
  * which don't support asynchronous notifications.<br />
  * If a backend <em>does</em> support asynchronous notifications,
  * it should do so by posting NSNotification instances to
- * [NSNotificationCenter defaultCenter] using the SQLClient instance as
+ * [NSNotificationQueue defaultQueue] with the posting style NSPostASAP
+ * (to post asynchronously) and using the SQLClient instance as
  * the notification object and supplying any payload as a string using
  * the 'Payload' key in the NSNotification userInfo dictionary.
  * The userInfo dictionary should also contain a boolean (NSNumber) value,
@@ -1182,11 +1199,14 @@ SQLCLIENT_PRIVATE
  * as an action by this SQLClient instance.<br />
  * If the 'Payload' value is not nil, then it is a string providing extra
  * information about the notification.<br />
- * NB. At the point when the observer is notified about an event the
- * database client object will be locked and may not be used to query
- * or modify the database (typically a database query will already be
- * in progress).  The method handling the notification must therefore
- * handle any database operations in a later timeout.
+ * Notifications are posted asynchronously using the default notification
+ * queue for the current thread, so they should be delivered to the
+ * observer after the database statement in which they were detected
+ * has completed.  However, delivery of the notification could still
+ * occur inside a transaction is the -begin and -commit statements
+ * are used.  For this reason, observing code may want to use the
+ * -lockBeforeDate: -isInTransaction and -unlock methods to ensure
+ * that they don't interfere with ongoing transactions.
  */
 - (void) addObserver: (id)anObserver
             selector: (SEL)aSelector

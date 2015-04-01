@@ -1341,6 +1341,15 @@ static int	        poolConnections = 0;
   return nil;
 }
 
+- (BOOL) lockBeforeDate: (NSDate*)limit
+{
+  if (nil == limit)
+    {
+      return [lock tryLock];
+    }
+  return [lock lockBeforeDate: limit];
+}
+
 - (SQLClient*) longestIdle: (SQLClient*)other
 {
   NSTimeInterval        t0;
@@ -2013,6 +2022,11 @@ static int	        poolConnections = 0;
       [self debug: @"%@", debug];
     }
   return result;
+}
+
+- (void) unlock
+{
+  [lock unlock];
 }
 
 - (NSString*) user
