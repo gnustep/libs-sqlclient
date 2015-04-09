@@ -126,6 +126,12 @@
       ASSIGNCOPY(_name, reference);
       lock = [[NSConditionLock alloc] initWithCondition: 0];
       [self setMax: maxConnections min: minConnections];
+      /* Get a client to be used for quoting ... we can then make it
+       * available for general use since quoting does not actually
+       * require any database operation.
+       */
+      q = [[self provideClient] retain];
+      [self swallowClient: q];
     }
   return self;
 }
@@ -712,16 +718,24 @@
 
 - (NSString*) quote: (id)obj
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quote: obj];
+  NSString      *result = [q quote: obj];
 
-  [self swallowClient: db];
+  return result;
+}
+
+- (NSMutableString*) quoteArray: (NSArray *)a
+                       toString: (NSMutableString *)s
+                 quotingStrings: (BOOL)_q
+{
+  NSMutableString       *result;
+
+  result = [q quoteArray: a toString:s quotingStrings: _q];
+
   return result;
 }
 
 - (NSString*) quotef: (NSString*)fmt, ...
 {
-  SQLClient     *db = [self provideClient];
   va_list	ap;
   NSString	*str;
   NSString	*quoted;
@@ -730,63 +744,50 @@
   str = [[NSString allocWithZone: NSDefaultMallocZone()]
     initWithFormat: fmt arguments: ap];
   va_end(ap);
-  quoted = [self quoteString: str];
-  [self swallowClient: db];
+  quoted = [q quoteString: str];
   [str release];
   return quoted;
 }
 
 - (NSString*) quoteBigInteger: (int64_t)i
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quoteBigInteger: i];
+  NSString      *result = [q quoteBigInteger: i];
 
-  [self swallowClient: db];
   return result;
 }
 
 - (NSString*) quoteCString: (const char *)s
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quoteCString: s];
+  NSString      *result = [q quoteCString: s];
 
-  [self swallowClient: db];
   return result;
 }
 
 - (NSString*) quoteChar: (char)chr
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quoteChar: chr];
+  NSString      *result = [q quoteChar: chr];
 
-  [self swallowClient: db];
   return result;
 }
 
 - (NSString*) quoteFloat: (float)f
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quoteFloat: f];
+  NSString      *result = [q quoteFloat: f];
 
-  [self swallowClient: db];
   return result;
 }
 
 - (NSString*) quoteInteger: (int)i
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quoteInteger: i];
+  NSString      *result = [q quoteInteger: i];
 
-  [self swallowClient: db];
   return result;
 }
 
 - (NSString*) quoteString: (NSString *)s
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db quoteString: s];
+  NSString      *result = [q quoteString: s];
 
-  [self swallowClient: db];
   return result;
 }
 

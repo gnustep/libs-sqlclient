@@ -1487,6 +1487,7 @@ SQLCLIENT_PRIVATE
 {
   NSConditionLock       *lock;  /** Controls access to the pool contents */
   SQLClient             **c;    /** The clients of the pool. */
+  SQLClient             *q;     /** The clients used for quoting. */
   BOOL                  *u;     /** Whether the client is in use. */
   int                   max;    /** Maximum connection count */
   int                   min;    /** Minimum connection count */
@@ -1615,6 +1616,9 @@ SQLCLIENT_PRIVATE
 - (SQLRecord*) queryRecord: (NSString*)stmt,...;
 - (NSString*) queryString: (NSString*)stmt,...;
 - (NSString*) quote: (id)obj;
+- (NSMutableString*) quoteArray: (NSArray *)a
+                       toString: (NSMutableString *)s
+                 quotingStrings: (BOOL)_q;
 - (NSString*) quotef: (NSString*)fmt, ...;
 - (NSString*) quoteBigInteger: (int64_t)i;
 - (NSString*) quoteCString: (const char *)s;

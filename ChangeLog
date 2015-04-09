@@ -1,3 +1,9 @@
+2015-04-09 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Add array quoting method for pool.  Add pool ivar.
+	* SQLClientPool.m: Implement array quoting and change other quoting
+	to use new ivar rather than expensive provide/swallow sequence.
+
 2015-04-01 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
