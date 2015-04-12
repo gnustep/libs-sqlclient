@@ -3006,7 +3006,7 @@ static int	        poolConnections = 0;
     }
 }
 
-- (void) _addPrepared: (NSArray*)statement
+- (void) addPrepared: (NSArray*)statement
 {
   [_info addObject: statement];
   _count++;
@@ -3405,7 +3405,7 @@ static int	        poolConnections = 0;
 			      wrapper = [_db transaction];
 			    }
 			  [wrapper reset];
-			  [wrapper _addPrepared: o];
+			  [wrapper addPrepared: o];
                           [wrapper execute];
                           executed++;
                           success = YES;
@@ -3414,7 +3414,7 @@ static int	        poolConnections = 0;
 			{
 			  if (failures != nil)
 			    {
-			      [failures _addPrepared: o];
+			      [failures addPrepared: o];
 			    }
 			  if (log == YES || [_db debugging] > 0)
 			    {
@@ -3453,7 +3453,7 @@ static int	        poolConnections = 0;
 
 			  if ([o isKindOfClass: NSArrayClass] == YES)
 			    {
-			      [failures _addPrepared: o];
+			      [failures addPrepared: o];
 			    }
 			  else
 			    {
@@ -3553,7 +3553,7 @@ static int	        poolConnections = 0;
     {
       SQLTransaction	*t = [[self db] transaction];
 
-      [t _addPrepared: o];
+      [t addPrepared: o];
       return t;
     }
   else

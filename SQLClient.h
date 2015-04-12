@@ -1674,6 +1674,10 @@ SQLCLIENT_PRIVATE
  */
 - (void) add: (NSString*)stmt with: (NSDictionary*)values;
 
+/** Adds a prepared statement.
+ */
+- (void) addPrepared: (NSArray*)statement;
+
 /**
  * Appends a copy of the other transaction to the receiver.<br />
  * This provides a convenient way of merging transactions which have been

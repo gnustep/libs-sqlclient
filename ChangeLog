@@ -1,3 +1,10 @@
+2015-04-12 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Expose method to add statement for insertion of data objects to
+	transaction.
+
 2015-04-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Add array quoting method for pool.  Add pool ivar.
