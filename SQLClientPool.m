@@ -526,41 +526,44 @@
 
 - (NSString*) buildQuery: (NSString*)stmt, ...
 {
-  SQLClient     *db = [self provideClient];
-  NSString	*sql = nil;
+  NSString	*sql;
   va_list	ap;
 
   /*
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  sql = [[db prepare: stmt args: ap] objectAtIndex: 0];
+  sql = [[q prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
-  [self swallowClient: db];
 
   return sql;
 }
 
 - (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  SQLClient     *db = [self provideClient];
-  NSString      *result = [db buildQuery: stmt with: values];
+  NSString      *result = [q buildQuery: stmt with: values];
 
-  [self swallowClient: db];
   return result;
 }
 
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...
 {
-  SQLClient             *db = [self provideClient];
+  SQLClient             *db;
   NSMutableArray        *result;
   va_list	        ap;
 
   va_start (ap, stmt);
-  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
-  result = [db cache: seconds simpleQuery: stmt];
+
+  db = [self provideClient];
+  NS_DURING
+    result = [db cache: seconds simpleQuery: stmt];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
@@ -569,18 +572,32 @@
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values
 {
-  SQLClient             *db = [self provideClient];
-  NSMutableArray        *result = [db cache: seconds query: stmt with: values];
+  SQLClient             *db;
+  NSMutableArray        *result;
 
+  db = [self provideClient];
+  NS_DURING
+    result = [db cache: seconds query: stmt with: values];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
 
 - (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
 {
-  SQLClient             *db = [self provideClient];
-  NSMutableArray        *result = [db cache: seconds simpleQuery: stmt];
+  SQLClient             *db;
+  NSMutableArray        *result;
 
+  db = [self provideClient];
+  NS_DURING
+    result = [db cache: seconds simpleQuery: stmt];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
@@ -590,13 +607,19 @@
 	       recordType: (id)rtype
 	         listType: (id)ltype
 {
-  SQLClient             *db = [self provideClient];
+  SQLClient             *db;
   NSMutableArray        *result;
 
-  result = [db cache: seconds
-         simpleQuery: stmt
-          recordType: rtype
-            listType: ltype];
+  db = [self provideClient];
+  NS_DURING
+    result = [db cache: seconds
+           simpleQuery: stmt
+            recordType: rtype
+              listType: ltype];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
@@ -608,41 +631,61 @@
 
 - (NSInteger) execute: (NSString*)stmt, ...
 {
-  SQLClient     *db = [self provideClient];
+  SQLClient     *db;
   NSInteger     result;
   NSArray	*info;
   va_list	ap;
 
   va_start (ap, stmt);
-  info = [db prepare: stmt args: ap];
+  info = [q prepare: stmt args: ap];
   va_end (ap);
-  result = [db simpleExecute: info];
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleExecute: info];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
 
 - (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values
 {
-  SQLClient     *db = [self provideClient];
-  NSInteger     result = [db execute: stmt with: values];
+  SQLClient     *db;
+  NSInteger     result;
 
+  db = [self provideClient];
+  NS_DURING
+    result = [db execute: stmt with: values];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
 
 - (NSMutableArray*) query: (NSString*)stmt, ...
 {
-  SQLClient             *db = [self provideClient];
-  NSMutableArray	*result = nil;
+  SQLClient             *db;
+  NSMutableArray	*result;
   va_list		ap;
 
   /*
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
-  result = [db simpleQuery: stmt];
+
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleQuery: stmt];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
 
   return result;
@@ -650,24 +693,38 @@
 
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values
 {
-  SQLClient             *db = [self provideClient];
-  NSMutableArray        *result = [db query: stmt with: values];
+  SQLClient             *db;
+  NSMutableArray        *result;
 
+  db = [self provideClient];
+  NS_DURING
+    result = [db query: stmt with: values];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
 
 - (SQLRecord*) queryRecord: (NSString*)stmt, ...
 {
-  SQLClient     *db = [self provideClient];
-  NSArray	*result = nil;
+  SQLClient     *db;
+  NSArray	*result;
   SQLRecord	*record;
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
-  result = [db simpleQuery: stmt];
+
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleQuery: stmt];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
 
   if ([result count] > 1)
@@ -686,15 +743,22 @@
 
 - (NSString*) queryString: (NSString*)stmt, ...
 {
-  SQLClient     *db = [self provideClient];
-  NSArray	*result = nil;
+  SQLClient     *db;
+  NSArray	*result;
   SQLRecord	*record;
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[db prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
-  result = [db simpleQuery: stmt];
+
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleQuery: stmt];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
 
   if ([result count] > 1)
@@ -793,18 +857,32 @@
 
 - (NSInteger) simpleExecute: (NSArray*)info
 {
-  SQLClient     *db = [self provideClient];
-  NSInteger     result = [db simpleExecute: info];
+  SQLClient     *db;
+  NSInteger     result;
 
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleExecute: info];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
 
 - (NSMutableArray*) simpleQuery: (NSString*)stmt
 {
-  SQLClient             *db = [self provideClient];
-  NSMutableArray        *result = [db simpleQuery: stmt];
+  SQLClient             *db;
+  NSMutableArray        *result;
 
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleQuery: stmt];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
@@ -813,12 +891,18 @@
 		     recordType: (id)rtype
 		       listType: (id)ltype
 {
-  SQLClient             *db = [self provideClient];
+  SQLClient             *db;
   NSMutableArray        *result;
 
-  result = [db simpleQuery: stmt
-                recordType: rtype
-                  listType: ltype];
+  db = [self provideClient];
+  NS_DURING
+    result = [db simpleQuery: stmt
+                  recordType: rtype
+                    listType: ltype];
+  NS_HANDLER
+    [self swallowClient: db];
+    [localException raise];
+  NS_ENDHANDLER
   [self swallowClient: db];
   return result;
 }
