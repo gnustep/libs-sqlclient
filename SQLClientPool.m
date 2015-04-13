@@ -79,6 +79,11 @@
   return available;
 }
 
+- (GSCache*) cache
+{
+  return [q cache];
+}
+
 - (void) dealloc
 {
   SQLClient     **clients;

@@ -1,5 +1,6 @@
 2015-04-13 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* SQLClient.h:
 	* SQLClientPool.m:
 	Make sure clients provided temporarily in convenience methods are
 	swallowed by the pool again as soon as possible.  Also trap and
@@ -7,6 +8,7 @@
 	the client being in use longer than necessary after an exception.
 	Also, avoid taking clients from the pool in a few cases wehere we
 	don't actually need to.
+	Add -cache method for SQLClientPool.
 
 2015-04-12 Richard Frith-Macdonald  <rfm@gnu.org>
 

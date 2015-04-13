@@ -1508,6 +1508,12 @@ SQLCLIENT_PRIVATE
 - (int) availableConnections;
 
 /**
+ * Returns the cache used by clients in the pool for storing the results of
+ * requests made through them.  Creates a new cache if necessary.
+ */
+- (GSCache*) cache;
+
+/**
  * Creates a pool of clients using a single client configuration.<br />
  * Calls -initWithConfiguration:name:pool: (passing NO to say the client
  * is not in a pool) to create each client.<br />
