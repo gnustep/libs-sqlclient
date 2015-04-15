@@ -25,23 +25,24 @@
    $Date$ $Revision$
    */ 
 
-#import	<Foundation/NSString.h>
-#import	<Foundation/NSData.h>
-#import	<Foundation/NSDate.h>
+#import	<Foundation/NSAutoreleasePool.h>
 #import	<Foundation/NSCalendarDate.h>
 #import	<Foundation/NSCharacterSet.h>
+#import	<Foundation/NSData.h>
+#import	<Foundation/NSDate.h>
 #import	<Foundation/NSDictionary.h>
 #import	<Foundation/NSException.h>
 #import	<Foundation/NSFileHandle.h>
-#import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSLock.h>
+#import	<Foundation/NSMapTable.h>
 #import	<Foundation/NSNotification.h>
 #import	<Foundation/NSNotificationQueue.h>
-#import	<Foundation/NSUserDefaults.h>
-#import	<Foundation/NSMapTable.h>
-#import	<Foundation/NSLock.h>
 #import	<Foundation/NSNull.h>
+#import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSString.h>
+#import	<Foundation/NSThread.h>
+#import	<Foundation/NSUserDefaults.h>
 #import	<Foundation/NSValue.h>
-#import	<Foundation/NSAutoreleasePool.h>
 
 #include	"config.h"
 
@@ -278,10 +279,19 @@ connectQuote(NSString *str)
     }
 }
 
+- (void) _postNotification: (NSNotification*)n
+{
+  NSNotificationQueue   *nq;
+
+  /* Post asynchronously
+   */
+  nq = [NSNotificationQueue defaultQueue];
+  [nq enqueueNotification: n postingStyle: NSPostASAP];
+}
+
 - (void) _checkNotifications
 {
-  NSNotificationQueue   *nq = nil;
-  PGnotify              *notify;
+  PGnotify      *notify;
 
   while ((notify = PQnotifies(connection)) != 0)
     {
@@ -330,13 +340,9 @@ connectQuote(NSString *str)
           [name release];
           [userInfo release];
 
-          if (nil == nq)
-            {
-              nq = [NSNotificationQueue defaultQueue];
-            }
-          /* Post asynchronously
-           */
-          [nq enqueueNotification: n postingStyle: NSPostASAP];
+          [self performSelectorOnMainThread: @selector(_postNotification:)
+                                 withObject: n
+                              waitUntilDone: NO];
         }
       NS_HANDLER
         {

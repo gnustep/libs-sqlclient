@@ -1103,7 +1103,7 @@ SQLCLIENT_PRIVATE
  * There is a default implementation which does nothing ... for backends
  * which don't support asynchronous notifications.<br />
  * If a backend <em>does</em> support asynchronous notifications,
- * it should do so by posting NSNotification instances to
+ * it should do so by posting NSNotification instances to the main thread
  * [NSNotificationQueue defaultQueue] with the posting style NSPostASAP
  * (to post asynchronously) and using the SQLClient instance as
  * the notification object and supplying any payload as a string using
