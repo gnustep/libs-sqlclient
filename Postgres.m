@@ -817,6 +817,11 @@ static unsigned int trim(char *str)
 	      [record release];
 	    }
 	}
+      else if (PQresultStatus(result) == PGRES_COMMAND_OK)
+	{
+	  [NSException raise: SQLException format: @"Error executing %@: %s",
+	    stmt, "query produced no result"];
+	}
       else
 	{
 	  [NSException raise: SQLException format: @"Error executing %@: %s",
