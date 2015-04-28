@@ -1,3 +1,13 @@
+2015-04-28 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* Postgres.m:
+	Deprecate trtansaction merging.
+	Rewrite SQLRecord concrete class to use a new SQLRecordKeys object
+	shared between all the records produced by a query (as a performance
+	enhancement for large queries).
+
 2015-04-15 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: notifications are posted in main thread.

@@ -73,6 +73,9 @@ NSString * const SQLClientDidConnectNotification
 NSString * const SQLClientDidDisconnectNotification
  = @"SQLClientDidDisconnectNotification";
 
+static unsigned int	classDebugging = 0;
+static NSTimeInterval	classDuration = -1;
+
 static NSNull	*null = nil;
 static NSArray	*queryModes = nil;
 static NSThread	*mainThread = nil;
@@ -82,9 +85,76 @@ static Class	NSDateClass = Nil;
 static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
 
+@implementation         SQLRecordKeys
+
+- (NSUInteger) count
+{
+  return count;
+}
+
+- (void) dealloc
+{
+  if (nil != order) [order release];
+  if (nil != map) [map release];
+  if (nil != low) [low release];
+  [super dealloc];
+}
+
+- (NSUInteger) indexForKey: (NSString*)key
+{
+  NSUInteger    c;
+
+  c = (NSUInteger)NSMapGet(map, key);
+  if (c > 0)
+    {
+      return c - 1;
+    }
+  key = [key lowercaseString];
+  c = (NSUInteger)NSMapGet(low, key);
+  if (c > 0)
+    {
+      if (classDebugging > 0)
+        {
+          NSLog(@"[SQLRecordKeys-indexForKey:] lowercase '%@'", key);
+        }
+      return c - 1;
+    }
+  return NSNotFound;
+}
+
+- (id) initWithKeys: (NSString**)keys count: (NSUInteger)c
+{
+  if (nil != (self = [super init]))
+    {
+      count = c;
+      order = [[NSArray alloc] initWithObjects: keys count: c];
+      map = NSCreateMapTable(NSObjectMapKeyCallBacks,
+        NSIntegerMapValueCallBacks, count);
+      low = NSCreateMapTable(NSObjectMapKeyCallBacks,
+        NSIntegerMapValueCallBacks, count);
+      for (c = 1; c <= count; c++)
+        {
+          NSString      *k = keys[c-1];
+
+          NSMapInsert(map, (void*)k, (void*)c);
+          k = [k lowercaseString];
+          NSMapInsert(low, (void*)k, (void*)c);
+        }
+    }
+  return self;
+}
+
+- (NSArray*) order
+{
+  return order;
+}
+@end
+
+
 @interface	_ConcreteSQLRecord : SQLRecord
 {
-  unsigned	count;
+  SQLRecordKeys *keys;
+  NSUInteger	count;  // Must be last
 }
 @end
 
@@ -130,6 +200,11 @@ static Class rClass = 0;
 + (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
 {
   return [rClass newWithValues: v keys: k count: c];
+}
+
++ (id) newWithValues: (id*)v keys: (SQLRecordKeys*)k
+{
+  return [rClass newWithValues: v keys: k];
 }
 
 - (NSArray*) allKeys
@@ -186,7 +261,7 @@ static Class rClass = 0;
 
 - (void) getKeys: (id*)buf
 {
-  unsigned	i = [self count];
+  NSUInteger	i = [self count];
 
   while (i-- > 0)
     {
@@ -196,7 +271,7 @@ static Class rClass = 0;
 
 - (void) getObjects: (id*)buf
 {
-  unsigned	i = [self count];
+  NSUInteger	i = [self count];
 
   while (i-- > 0)
     {
@@ -214,6 +289,11 @@ static Class rClass = 0;
 - (NSString*) keyAtIndex: (NSUInteger)index
 {
   SUBCLASS_RESPONSIBILITY
+  return nil;
+}
+
+- (SQLRecordKeys*) keys
+{
   return nil;
 }
 
@@ -354,37 +434,46 @@ static Class rClass = 0;
 
 @implementation	_ConcreteSQLRecord
 
-+ (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
++ (id) newWithValues: (id*)v keys: (SQLRecordKeys*)k
 {
-  id		*ptr;
+  id		        *ptr;
   _ConcreteSQLRecord	*r;
-  unsigned	pos;
+  NSUInteger	        c;
 
+  c = [k count];
   r = (_ConcreteSQLRecord*)NSAllocateObject(self,
-    c*2*sizeof(id), NSDefaultMallocZone());
+    c*sizeof(id), NSDefaultMallocZone());
   r->count = c;
-  ptr = ((void*)&(r->count)) + sizeof(r->count);
-  for (pos = 0; pos < c; pos++)
+  r->keys = [k retain];
+  ptr = (id*)(((void*)&(r->count)) + sizeof(r->count));
+  while (c-- > 0)
     {
-      if (v[pos] == nil)
+      if (nil == v[c])
 	{
-	  ptr[pos] = [null retain];
+	  ptr[c] = [null retain];
 	}
       else
 	{
-	  ptr[pos] = [v[pos] retain];
+	  ptr[c] = [v[c] retain];
 	}
-      ptr[pos + c] = [k[pos] retain];
     }
+  return r;
+}
+
++ (id) newWithValues: (id*)v keys: (NSString**)k count: (unsigned int)c
+{
+  SQLRecordKeys         *o;
+  _ConcreteSQLRecord	*r;
+
+  o = [[SQLRecordKeys alloc] initWithKeys: k count: c];
+  r = [self newWithValues: v keys: o];
+  [o release];
   return r;
 }
 
 - (NSArray*) allKeys
 {
-  id		*ptr;
-
-  ptr = ((void*)&count) + sizeof(count);
-  return [NSArray arrayWithObjects: &ptr[count] count: count];
+  return [keys order];
 }
 
 - (id) copyWithZone: (NSZone*)z
@@ -400,13 +489,13 @@ static Class rClass = 0;
 - (void) dealloc
 {
   id		*ptr;
-  unsigned	pos;
+  NSUInteger	pos;
 
-  ptr = ((void*)&count) + sizeof(count);
+  [keys release];
+  ptr = (id*)(((void*)&count) + sizeof(count));
   for (pos = 0; pos < count; pos++)
     {
       [ptr[pos] release]; ptr[pos] = nil;
-      [ptr[count + pos] release]; ptr[count + pos] = nil;
     }
   [super dealloc];
 }
@@ -414,37 +503,31 @@ static Class rClass = 0;
 - (NSMutableDictionary*) dictionary
 {
   NSMutableDictionary	*d;
-  unsigned		pos;
+  NSUInteger		pos;
+  NSArray               *k = [keys order];
   id			*ptr;
 
-  ptr = ((void*)&count) + sizeof(count);
+  ptr = (id*)(((void*)&count) + sizeof(count));
   d = [NSMutableDictionary dictionaryWithCapacity: count];
   for (pos = 0; pos < count; pos++)
     {
-      [d setObject: ptr[pos] forKey: [ptr[pos + count] lowercaseString]];
+      [d setObject: ptr[pos]
+            forKey: [[k objectAtIndex: pos] lowercaseString]];
     }
   return d;
 }
 
 - (void) getKeys: (id*)buf
 {
-  id		*ptr;
-  unsigned	pos;
-
-  ptr = ((void*)&count) + sizeof(count);
-  ptr += count;	// Step past objects to keys.
-  for (pos = 0; pos < count; pos++)
-    {
-      buf[pos] = ptr[pos];
-    }
+  [[keys order] getObjects: buf];
 }
 
 - (void) getObjects: (id*)buf
 {
   id		*ptr;
-  unsigned	pos;
+  NSUInteger	pos;
 
-  ptr = ((void*)&count) + sizeof(count);
+  ptr = (id*)(((void*)&count) + sizeof(count));
   for (pos = 0; pos < count; pos++)
     {
       buf[pos] = ptr[pos];
@@ -460,16 +543,12 @@ static Class rClass = 0;
 
 - (NSString*) keyAtIndex: (NSUInteger)pos
 {
-  id	*ptr;
+  return [[keys order] objectAtIndex: pos];
+}
 
-  if (pos >= count)
-    {
-      [NSException raise: NSRangeException
-		  format: @"Array index too large"];
-    }
-  ptr = ((void*)&count) + sizeof(count);
-  ptr += count;
-  return ptr[pos];
+- (SQLRecordKeys*) keys
+{
+  return keys;
 }
 
 - (id) objectAtIndex: (NSUInteger)pos
@@ -481,31 +560,25 @@ static Class rClass = 0;
       [NSException raise: NSRangeException
 		  format: @"Array index too large"];
     }
-  ptr = ((void*)&count) + sizeof(count);
+  ptr = (id*)(((void*)&count) + sizeof(count));
   return ptr[pos];
 }
 
 - (id) objectForKey: (NSString*)key
 {
-  id		*ptr;
-  unsigned int 	pos;
+  NSUInteger    pos = [keys indexForKey: key];
 
-  ptr = ((void*)&count) + sizeof(count);
-  for (pos = 0; pos < count; pos++)
+  if (NSNotFound == pos)
     {
-      if ([key isEqualToString: ptr[pos + count]] == YES)
-	{
-	  return ptr[pos];
-	}
+      return nil;
     }
-  for (pos = 0; pos < count; pos++)
+  else
     {
-      if ([key caseInsensitiveCompare: ptr[pos + count]] == NSOrderedSame)
-	{
-	  return ptr[pos];
-	}
+      id        *ptr;
+
+      ptr = (id*)(((void*)&count) + sizeof(count));
+      return ptr[pos];
     }
-  return nil;
 }
 
 - (void) replaceObjectAtIndex: (NSUInteger)index withObject: (id)anObject
@@ -521,7 +594,7 @@ static Class rClass = 0;
     {
       anObject = null;
     }
-  ptr = ((void*)&count) + sizeof(count);
+  ptr = (id*)(((void*)&count) + sizeof(count));
   ptr += index;
   [anObject retain];
   [*ptr release];
@@ -531,35 +604,25 @@ static Class rClass = 0;
 - (void) setObject: (id)anObject forKey: (NSString*)aKey
 {
   id		*ptr;
-  unsigned int 	pos;
+  NSUInteger 	pos;
 
   if (anObject == nil)
     {
       anObject = null;
     }
-  ptr = ((void*)&count) + sizeof(count);
-  for (pos = 0; pos < count; pos++)
+  ptr = (id*)(((void*)&count) + sizeof(count));
+  pos = [keys indexForKey: aKey];
+  if (NSNotFound == pos)
     {
-      if ([aKey isEqualToString: ptr[pos + count]] == YES)
-	{
-          [anObject retain];
-          [ptr[pos] release];
-	  ptr[pos] = anObject;
-	  return;
-	}
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Bad key (%@) in -setObject:forKey:", aKey];
     }
-  for (pos = 0; pos < count; pos++)
+  else
     {
-      if ([aKey caseInsensitiveCompare: ptr[pos + count]] == NSOrderedSame)
-	{
-          [anObject retain];
-          [ptr[pos] release];
-	  ptr[pos] = anObject;
-	  return;
-	}
+      [anObject retain];
+      [ptr[pos] release];
+      ptr[pos] = anObject;
     }
-  [NSException raise: NSInvalidArgumentException
-	      format: @"Bad key (%@) in -setObject:forKey:", aKey];
 }
 
 - (NSUInteger) sizeInBytes: (NSMutableSet*)exclude
@@ -574,7 +637,7 @@ static Class rClass = 0;
       NSUInteger	pos;
       id		*ptr;
 
-      ptr = ((void*)&count) + sizeof(count);
+      ptr = (id*)(((void*)&count) + sizeof(count));
       for (pos = 0; pos < count; pos++)
 	{
 	  size += [ptr[pos] sizeInBytes: exclude];
@@ -604,9 +667,6 @@ NSString	*SQLEmptyException = @"SQLEmptyException";
 NSString	*SQLUniqueException = @"SQLUniqueException";
 
 @implementation	SQLClient (Logging)
-
-static unsigned int	classDebugging = 0;
-static NSTimeInterval	classDuration = -1;
 
 + (unsigned int) debugging
 {

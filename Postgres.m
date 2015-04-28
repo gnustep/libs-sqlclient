@@ -772,6 +772,7 @@ static unsigned int trim(char *str)
 	  int		ftype[fieldCount];
 	  int		fmod[fieldCount];
 	  int		fformat[fieldCount];
+          SQLRecordKeys *k = nil;
 	  int		i;
 
 	  for (i = 0; i < fieldCount; i++)
@@ -816,9 +817,25 @@ static unsigned int trim(char *str)
 		    }
 		  values[j] = v;
 		}
-	      record = [rtype newWithValues: values
-				       keys: keys
-				      count: fieldCount];
+              if (nil == k)
+                {
+                  /* We don't have keys information, so use the
+                   * constructor where we list keys and, if the
+                   * resulting record provides keys information
+                   * on the first record, we save it for later.
+                   */
+                  record = [rtype newWithValues: values
+                                           keys: keys
+                                          count: fieldCount];
+                  if (0 == i)
+                    {
+                      k = [record keys];
+                    }
+                }
+              else
+                {
+                  record = [rtype newWithValues: values keys: k];
+                }
 	      [records addObject: record];
 	      [record release];
 	    }

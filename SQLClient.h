@@ -208,6 +208,36 @@ extern NSString * const SQLClientDidDisconnectNotification;
 #define SQLCLIENT_PRIVATE       @private
 #endif
 
+/** This class is used to hold key information for a set of SQLRecord
+ * objects produced by a single query.
+ */
+@interface	SQLRecordKeys : NSObject
+{
+  NSUInteger    count;  // Number of keys
+  NSArray       *order; // Keys in order
+  NSMapTable    *map;   // Key to index
+  NSMapTable    *low;   // lowercase map
+}
+
+/** Returns the number of keys in the receiver.
+ */
+- (NSUInteger) count;
+
+/** Returns the index of the object with the specified key,
+ * or NSNotFound if there is no such key.
+ */
+- (NSUInteger) indexForKey: (NSString*)key;
+
+/** Initialiser
+ */
+- (id) initWithKeys: (NSString**)keys count: (NSUInteger)c;
+
+/** Returns an array containing the record field names in order.
+ */
+- (NSArray*) order;
+
+@end
+
 /**
  * <p>An enhanced array to represent a record returned from a query.
  * You should <em>NOT</em> try to create instances of this class
@@ -239,6 +269,17 @@ extern NSString * const SQLClientDidDisconnectNotification;
 	       count: (unsigned int)c;
 
 /**
+ * Create a new SQLRecord containing the specified fields.<br />
+ * NB. The values and keys are <em>retained</em> by the record rather
+ * than being copied.<br />
+ * A nil value is represented by [NSNull null].<br />
+ * This constructor will be used for subsequent records after the first
+ * in a query iff the first record created returns a non-nil result when
+ * sent the -keys method.
+ */
++ (id) newWithValues: (id*)v keys: (SQLRecordKeys*)k;
+
+/**
  * Returns an array containing the names of all the fields in the record.
  */
 - (NSArray*) allKeys;
@@ -266,9 +307,15 @@ extern NSString * const SQLClientDidDisconnectNotification;
 - (void) getObjects: (id*)buf;
 
 /** <override-subclass />
- * Returns the key at the specified indes.<br />
+ * Returns the key at the specified index.<br />
  */
 - (NSString*) keyAtIndex: (NSUInteger)index;
+
+/** Returns the keys used by this record.
+ * The abstract class returns nil, so subclasses should override if
+ * they wish to make use of the +newWithValues:keys: method.
+ */
+- (SQLRecordKeys*) keys;
 
 /** <override-subclass />
  * Returns the object at the specified indes.<br />
@@ -1791,35 +1838,10 @@ SQLCLIENT_PRIVATE
  */
 - (void) reset;
 
-/** <p>Use this method to enable merging of statemements subsequently added
- * or appended to the receiver.  The history argument specifies how many
- * of the most recent statements in the transaction should be checked for
- * merging in a new statement, with a value of zero meaning that no
- * merging is done.<br />
- * Returns the previous setting for the transaction.
+/** <p>DEPRECATED ... merging of statments is quite database specific and
+ * also much better done by hand rather than trying to rely on anything
+ * automatic.
  * </p>
- * <p>You may use this feature with an insert statement of the form:<br />
- * INSERT INTO table (fieldnames) VALUES (values);<br />
- * For databases which support multiline inserts such that they can be
- * merged into something of the form:
- * INSERT INTO table (fieldnames) VALUES (values1),(values2),...;
- * </p>
- * <p>Or may use this with an update or delete statement of the form:<br />
- * command table SET settings WHERE condition;<br />
- * So that statements may be merged into:<br />
- * command table SET settings WHERE (condition1) OR (condition2) OR ...;
- * </p>
- * If no opportunity for merging is found, the new statement is simply
- * added to the transaction.<br />
- * Caveats:<br />
- * 1. databases may not actually support multiline insert.<br />
- * 2. Merging is done only if the statement up to the string 'VALUES'
- * (for insert) or 'WHERE' (for update) matches.<br />
- * 3. Merging into any of the last N statements (where N is greater than 1)
- * may of course change the order of statements in the transaction,
- * so care must be taken not to use this feature where that might matter.<br />
- * 4. This is a simple text match rather than sql syntactic analysis,
- * so it's possible to confuse the process with complex statements.
  */
 - (uint8_t) setMerge: (uint8_t)history;
 

@@ -367,9 +367,10 @@ main()
 	    {
 	      NSLog(@"Retrieved non-latin does not match saved string");
 	    }
-	  if ([[record objectForKey: @"k"] isEqual: oddChars] == NO)
+          id o = [[record objectForKey: @"k"] stringByTrimmingSpaces];
+	  if ([o isEqual: oddChars] == NO)
 	    {
-	      NSLog(@"Retrieved odd chars does not match saved string");
+	      NSLog(@"Retrieved odd chars (%@) does not match saved string (%@)", o, oddChars);
 	    }
 	}
 
