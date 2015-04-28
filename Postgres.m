@@ -827,7 +827,7 @@ static unsigned int trim(char *str)
                   record = [rtype newWithValues: values
                                            keys: keys
                                           count: fieldCount];
-                  if (0 == i)
+                  if (0 == i && [record respondsToSelector: @selector(keys)])
                     {
                       k = [record keys];
                     }
