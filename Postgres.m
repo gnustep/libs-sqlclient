@@ -41,6 +41,7 @@
 #import	<Foundation/NSProcessInfo.h>
 #import	<Foundation/NSString.h>
 #import	<Foundation/NSThread.h>
+#import	<Foundation/NSTimeZone.h>
 #import	<Foundation/NSUserDefaults.h>
 #import	<Foundation/NSValue.h>
 
@@ -72,6 +73,8 @@ typedef struct	{
 static NSDate	*future = nil;
 static NSNull	*null = nil;
 
+static NSTimeZone	*zones[47];	// For -23 to +23 hours
+
 @implementation	SQLClientPostgres
 
 + (void) initialize
@@ -84,6 +87,10 @@ static NSNull	*null = nil;
       [future retain];
       null = [NSNull null];
       [null retain];
+      for (int i = -23; i <= 23; i++)
+	{
+	  zones[i + 23] = [[NSTimeZone timeZoneForSecondsFromGMT: i * 60 * 60] retain];
+	}
     }
 }
 
@@ -471,28 +478,13 @@ connectQuote(NSString *str)
     }
 }
 
-static unsigned int trim(char *str)
+static inline unsigned int trim(char *str, unsigned len)
 {
-  char	*start = str;
-
-  while (isspace(*str))
+  while (len > 0 && isspace(str[len - 1]))
     {
-      str++;
+      len--;
     }
-  if (str != start)
-    {
-      strcpy(start, str);
-    }
-  str = start;
-  while (*str != '\0')
-    {
-      str++;
-    }
-  while (str > start && isspace(str[-1]))
-    {
-      *--str = '\0';
-    }
-  return (str - start);
+  return len;
 }
 
 - (char*) parseIntoArray: (NSMutableArray *)a type: (int)t from: (char*)p
@@ -589,7 +581,7 @@ static unsigned int trim(char *str)
             }
           save = *p;
           *p = '\0'; 
-          len = trim(start);
+          len = trim(start, p - start);
           if (strcmp(start, "NULL") == 0)
             {
               v = null;
@@ -632,22 +624,24 @@ static unsigned int trim(char *str)
   return p;
 }
 
-- (id) parseField: (char *)p type: (int)t
+- (id) newParseField: (char *)p type: (int)t size: (int)s
 {
   char  arrayType = 0;
 
   switch (t)
     {
       case 1082:	// Date
-        return [self dbToDateFromBuffer: p length: trim(p)];
+        return [self newDateFromBuffer: p length: trim(p, s)];
 
       case 1083:	// Time (treat as string)
-        trim(p);
-        return [NSString stringWithUTF8String: p];
+	s = trim(p, s);
+        return [[NSString alloc] initWithBytes: p
+					length: s
+				      encoding: NSASCIIStringEncoding];
 
       case 1114:	// Timestamp without time zone.
       case 1184:	// Timestamp with time zone.
-        return [self dbToDateFromBuffer: p length: trim(p)];
+        return [self newDateFromBuffer: p length: trim(p, s)];
 
       case 16:		// BOOL
         if (*p == 't')
@@ -660,16 +654,20 @@ static unsigned int trim(char *str)
           }
 
       case 17:		// BYTEA
-        return [self dataFromBLOB: p];
+        return [[self dataFromBLOB: p] retain];
 
       case 18:          // "char"
-        return [NSString stringWithUTF8String: p];
+        return [[NSString alloc] initWithBytes: p
+					length: s
+				      encoding: NSUTF8StringEncoding];
 
       case 20:          // INT8
       case 21:          // INT2
       case 23:          // INT4
-        trim(p);
-        return [NSString stringWithUTF8String: p];
+	s = trim(p, s);
+        return [[NSString alloc] initWithBytes: p
+					length: s
+				      encoding: NSASCIIStringEncoding];
         break;
 
       case 1182:	// DATE ARRAY
@@ -693,7 +691,7 @@ static unsigned int trim(char *str)
           {
             NSMutableArray      *a;
 
-            a = [NSMutableArray arrayWithCapacity: 10];
+            a = [[NSMutableArray alloc] initWithCapacity: 10];
             p = [self parseIntoArray: a type: arrayType from: p];
             if ([self debugging] > 2)
               {
@@ -706,9 +704,11 @@ static unsigned int trim(char *str)
       default:
         if (YES == _shouldTrim)
           {
-            trim(p);
+            s = trim(p, s);
           }
-        return [NSString stringWithUTF8String: p];
+        return [[NSString alloc] initWithBytes: p
+					length: s
+				      encoding: NSUTF8StringEncoding];
     }
 }
 
@@ -773,6 +773,7 @@ static unsigned int trim(char *str)
 	  int		fmod[fieldCount];
 	  int		fformat[fieldCount];
           SQLRecordKeys *k = nil;
+	  int		d = [self debugging];
 	  int		i;
 
 	  for (i = 0; i < fieldCount; i++)
@@ -784,6 +785,20 @@ static unsigned int trim(char *str)
 	    }
 
 	  records = [[ltype alloc] initWithCapacity: recordCount];
+
+	  /* Create buffers to store the previous row from the
+	   * database and the previous objc values.
+	   */
+	  int		len[fieldCount];
+	  const char	*ptr[fieldCount];
+	  id		obj[fieldCount];
+
+	  for (i = 0; i < fieldCount; i++)
+	    {
+	      len[i] = -1;
+	      obj[i] = nil;
+	    }	
+
 	  for (i = 0; i < recordCount; i++)
 	    {
 	      SQLRecord	*record;
@@ -799,20 +814,34 @@ static unsigned int trim(char *str)
 		      char	*p = PQgetvalue(result, i, j);
 		      int	size = PQgetlength(result, i, j);
 
-		      if ([self debugging] > 1)
+		      if (d > 1)
 			{ 
 			  [self debug: @"%@ type:%d mod:%d size: %d\n",
 			    keys[j], ftype[j], fmod[j], size];
 			}
-		      if (fformat[j] == 0)	// Text
+		      /* Often many rows will contain the same data in
+		       * one or more columns, so we check to see if the
+		       * value we have just read is small and identical
+		       * to the value in the same column of the previous
+		       * row.  Only if it isn't do we create a new object.
+		       */
+		      if (size != len[j] || size > 20
+		        || memcmp(p, ptr[j], (size_t)len) != 0)
 			{
-                          v = [self parseField: p type: ftype[j]];
-			}
-		      else			// Binary
-			{
-			  NSLog(@"Binary data treated as NSNull "
-			    @"in %@ type:%d mod:%d size:%d\n",
-			    keys[j], ftype[j], fmod[j], size);
+			  [obj[j] release];
+			  if (fformat[j] == 0)	// Text
+			    {
+			      v = [self newParseField: p
+						 type: ftype[j]
+						 size: size];
+			      obj[j] = v;
+			    }
+			  else			// Binary
+			    {
+			      NSLog(@"Binary data treated as NSNull "
+				@"in %@ type:%d mod:%d size:%d\n",
+				keys[j], ftype[j], fmod[j], size);
+			    }
 			}
 		    }
 		  values[j] = v;
@@ -838,6 +867,10 @@ static unsigned int trim(char *str)
                 }
 	      [records addObject: record];
 	      [record release];
+	    }
+	  for (i = 0; i < fieldCount; i++)
+	    {
+	      [obj[i] release];
 	    }
 	}
       else if (PQresultStatus(result) == PGRES_COMMAND_OK)
@@ -1191,6 +1224,151 @@ static unsigned int trim(char *str)
                               calendarFormat: @"%Y-%m-%d %H:%M:%S"
                                       locale: nil];
         }
+    }
+  [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
+  return d;
+}
+
+- (NSDate*) newDateFromBuffer: (char*)b length: (int)l
+{
+  NSCalendarDate	*d;
+  NSTimeZone		*zone;
+  int		        milliseconds = 0;
+  int                   timezone = 0;
+  int			day;
+  int			month;
+  int			year;
+  int			hour;
+  int			minute;
+  int			second;
+  int		        i;
+
+  i = 0;
+
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = year * 10 + b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = year * 10 + b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = year * 10 + b[i++] - '0';
+
+  if (i >= l || b[i++] != '-') return nil;
+
+  if (i >= l || !isdigit(b[i])) return nil;
+  month = b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  month = month * 10 + b[i++] - '0';
+  if (month < 1 || month > 12) return nil;
+
+  if (i >= l || b[i++] != '-') return nil;
+
+  if (i >= l || !isdigit(b[i])) return nil;
+  day = b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  day = day * 10 + b[i++] - '0';
+  if (day < 1 || day > 31) return nil;
+
+  if (i == l)
+    {
+      hour = 0;
+      minute = 0;
+      second = 0;
+    }
+  else
+    {
+      if (i >= l || b[i++] != ' ') return nil;
+
+      if (i >= l || !isdigit(b[i])) return nil;
+      hour = b[i++] - '0';
+      if (i >= l || !isdigit(b[i])) return nil;
+      hour = hour * 10 + b[i++] - '0';
+      if (hour < 0 || hour > 23) return nil;
+
+      if (i >= l || b[i++] != ':') return nil;
+
+      if (i >= l || !isdigit(b[i])) return nil;
+      minute = b[i++] - '0';
+      if (i >= l || !isdigit(b[i])) return nil;
+      minute = minute * 10 + b[i++] - '0';
+      if (minute < 0 || minute > 59) return nil;
+
+      if (i >= l || b[i++] != ':') return nil;
+
+      if (i >= l || !isdigit(b[i])) return nil;
+      second = b[i++] - '0';
+      if (i >= l || !isdigit(b[i])) return nil;
+      second = second * 10 + b[i++] - '0';
+      if (second < 0 || second > 60) return nil;
+
+      if (i < l && '.' == b[i])
+	{
+	  i++;
+	  if (i >= l || !isdigit(b[i])) return nil;
+	  milliseconds = b[i++] - '0';
+	  milliseconds *=- 10;
+	  if (i < l && isdigit(b[i]))
+	    milliseconds += b[i++] - '0';
+	  milliseconds *=- 10;
+	  if (i < l && isdigit(b[i]))
+	    milliseconds += b[i++] - '0';
+	  while (i < l && isdigit(b[i]))
+	    i++;
+	}
+
+      if (i < l && ('+' == b[i] || '-' == b[i]))
+	{
+	  char	sign = b[i++];
+
+	  if (i >= l || !isdigit(b[i])) return nil;
+	  timezone = b[i++] - '0';
+	  if (i >= l || !isdigit(b[i])) return nil;
+	  timezone = timezone * 10 + b[i++] - '0';
+	  if (timezone < 0 || timezone > 23) return nil;
+	  timezone *= 60;	// Convert to minutes
+	  if (i < l && ':' == b[i])
+	    {
+	      int	tzmin;
+
+	      if (i >= l || !isdigit(b[i])) return nil;
+	      tzmin = b[i++] - '0';
+	      if (i >= l || !isdigit(b[i])) return nil;
+	      tzmin = tzmin * 10 + b[i++] - '0';
+	      if (tzmin < 0 || tzmin > 59) return nil;
+
+	      timezone += tzmin;
+	    }
+	  if ('-' == sign)
+	    timezone = -timezone;
+	}
+    }
+  if (timezone % 60 == 0)
+    {
+      zone = zones[timezone / 60];
+    }
+  else
+    {
+      zone = [NSTimeZone timeZoneForSecondsFromGMT: timezone * 60];
+    }
+
+  d = [[NSCalendarDate alloc] initWithYear: year
+				     month: month
+				       day: day
+				      hour: hour
+				    minute: minute
+				    second: second
+				  timeZone: zone];
+
+  if (milliseconds > 0)
+    {
+      NSTimeInterval	ti;
+
+      ti = milliseconds;
+      ti /= 1000.0;
+      ti += [d timeIntervalSinceReferenceDate];
+      d = [d initWithTimeIntervalSinceReferenceDate: ti];
+      [d setTimeZone: zone];
     }
   [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
   return d;
