@@ -1,9 +1,16 @@
+2015-04-30 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m:
+	* testPostgres.m:
+	Fix error parsing timestamps in arrays when the server quoters them.
+	Also optimise string allocation, and add some tests.
+
 2015-04-28 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
 	* SQLClient.m:
 	* Postgres.m:
-	Deprecate trtansaction merging.
+	Deprecate transaction merging.
 	Rewrite SQLRecord concrete class to use a new SQLRecordKeys object
 	shared between all the records produced by a query (as a performance
 	enhancement for large queries).

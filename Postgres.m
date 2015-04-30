@@ -73,7 +73,174 @@ typedef struct	{
 static NSDate	*future = nil;
 static NSNull	*null = nil;
 
+#if	defined(GNUSTEP)
+static NSString	*placeholder = nil;
+#else
+static Class	stringClass = Nil;
+static SEL	allocStringSel = 0;
+static IMP	allocStringImp = 0;
+#endif
+static SEL	initStringSel = 0;
+static IMP	initStringImp = 0;
+
 static NSTimeZone	*zones[47];	// For -23 to +23 hours
+
+static inline NSString*
+newString(const char *b, int l, NSStringEncoding e)
+{
+#if	defined(GNUSTEP)
+  return (*initStringImp)(placeholder, initStringSel, b, l, e);
+#else
+  NSString	*s =  (*allocStringImp)(stringClass, allocStringSel);
+  return (*initStringImp)(s, initStringSel, b, l, e);
+#endif
+}
+
+static NSDate*
+newDateFromBuffer(const char *b, int l)
+{
+  NSCalendarDate	*d;
+  NSTimeZone		*zone;
+  int		        milliseconds = 0;
+  int                   timezone = 0;
+  int			day;
+  int			month;
+  int			year;
+  int			hour;
+  int			minute;
+  int			second;
+  int		        i;
+
+  i = 0;
+
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = year * 10 + b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = year * 10 + b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  year = year * 10 + b[i++] - '0';
+
+  if (i >= l || b[i++] != '-') return nil;
+
+  if (i >= l || !isdigit(b[i])) return nil;
+  month = b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  month = month * 10 + b[i++] - '0';
+  if (month < 1 || month > 12) return nil;
+
+  if (i >= l || b[i++] != '-') return nil;
+
+  if (i >= l || !isdigit(b[i])) return nil;
+  day = b[i++] - '0';
+  if (i >= l || !isdigit(b[i])) return nil;
+  day = day * 10 + b[i++] - '0';
+  if (day < 1 || day > 31) return nil;
+
+  if (i == l)
+    {
+      hour = 0;
+      minute = 0;
+      second = 0;
+    }
+  else
+    {
+      if (i >= l || b[i++] != ' ') return nil;
+
+      if (i >= l || !isdigit(b[i])) return nil;
+      hour = b[i++] - '0';
+      if (i >= l || !isdigit(b[i])) return nil;
+      hour = hour * 10 + b[i++] - '0';
+      if (hour < 0 || hour > 23) return nil;
+
+      if (i >= l || b[i++] != ':') return nil;
+
+      if (i >= l || !isdigit(b[i])) return nil;
+      minute = b[i++] - '0';
+      if (i >= l || !isdigit(b[i])) return nil;
+      minute = minute * 10 + b[i++] - '0';
+      if (minute < 0 || minute > 59) return nil;
+
+      if (i >= l || b[i++] != ':') return nil;
+
+      if (i >= l || !isdigit(b[i])) return nil;
+      second = b[i++] - '0';
+      if (i >= l || !isdigit(b[i])) return nil;
+      second = second * 10 + b[i++] - '0';
+      if (second < 0 || second > 60) return nil;
+
+      if (i < l && '.' == b[i])
+	{
+	  i++;
+	  if (i >= l || !isdigit(b[i])) return nil;
+	  milliseconds = b[i++] - '0';
+	  milliseconds *=- 10;
+	  if (i < l && isdigit(b[i]))
+	    milliseconds += b[i++] - '0';
+	  milliseconds *=- 10;
+	  if (i < l && isdigit(b[i]))
+	    milliseconds += b[i++] - '0';
+	  while (i < l && isdigit(b[i]))
+	    i++;
+	}
+
+      if (i < l && ('+' == b[i] || '-' == b[i]))
+	{
+	  char	sign = b[i++];
+
+	  if (i >= l || !isdigit(b[i])) return nil;
+	  timezone = b[i++] - '0';
+	  if (i >= l || !isdigit(b[i])) return nil;
+	  timezone = timezone * 10 + b[i++] - '0';
+	  if (timezone < 0 || timezone > 23) return nil;
+	  timezone *= 60;	// Convert to minutes
+	  if (i < l && ':' == b[i])
+	    {
+	      int	tzmin;
+
+	      if (i >= l || !isdigit(b[i])) return nil;
+	      tzmin = b[i++] - '0';
+	      if (i >= l || !isdigit(b[i])) return nil;
+	      tzmin = tzmin * 10 + b[i++] - '0';
+	      if (tzmin < 0 || tzmin > 59) return nil;
+
+	      timezone += tzmin;
+	    }
+	  if ('-' == sign)
+	    timezone = -timezone;
+	}
+    }
+  if (timezone % 60 == 0)
+    {
+      zone = zones[timezone / 60];
+    }
+  else
+    {
+      zone = [NSTimeZone timeZoneForSecondsFromGMT: timezone * 60];
+    }
+
+  d = [[NSCalendarDate alloc] initWithYear: year
+				     month: month
+				       day: day
+				      hour: hour
+				    minute: minute
+				    second: second
+				  timeZone: zone];
+
+  if (milliseconds > 0)
+    {
+      NSTimeInterval	ti;
+
+      ti = milliseconds;
+      ti /= 1000.0;
+      ti += [d timeIntervalSinceReferenceDate];
+      d = [d initWithTimeIntervalSinceReferenceDate: ti];
+      [d setTimeZone: zone];
+    }
+  [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
+  return d;
+}
 
 @implementation	SQLClientPostgres
 
@@ -81,6 +248,18 @@ static NSTimeZone	*zones[47];	// For -23 to +23 hours
 {
   if (future == nil)
     {
+      initStringSel = @selector(initWithBytes:length:encoding:);
+#if	defined(GNUSTEP)
+      placeholder = [NSString alloc];
+      initStringImp
+	= [[placeholder class] instanceMethodForSelector: initStringSel];
+#else
+      stringClass = [NSString class];
+      allocStringSel = @selector(alloc);
+      allocStringImp = [stringClass methodForSelector: allocStringSel];
+      initStringImp = [stringClass instanceMethodForSelector: initStringSel];
+#endif
+      
       future = [NSCalendarDate dateWithString: @"9999-01-01 00:00:00 +0000"
 			       calendarFormat: @"%Y-%m-%d %H:%M:%S %z"
 				       locale: nil];
@@ -89,7 +268,8 @@ static NSTimeZone	*zones[47];	// For -23 to +23 hours
       [null retain];
       for (int i = -23; i <= 23; i++)
 	{
-	  zones[i + 23] = [[NSTimeZone timeZoneForSecondsFromGMT: i * 60 * 60] retain];
+	  zones[i + 23]
+	    = [[NSTimeZone timeZoneForSecondsFromGMT: i * 60 * 60] retain];
 	}
     }
 }
@@ -529,7 +709,22 @@ static inline unsigned int trim(char *str, unsigned len)
             }
           if (len == (p - start))
             {
-              v = [[NSString alloc] initWithUTF8String: start];
+	      if ('T' == t)
+		{
+                  /* This is expected to be a timestamp
+                   */
+		  v = newDateFromBuffer(start, p - start);
+		}
+              else if ('D' == t)
+                {
+                  /* This is expected to be bytea data
+                   */
+                  v = [[self dataFromBLOB: start] retain];
+                }
+	      else
+		{
+                  v = newString(start, p - start, NSUTF8StringEncoding);
+		}
             }
           else
             {
@@ -549,7 +744,13 @@ static inline unsigned int trim(char *str, unsigned len)
                   buf[i++] = *ptr++;
                 }
               buf[len] = '\0';
-              if ('D' == t)
+	      if ('T' == t)
+		{
+                  /* This is expected to be a timestamp
+                   */
+		  v = newDateFromBuffer(buf, len);
+		}
+              else if ('D' == t)
                 {
                   /* This is expected to be bytea data
                    */
@@ -588,7 +789,7 @@ static inline unsigned int trim(char *str, unsigned len)
             }
           else if ('T' == t)
             {
-              v = [[self dbToDateFromBuffer: start length: len] retain];
+              v = newDateFromBuffer(start, len);
             }
           else if ('D' == t)
             {
@@ -603,7 +804,7 @@ static inline unsigned int trim(char *str, unsigned len)
             }
           else
             {
-              v = [[NSString alloc] initWithUTF8String: start];
+              v = newString(start, p - start, NSUTF8StringEncoding);
             }
           *p = save;
         }
@@ -631,17 +832,15 @@ static inline unsigned int trim(char *str, unsigned len)
   switch (t)
     {
       case 1082:	// Date
-        return [self newDateFromBuffer: p length: trim(p, s)];
+        return newDateFromBuffer(p, trim(p, s));
 
       case 1083:	// Time (treat as string)
 	s = trim(p, s);
-        return [[NSString alloc] initWithBytes: p
-					length: s
-				      encoding: NSASCIIStringEncoding];
+        return newString(p, s, NSASCIIStringEncoding);
 
       case 1114:	// Timestamp without time zone.
       case 1184:	// Timestamp with time zone.
-        return [self newDateFromBuffer: p length: trim(p, s)];
+        return newDateFromBuffer(p, trim(p, s));
 
       case 16:		// BOOL
         if (*p == 't')
@@ -657,18 +856,13 @@ static inline unsigned int trim(char *str, unsigned len)
         return [[self dataFromBLOB: p] retain];
 
       case 18:          // "char"
-        return [[NSString alloc] initWithBytes: p
-					length: s
-				      encoding: NSUTF8StringEncoding];
+        return newString(p, s, NSUTF8StringEncoding);
 
       case 20:          // INT8
       case 21:          // INT2
       case 23:          // INT4
 	s = trim(p, s);
-        return [[NSString alloc] initWithBytes: p
-					length: s
-				      encoding: NSASCIIStringEncoding];
-        break;
+        return newString(p, s, NSASCIIStringEncoding);
 
       case 1182:	// DATE ARRAY
       case 1115:	// TS without TZ ARRAY
@@ -706,9 +900,7 @@ static inline unsigned int trim(char *str, unsigned len)
           {
             s = trim(p, s);
           }
-        return [[NSString alloc] initWithBytes: p
-					length: s
-				      encoding: NSUTF8StringEncoding];
+        return newString(p, s, NSUTF8StringEncoding);
     }
 }
 
@@ -1224,151 +1416,6 @@ static inline unsigned int trim(char *str, unsigned len)
                               calendarFormat: @"%Y-%m-%d %H:%M:%S"
                                       locale: nil];
         }
-    }
-  [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
-  return d;
-}
-
-- (NSDate*) newDateFromBuffer: (char*)b length: (int)l
-{
-  NSCalendarDate	*d;
-  NSTimeZone		*zone;
-  int		        milliseconds = 0;
-  int                   timezone = 0;
-  int			day;
-  int			month;
-  int			year;
-  int			hour;
-  int			minute;
-  int			second;
-  int		        i;
-
-  i = 0;
-
-  if (i >= l || !isdigit(b[i])) return nil;
-  year = b[i++] - '0';
-  if (i >= l || !isdigit(b[i])) return nil;
-  year = year * 10 + b[i++] - '0';
-  if (i >= l || !isdigit(b[i])) return nil;
-  year = year * 10 + b[i++] - '0';
-  if (i >= l || !isdigit(b[i])) return nil;
-  year = year * 10 + b[i++] - '0';
-
-  if (i >= l || b[i++] != '-') return nil;
-
-  if (i >= l || !isdigit(b[i])) return nil;
-  month = b[i++] - '0';
-  if (i >= l || !isdigit(b[i])) return nil;
-  month = month * 10 + b[i++] - '0';
-  if (month < 1 || month > 12) return nil;
-
-  if (i >= l || b[i++] != '-') return nil;
-
-  if (i >= l || !isdigit(b[i])) return nil;
-  day = b[i++] - '0';
-  if (i >= l || !isdigit(b[i])) return nil;
-  day = day * 10 + b[i++] - '0';
-  if (day < 1 || day > 31) return nil;
-
-  if (i == l)
-    {
-      hour = 0;
-      minute = 0;
-      second = 0;
-    }
-  else
-    {
-      if (i >= l || b[i++] != ' ') return nil;
-
-      if (i >= l || !isdigit(b[i])) return nil;
-      hour = b[i++] - '0';
-      if (i >= l || !isdigit(b[i])) return nil;
-      hour = hour * 10 + b[i++] - '0';
-      if (hour < 0 || hour > 23) return nil;
-
-      if (i >= l || b[i++] != ':') return nil;
-
-      if (i >= l || !isdigit(b[i])) return nil;
-      minute = b[i++] - '0';
-      if (i >= l || !isdigit(b[i])) return nil;
-      minute = minute * 10 + b[i++] - '0';
-      if (minute < 0 || minute > 59) return nil;
-
-      if (i >= l || b[i++] != ':') return nil;
-
-      if (i >= l || !isdigit(b[i])) return nil;
-      second = b[i++] - '0';
-      if (i >= l || !isdigit(b[i])) return nil;
-      second = second * 10 + b[i++] - '0';
-      if (second < 0 || second > 60) return nil;
-
-      if (i < l && '.' == b[i])
-	{
-	  i++;
-	  if (i >= l || !isdigit(b[i])) return nil;
-	  milliseconds = b[i++] - '0';
-	  milliseconds *=- 10;
-	  if (i < l && isdigit(b[i]))
-	    milliseconds += b[i++] - '0';
-	  milliseconds *=- 10;
-	  if (i < l && isdigit(b[i]))
-	    milliseconds += b[i++] - '0';
-	  while (i < l && isdigit(b[i]))
-	    i++;
-	}
-
-      if (i < l && ('+' == b[i] || '-' == b[i]))
-	{
-	  char	sign = b[i++];
-
-	  if (i >= l || !isdigit(b[i])) return nil;
-	  timezone = b[i++] - '0';
-	  if (i >= l || !isdigit(b[i])) return nil;
-	  timezone = timezone * 10 + b[i++] - '0';
-	  if (timezone < 0 || timezone > 23) return nil;
-	  timezone *= 60;	// Convert to minutes
-	  if (i < l && ':' == b[i])
-	    {
-	      int	tzmin;
-
-	      if (i >= l || !isdigit(b[i])) return nil;
-	      tzmin = b[i++] - '0';
-	      if (i >= l || !isdigit(b[i])) return nil;
-	      tzmin = tzmin * 10 + b[i++] - '0';
-	      if (tzmin < 0 || tzmin > 59) return nil;
-
-	      timezone += tzmin;
-	    }
-	  if ('-' == sign)
-	    timezone = -timezone;
-	}
-    }
-  if (timezone % 60 == 0)
-    {
-      zone = zones[timezone / 60];
-    }
-  else
-    {
-      zone = [NSTimeZone timeZoneForSecondsFromGMT: timezone * 60];
-    }
-
-  d = [[NSCalendarDate alloc] initWithYear: year
-				     month: month
-				       day: day
-				      hour: hour
-				    minute: minute
-				    second: second
-				  timeZone: zone];
-
-  if (milliseconds > 0)
-    {
-      NSTimeInterval	ti;
-
-      ti = milliseconds;
-      ti /= 1000.0;
-      ti += [d timeIntervalSinceReferenceDate];
-      d = [d initWithTimeIntervalSinceReferenceDate: ti];
-      [d setTimeZone: zone];
     }
   [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
   return d;

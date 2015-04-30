@@ -229,6 +229,7 @@ main()
     {
       NSString	*oddChars;
       NSString	*nonLatin;
+      id	e1, e2, e3, e4, e5;
       id	r0;
       id	r1;
 
@@ -249,6 +250,7 @@ main()
 
       [db begin];
       [db execute: @"create table xxx ( "
+	@"id int, "
 	@"k char(40), "
 	@"char1 char(1), "
 	@"boolval BOOL, "
@@ -264,9 +266,9 @@ main()
 	@")",
 	nil];
 
-      if (1 != [db execute: @"insert into xxx (k, char1, boolval, intval,"
+      if (1 != [db execute: @"insert into xxx (id, k, char1, boolval, intval,"
         @" when1, when2, b, extra1, extra2, extra3, extra4, extra5) "
-	@"values ("
+	@"values (1,"
 	@"'{hello', "
 	@"'X', "
 	@"TRUE, "
@@ -275,23 +277,23 @@ main()
 	@"CURRENT_TIMESTAMP, ",
 	data, @", ",
         [db quoteArray:
-          [NSArray arrayWithObjects: @"1", @"2", [NSNull null], nil]
+          (e1 = [NSArray arrayWithObjects: @"1", @"2", [NSNull null], nil])
               toString: nil
         quotingStrings: NO], @", ",
         [db quoteArray:
-          [NSArray arrayWithObjects: @"on,e", @"t'wo", @"many", nil]
+          (e2 = [NSArray arrayWithObjects: @"on,e", @"t'wo", @"many", nil])
               toString: nil
         quotingStrings: YES], @", ",
         [db quoteArray:
-          [NSArray arrayWithObjects: data, nil]
+          (e3 = [NSArray arrayWithObjects: data, nil])
               toString: nil
         quotingStrings: YES], @", ",
         [db quoteArray:
-          [NSArray arrayWithObjects: @"TRUE", @"FALSE", nil]
+          (e4  =[NSArray arrayWithObjects: @"TRUE", @"FALSE", nil])
               toString: nil
         quotingStrings: NO], @", ",
         [db quoteArray:
-          [NSArray arrayWithObjects: [NSDate date], nil]
+          (e5 = [NSArray arrayWithObjects: [NSDate date], nil])
               toString: nil
         quotingStrings: YES], @")",
 	nil])
@@ -304,8 +306,8 @@ main()
 [db setDebugging: 0];
 
       [db execute: @"insert into xxx "
-	@"(k, char1, boolval, intval, when1, when2, b) "
-	@"values ("
+	@"(id, k, char1, boolval, intval, when1, when2, b) "
+	@"values (2,"
 	@"'hello', "
 	@"'X', "
 	@"TRUE, "
@@ -316,8 +318,8 @@ main()
 	@")",
 	nil];
       [db execute: @"insert into xxx "
-	@"(k, char1, boolval, intval, when1, when2, b) "
-	@"values (",
+	@"(id, k, char1, boolval, intval, when1, when2, b) "
+	@"values (3,",
 	[db quote: oddChars],
 	@", ",
 	[db quote: nonLatin],
@@ -330,11 +332,11 @@ main()
 	nil];
       [db commit];
 
-      r0 = [db cache: 1 query: @"select * from xxx", nil];
-      r1 = [db cache: 1 query: @"select * from xxx", nil];
+      r0 = [db cache: 1 query: @"select * from xxx order by id", nil];
+      r1 = [db cache: 1 query: @"select * from xxx order by id", nil];
       NSCAssert([r0 lastObject] == [r1 lastObject], @"Cache failed");
       [NSThread sleepForTimeInterval: 2.0];
-      records = [db cache: 1 query: @"select * from xxx", nil];
+      records = [db cache: 1 query: @"select * from xxx order by id", nil];
       NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
 
       [db addObserver: l 
@@ -371,6 +373,50 @@ main()
 	  if ([o isEqual: oddChars] == NO)
 	    {
 	      NSLog(@"Retrieved odd chars (%@) does not match saved string (%@)", o, oddChars);
+	    }
+	  record = [records objectAtIndex: 0];
+          o = [record objectForKey: @"extra1"];
+	  if ([o isEqual: e1] == NO)
+	    {
+	      NSLog(@"Retrieved extra1 (%@) does not match saved (%@)", o, e1);
+	    }
+          o = [record objectForKey: @"extra2"];
+	  if ([o isEqual: e2] == NO)
+	    {
+	      NSLog(@"Retrieved extra2 (%@) does not match saved (%@)", o, e2);
+	    }
+          o = [record objectForKey: @"extra3"];
+	  if ([o isEqual: e3] == NO)
+	    {
+	      NSLog(@"Retrieved extra3 (%@) does not match saved (%@)", o, e3);
+	    }
+          o = [record objectForKey: @"extra4"];
+	  if ([o count] != [e4 count])
+	    {
+	      NSLog(@"Retrieved extra4 (%@) does not match saved (%@)", o, e4);
+	    }
+	  for (int i = 0; i < [o count]; i++)
+	    {
+	      if ([[o objectAtIndex: i] boolValue]
+	        != [[e4 objectAtIndex: i] boolValue])
+		{
+		  NSLog(@"Retrieved extra4 (%@) does not match saved (%@)",
+		    o, e4);
+		}
+	    }
+          o = [record objectForKey: @"extra5"];
+	  if ([o count] != [e5 count])
+	    {
+	      NSLog(@"Retrieved extra5 (%@) does not match saved (%@)", o, e5);
+	    }
+	  for (int i = 0; i < [o count]; i++)
+	    {
+	      if (floor([[o objectAtIndex: i] timeIntervalSinceReferenceDate])
+	        != floor([[e5 objectAtIndex: i] timeIntervalSinceReferenceDate]))
+		{
+		  NSLog(@"Retrieved extra5 (%@) does not match saved (%@)",
+		    o, e5);
+		}
 	    }
 	}
 
