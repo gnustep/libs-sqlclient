@@ -248,6 +248,8 @@ newDateFromBuffer(const char *b, int l)
 {
   if (future == nil)
     {
+      int       i;
+
       initStringSel = @selector(initWithBytes:length:encoding:);
 #if	defined(GNUSTEP)
       placeholder = [NSString alloc];
@@ -266,7 +268,7 @@ newDateFromBuffer(const char *b, int l)
       [future retain];
       null = [NSNull null];
       [null retain];
-      for (int i = -23; i <= 23; i++)
+      for (i = -23; i <= 23; i++)
 	{
 	  zones[i + 23]
 	    = [[NSTimeZone timeZoneForSecondsFromGMT: i * 60 * 60] retain];
