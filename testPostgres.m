@@ -353,6 +353,8 @@ main()
 	}
       else
 	{
+          int   i;
+
 	  record = [records objectAtIndex: 0];
 	  if ([[record objectForKey: @"b"] isEqual: data] == NO)
 	    {
@@ -395,7 +397,7 @@ main()
 	    {
 	      NSLog(@"Retrieved extra4 (%@) does not match saved (%@)", o, e4);
 	    }
-	  for (int i = 0; i < [o count]; i++)
+	  for (i = 0; i < [o count]; i++)
 	    {
 	      if ([[o objectAtIndex: i] boolValue]
 	        != [[e4 objectAtIndex: i] boolValue])
@@ -409,7 +411,7 @@ main()
 	    {
 	      NSLog(@"Retrieved extra5 (%@) does not match saved (%@)", o, e5);
 	    }
-	  for (int i = 0; i < [o count]; i++)
+	  for (i = 0; i < [o count]; i++)
 	    {
 	      if (floor([[o objectAtIndex: i] timeIntervalSinceReferenceDate])
 	        != floor([[e5 objectAtIndex: i] timeIntervalSinceReferenceDate]))
