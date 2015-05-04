@@ -722,6 +722,7 @@ NSString	*SQLUniqueException = @"SQLUniqueException";
 /**
  * Container for all instances.
  */
+static NSRecursiveLock	*cacheLock = nil;
 static NSHashTable	*clientsHash = 0;
 static NSMapTable	*clientsMap = 0;
 static NSRecursiveLock	*clientsLock = nil;
@@ -866,9 +867,10 @@ static int	        poolConnections = 0;
       modes[0] = NSDefaultRunLoopMode;
       queryModes = [[NSArray alloc] initWithObjects: modes count: 1];
       GSTickerTimeNow();
-      [SQLRecord class];	// Force initialisation
+      [SQLRecord class];	// Force initialisatio
       if (0 == clientsHash)
         {
+          cacheLock = [NSRecursiveLock new];
           clientsHash = NSCreateHashTable(NSNonOwnedPointerHashCallBacks, 0);
           clientsMap = NSCreateMapTable(NSObjectMapKeyCallBacks,
             NSNonRetainedObjectMapValueCallBacks, 0);
@@ -2821,7 +2823,11 @@ static int	        poolConnections = 0;
 {
   GSCache	*c;
 
-  [lock lock];
+  /* NB we use a different lock to protect the cache from the lock
+   * used to protect the database query.  That allows multiple
+   * connections (a connection pool) to share the same cache.
+   */
+  [cacheLock lock];
   if (nil == _cache)
     {
       _cache = [GSCache new];
@@ -2831,7 +2837,7 @@ static int	        poolConnections = 0;
 	}
     }
   c = [_cache retain];
-  [lock unlock];
+  [cacheLock unlock];
   return [c autorelease];
 }
 
@@ -2969,7 +2975,11 @@ static int	        poolConnections = 0;
 
 - (void) setCache: (GSCache*)aCache
 {
-  [lock lock];
+  /* NB we use a different lock to protect the cache from the lock
+   * used to protect the database query.  That allows multiple
+   * connections (a connection pool) to share the same cache.
+   */
+  [cacheLock lock];
   NS_DURING
     {
       if (_cacheThread != nil)
@@ -2986,11 +2996,11 @@ static int	        poolConnections = 0;
     }
   NS_HANDLER
     {
-      [lock unlock];
+      [cacheLock unlock];
       [localException raise];
     }
   NS_ENDHANDLER
-  [lock unlock];
+  [cacheLock unlock];
 }
 
 - (void) setCacheThread: (NSThread*)aThread
