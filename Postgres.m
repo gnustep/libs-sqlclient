@@ -213,7 +213,7 @@ newDateFromBuffer(const char *b, int l)
     }
   if (timezone % 60 == 0)
     {
-      zone = zones[timezone / 60];
+      zone = zones[23 + timezone / 60];
     }
   else
     {
