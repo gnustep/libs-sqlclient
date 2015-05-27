@@ -37,9 +37,15 @@
 #import	<Performance/GSCache.h>
 #import	"SQLClient.h"
 
-/** Connections idle for morew than this time are candidates for purging.
+/** Connections idle for more than this time are candidates for purging
+ * as long as there are at leas min connections open.
  */
-static NSTimeInterval   purgeTime = 10.0;
+static NSTimeInterval   purgeMinTime = 10.0;
+
+/** Connections idle for more than this time are candidates for purging
+ * even if the number of open connections is less than or equal to min.
+ */
+static NSTimeInterval   purgeAllTime = 300.0;
 
 @interface      SQLClient(Pool)
 - (void) _clearPool: (SQLClientPool*)p;
@@ -333,19 +339,26 @@ static NSTimeInterval   purgeTime = 10.0;
                 }
             }
         }
-      if (connected > min && nil != found
-        && [[found lastOperation] timeIntervalSinceNow] < -purgeTime)
+      if (nil != found)
         {
-          NS_DURING
+          NSTimeInterval        age;
+
+          age = -[[found lastOperation] timeIntervalSinceNow];
+          if (age > purgeAllTime
+            || (connected > min && age > purgeMinTime))
             {
-              [found disconnect];
-              more = YES;
+              NS_DURING
+                {
+                  [found disconnect];
+                  more = YES;
+                }
+              NS_HANDLER
+                {
+                  NSLog(@"Error disconnecting client in pool: %@",
+                    localException);
+                }
+              NS_ENDHANDLER
             }
-          NS_HANDLER
-            {
-              NSLog(@"Error disconnecting client in pool: %@", localException);
-            }
-          NS_ENDHANDLER
         }
     }
   [self _unlock];
@@ -495,6 +508,8 @@ static NSTimeInterval   purgeTime = 10.0;
 
 - (BOOL) swallowClient: (SQLClient*)client
 {
+  BOOL  disconnected = NO;
+  BOOL  replaced = NO;
   BOOL  found = NO;
   int   index;
 
@@ -507,7 +522,24 @@ static NSTimeInterval   purgeTime = 10.0;
           found = YES;
         }
     }
+  if (YES == found && YES == [client isInTransaction])
+    {
+      if (YES == [client lockBeforeDate: nil])
+        {
+          disconnected = YES;
+          [client disconnect];
+          [client unlock];
+        }
+      else
+        {
+          replaced = YES;
+          c[index] = [[SQLClient alloc] initWithConfiguration: _config
+                                                         name: _name
+                                                         pool: self];
+        }
+    }
   [self _unlock];
+
   if (_debugging > 2)
     {
       if (YES == found)
@@ -519,6 +551,19 @@ static NSTimeInterval   purgeTime = 10.0;
           NSLog(@"%@ rejects %p", self, client);
         }
     }
+
+  if (YES == disconnected)
+    {
+      NSLog(@"ERROR: Disconnected client which was returned to pool"
+        @" while a transaction was in progress: %@", client);
+    }
+  else if (YES == replaced)
+    {
+      NSLog(@"ERROR: Replaced client which was returned to pool"
+        @" while a transaction was in progress: %@", client);
+      [client release];
+    }
+
   return found;
 }
 

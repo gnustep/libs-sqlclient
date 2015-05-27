@@ -987,7 +987,7 @@ SQLCLIENT_PRIVATE
 		     recordType: (id)rtype
 		       listType: (id)ltype;
 
-/** Releases a lock previously obtained using -lockbeforeDate:
+/** Releases a lock previously obtained using -lockBeforeDate:
  */
 - (void) unlock;
 

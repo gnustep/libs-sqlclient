@@ -1,3 +1,11 @@
+2015-05-27 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: bugfixes
+	* SQLClient.m: bugfix for finding oldest idle connection
+	* SQLClientPool.m: implement method to disconnect idle connections
+	in pool.  also check for clients being returned to pool while a
+	transaction is still in progress.
+
 2015-04-30 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m:
