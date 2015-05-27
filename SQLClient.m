@@ -1417,8 +1417,6 @@ static int	        poolConnections = 0;
   NSTimeInterval        t0;
   NSTimeInterval        t1;
 
-  NSAssert([other isKindOfClass: SQLClientClass], NSInvalidArgumentException);
-
   t0 = _lastOperation;
   if (t0 < _lastStart)
     {
@@ -1429,7 +1427,7 @@ static int	        poolConnections = 0;
       t0 = 0.0;
     }
 
-  if (YES == [other isProxy])
+  if (NO == [other isKindOfClass: SQLClientClass] || YES == [other isProxy])
     {
       t1 = 0.0;
     }
@@ -1440,21 +1438,21 @@ static int	        poolConnections = 0;
         {
           t1 = other->_lastStart;
         }
-      if (NO == connected || 0 != other->_connectFails)
+      if (NO == other->connected || 0 != other->_connectFails)
         {
           t1 = 0.0;
         }
     }
 
-  if (t0 <= 0.0 && t1 <= 0.0)
-    {
-      return nil;
-    }
-  if (t1 <= t0)
+  if (t1 > 0.0 && t1 <= t0)
     {
       return other;
     }
-  return self;
+  if (t0 > 0.0 && t0 <= t1)
+    {
+      return self;
+    }
+  return nil;
 }
 
 - (NSString*) name
