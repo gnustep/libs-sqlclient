@@ -28,6 +28,7 @@
 #import	<Foundation/NSArray.h>
 #import	<Foundation/NSAutoreleasePool.h>
 #import	<Foundation/NSDebug.h>
+#import	<Foundation/NSDictionary.h>
 #import	<Foundation/NSException.h>
 #import	<Foundation/NSInvocation.h>
 #import	<Foundation/NSLock.h>
@@ -119,6 +120,18 @@
   [SQLClientPool _adjustPoolConnections: -count];
   [super dealloc];
 }
+
+- (NSString*) description
+{
+  NSMutableString	*s = [[NSMutableString new] autorelease];
+
+  [s appendString: [super description]];
+  [s appendFormat: @"name:'%@', max:%d, min:%d\n", _name, max, min];
+  [s appendString: [self statistics]];
+  [s appendString: [q description]];
+  return s;
+}
+
 
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
