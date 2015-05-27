@@ -37,6 +37,9 @@
 #import	<Performance/GSCache.h>
 #import	"SQLClient.h"
 
+/** Connections idle for morew than this time are candidates for purging.
+ */
+static NSTimeInterval   purgeTime = 10.0;
 
 @interface      SQLClient(Pool)
 - (void) _clearPool: (SQLClientPool*)p;
@@ -131,7 +134,6 @@
   [s appendString: [q description]];
   return s;
 }
-
 
 - (id) initWithConfiguration: (NSDictionary*)config
 			name: (NSString*)reference
@@ -301,6 +303,52 @@
       NSLog(@"%@ provides %p", self, c[found]);
     }
   return [c[found] autorelease];
+}
+
+- (void) purge
+{
+  BOOL  more = YES;
+
+  [self _lock];
+
+  while (YES == more)
+    {
+      SQLClient *found = nil;
+      int       connected = 0;
+      int       index;
+
+      more = NO;
+      for (index = 0; index < max; index++)
+        {
+          if (YES == [c[index] connected])
+            {
+              /* This is a connected client.
+               */
+              connected++;
+              if (NO == u[index])
+                {
+                  /* Not in use; so a candidate to be purged
+                   */
+                  found = [c[index] longestIdle: found];
+                }
+            }
+        }
+      if (connected > min && nil != found
+        && [[found lastOperation] timeIntervalSinceNow] < -purgeTime)
+        {
+          NS_DURING
+            {
+              [found disconnect];
+              more = YES;
+            }
+          NS_HANDLER
+            {
+              NSLog(@"Error disconnecting client in pool: %@", localException);
+            }
+          NS_ENDHANDLER
+        }
+    }
+  [self _unlock];
 }
 
 - (void) setCache: (GSCache*)aCache

@@ -1599,6 +1599,14 @@ SQLCLIENT_PRIVATE
 - (SQLClient*) provideClientBeforeDate: (NSDate*)when;
 
 /**
+ * Disconnects the least recently active unused database clients in the
+ * pool, but only while there are more than the minimum number of clients
+ * currently connected to the database, and only if the client has been
+ * idle for at least ten seconds.
+ */
+- (void) purge;
+
+/**
  * Sets the cache for all the clients in the pool.
  */
 - (void) setCache: (GSCache*)aCache;
