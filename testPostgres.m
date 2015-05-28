@@ -73,7 +73,7 @@ main()
                                                 name: @"test"
                                                  max: 2
                                                  min: 1] autorelease];
-#if 0
+#if 1
 {
   NSAutoreleasePool     *p;
   SQLClient             *c0;
@@ -83,18 +83,39 @@ main()
   p = [NSAutoreleasePool new];
   c0 = [sp provideClient];
   c1 = [sp provideClient];
-  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
-  [p release];
-  p = [NSAutoreleasePool new];
+  NSLog(@"Got two clients from pool");
+  [c0 connect];
+  [c1 connect];
+  NSLog(@"Now putting clients back in pool again");
+  [sp swallowClient: c0];
+  [sp swallowClient: c1];
+  [sp setPurgeAll: 60 min: 1];
+  [NSThread sleepForTimeInterval: 1.0];
+  NSLog(@"Expecting purge to disconnect one client");
+  [sp purge];
   c0 = [sp provideClient];
   c1 = [sp provideClient];
+  NSLog(@"Expecting connected: %@", [c0 connected] ? @"YES" : @"NO");
+  NSLog(@"Expecting not connected: %@", [c1 connected] ? @"NO" : @"YES");
+
+  NSLog(@"Pool has provided both it's clients ... now try for another with a 15 second timeout");
   [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
+  NSLog(@"Emptying autorelease pool ... clients should be put back in pool");
   [p release];
-  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 25.0]];
+  p = [NSAutoreleasePool new];
+  NSLog(@"Getting two clients again");
+  c0 = [sp provideClient];
+  c1 = [sp provideClient];
+  NSLog(@"Pool has provided both it's clients ... now try for another with a 15 second timeout");
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
+  NSLog(@"Emptying autorelease pool again");
+  [p release];
+  NSLog(@"Expect to get client immediately");
 }
 #endif
   db = [sp provideClient];
   [sp swallowClient: db];
+
   [sp queryString: @"SELECT CURRENT_TIMESTAMP", nil];
   db = [sp provideClient];
 

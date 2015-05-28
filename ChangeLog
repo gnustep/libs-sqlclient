@@ -1,3 +1,10 @@
+2015-05-28 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Add pool purge control method.
+	* SQLClient.m: Fix bug finding least recently used client.
+	* SQLClientPool.m: Refine purging of pool.  Fix autorelease bug.
+	Improve diagnostics.  Fix bug reporting time pool has blocked.
+
 2015-05-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: bugfixes

@@ -1444,11 +1444,11 @@ static int	        poolConnections = 0;
         }
     }
 
-  if (t1 > 0.0 && t1 <= t0)
+  if (t1 > 0.0 && (t1 <= t0 || 0.0 == t0))
     {
       return other;
     }
-  if (t0 > 0.0 && t0 <= t1)
+  if (t0 > 0.0 && (t0 <= t1 || 0.0 == t1))
     {
       return self;
     }

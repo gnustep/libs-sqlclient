@@ -1548,6 +1548,8 @@ SQLCLIENT_PRIVATE
   NSTimeInterval        _longest;       /** Count of longest delay */
   NSTimeInterval        _delayWaits;    /** Time waiting for provisions */
   NSTimeInterval        _failWaits;     /** Time waiting for timewouts */
+  NSTimeInterval        _purgeAll;      /** Age to purge all connections */
+  NSTimeInterval        _purgeMin;      /** Age to purge excess connections */
 }
 
 /** Returns the count of currently available connections in the pool.
@@ -1575,6 +1577,11 @@ SQLCLIENT_PRIVATE
 			name: (NSString*)reference
                          max: (int)maxConnections
                          min: (int)minConnections;
+
+/** Returns a long description of the pool including statistics and
+ * the description of a sample client.
+ */
+- (NSString*) longDescription;
 
 /** Return the maximum number of database connections in the pool.
  */
@@ -1637,6 +1644,13 @@ SQLCLIENT_PRIVATE
  * maxConnections and may not be less than 1.
  */
 - (void) setMax: (int)maxConnections min: (int)minConnections;
+
+/** Sets the ages (in seconds) after which idle connections are closed in
+ * the -purge method. Where there are excess connections (more than the
+ * minimum configured connection count) in the pool, minSeconds is used,
+ * otherwise allSeconds is used.
+ */
+- (void) setPurgeAll: (int)allSeconds min: (int)minSeconds;
 
 /** Returns a string describing the usage of the pool.
  */

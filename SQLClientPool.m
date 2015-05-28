@@ -37,16 +37,6 @@
 #import	<Performance/GSCache.h>
 #import	"SQLClient.h"
 
-/** Connections idle for more than this time are candidates for purging
- * as long as there are at leas min connections open.
- */
-static NSTimeInterval   purgeMinTime = 10.0;
-
-/** Connections idle for more than this time are candidates for purging
- * even if the number of open connections is less than or equal to min.
- */
-static NSTimeInterval   purgeAllTime = 300.0;
-
 @interface      SQLClient(Pool)
 - (void) _clearPool: (SQLClientPool*)p;
 @end
@@ -132,13 +122,7 @@ static NSTimeInterval   purgeAllTime = 300.0;
 
 - (NSString*) description
 {
-  NSMutableString	*s = [[NSMutableString new] autorelease];
-
-  [s appendString: [super description]];
-  [s appendFormat: @"name:'%@', max:%d, min:%d\n", _name, max, min];
-  [s appendString: [self statistics]];
-  [s appendString: [q description]];
-  return s;
+  return [NSString stringWithFormat: @"%@ '%@'", [super description], _name];
 }
 
 - (id) initWithConfiguration: (NSDictionary*)config
@@ -148,6 +132,7 @@ static NSTimeInterval   purgeAllTime = 300.0;
 {
   if (nil != (self = [super init]))
     {
+      CREATE_AUTORELEASE_POOL(arp);
       ASSIGN(_config, config);
       ASSIGNCOPY(_name, reference);
       lock = [[NSConditionLock alloc] initWithCondition: 0];
@@ -156,10 +141,22 @@ static NSTimeInterval   purgeAllTime = 300.0;
        * available for general use since quoting does not actually
        * require any database operation.
        */
-      q = [[self provideClient] retain];
+      q = RETAIN([self provideClient]);
       [self swallowClient: q];
+      RELEASE(arp);
     }
   return self;
+}
+
+- (NSString*) longDescription
+{
+  NSMutableString	*s = [[NSMutableString new] autorelease];
+
+  [s appendString: [self description]];
+  [s appendFormat: @", max:%d, min:%d\n", max, min];
+  [s appendString: [self statistics]];
+  [s appendString: [q description]];
+  return s;
 }
 
 - (int) maxConnections
@@ -193,7 +190,7 @@ static NSTimeInterval   purgeAllTime = 300.0;
 
       if (nil == future)
         {
-          future = [[NSDate distantFuture] retain];
+          future = RETAIN([NSDate distantFuture]);
         }
       when = future;
     }
@@ -218,13 +215,14 @@ static NSTimeInterval   purgeAllTime = 300.0;
 
       if (_debugging > 1)
         {
-          NSLog(@"%@ has no clients available", self);
+          NSLog(@"%@ has no clients available", [self description]);
         }
-      until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
+      now = [NSDate timeIntervalSinceReferenceDate];
+      until = [[NSDate alloc]
+        initWithTimeIntervalSinceReferenceDate: now + 10.0];
       locked = NO;
       while (NO == locked && now < end)
         {
-          now = [NSDate timeIntervalSinceReferenceDate];
           if (now >= end)
             {
               /* End date is passed ... try to get the lock immediately.
@@ -239,12 +237,14 @@ static NSTimeInterval   purgeAllTime = 300.0;
             { 
               locked = [lock lockWhenCondition: 1 beforeDate: when];
             }
+          now = [NSDate timeIntervalSinceReferenceDate];
           dif = now - start;
           if (NO == locked && now < end)
             {
               if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
                 {
-                  NSLog(@"%@ still waiting after %g seconds", self, dif);
+                  NSLog(@"%@ still waiting after %g seconds",
+                    [self description], dif);
                 }
               [until release];
               until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
@@ -259,7 +259,8 @@ static NSTimeInterval   purgeAllTime = 300.0;
         {
           if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
             {
-              NSLog(@"%@ abandoned wait after %g seconds", self, dif);
+              NSLog(@"%@ abandoned wait after %g seconds",
+                [self description], dif);
             }
           _failed++;
           _failWaits += dif;
@@ -267,7 +268,8 @@ static NSTimeInterval   purgeAllTime = 300.0;
         }
       if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
         {
-          NSLog(@"%@ provided client after %g seconds", self, dif);
+          NSLog(@"%@ provided client after %g seconds",
+            [self description], dif);
         }
       _delayed++;
       _delayWaits += dif;
@@ -306,7 +308,7 @@ static NSTimeInterval   purgeAllTime = 300.0;
   [lock unlockWithCondition: cond];
   if (_debugging > 2)
     {
-      NSLog(@"%@ provides %p", self, c[found]);
+      NSLog(@"%@ provides %p", [self description], c[found]);
     }
   return [c[found] autorelease];
 }
@@ -344,8 +346,13 @@ static NSTimeInterval   purgeAllTime = 300.0;
           NSTimeInterval        age;
 
           age = -[[found lastOperation] timeIntervalSinceNow];
-          if (age > purgeAllTime
-            || (connected > min && age > purgeMinTime))
+          if (_debugging > 2)
+            {
+              NSLog(@"%@ purge found %p age %g",
+                [self description], found, age);
+            }
+          if (age > _purgeAll
+            || (connected > min && age > _purgeMin))
             {
               NS_DURING
                 {
@@ -482,6 +489,24 @@ static NSTimeInterval   purgeAllTime = 300.0;
   [self _unlock];
 }
 
+- (void) setPurgeAll: (int)allSeconds min: (int)minSeconds
+{
+  if (allSeconds < 1)
+    {
+      allSeconds = 300;
+    }
+  if (minSeconds < 1)
+    {
+      minSeconds = 10;
+    }
+  if (allSeconds < minSeconds)
+    {
+      allSeconds = minSeconds;
+    }
+  _purgeMin = minSeconds;
+  _purgeAll = allSeconds;
+}
+
 - (NSString*) statistics
 {
   NSString      *s;
@@ -508,10 +533,29 @@ static NSTimeInterval   purgeAllTime = 300.0;
 
 - (BOOL) swallowClient: (SQLClient*)client
 {
-  BOOL  disconnected = NO;
-  BOOL  replaced = NO;
   BOOL  found = NO;
   int   index;
+
+  if (YES == [client isInTransaction])
+    {
+      /* The client has a transaction in progress ... if it's in the
+       * current thread we should be able to disconnect (implicit rollback)
+       * and return the client to the pool, otherwise we raise an exception.
+       */
+      if (YES == [client lockBeforeDate: nil])
+        {
+          [client disconnect];
+          [client unlock];
+          NSLog(@"ERROR: Disconnected client which was returned to pool"
+            @" while a transaction was in progress: %@", client);
+        }
+      else
+        {
+          [NSException raise: SQLConnectionException
+            format: @"failed to return to pool because a transaction"
+            @" was in progress: %@", client];
+        }
+    }
 
   [self _lock];
   for (index = 0; index < max && NO == found; index++)
@@ -522,46 +566,18 @@ static NSTimeInterval   purgeAllTime = 300.0;
           found = YES;
         }
     }
-  if (YES == found && YES == [client isInTransaction])
-    {
-      if (YES == [client lockBeforeDate: nil])
-        {
-          disconnected = YES;
-          [client disconnect];
-          [client unlock];
-        }
-      else
-        {
-          replaced = YES;
-          c[index] = [[SQLClient alloc] initWithConfiguration: _config
-                                                         name: _name
-                                                         pool: self];
-        }
-    }
   [self _unlock];
 
   if (_debugging > 2)
     {
       if (YES == found)
         {
-          NSLog(@"%@ swallows %p", self, client);
+          NSLog(@"%@ swallows %p", [self description], client);
         }
       else
         {
-          NSLog(@"%@ rejects %p", self, client);
+          NSLog(@"%@ rejects %p", [self description], client);
         }
-    }
-
-  if (YES == disconnected)
-    {
-      NSLog(@"ERROR: Disconnected client which was returned to pool"
-        @" while a transaction was in progress: %@", client);
-    }
-  else if (YES == replaced)
-    {
-      NSLog(@"ERROR: Replaced client which was returned to pool"
-        @" while a transaction was in progress: %@", client);
-      [client release];
     }
 
   return found;
