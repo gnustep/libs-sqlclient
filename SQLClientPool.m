@@ -56,6 +56,7 @@
 
 @interface SQLClientPool (Private)
 - (void) _lock;
+- (NSString*) _rc: (SQLClient*)o;
 - (void) _unlock;
 @end
 
@@ -81,7 +82,7 @@
 
 - (GSCache*) cache
 {
-  return [q cache];
+  return [c[0] cache];
 }
 
 - (void) dealloc
@@ -132,18 +133,10 @@
 {
   if (nil != (self = [super init]))
     {
-      CREATE_AUTORELEASE_POOL(arp);
       ASSIGN(_config, config);
       ASSIGNCOPY(_name, reference);
       lock = [[NSConditionLock alloc] initWithCondition: 0];
       [self setMax: maxConnections min: minConnections];
-      /* Get a client to be used for quoting ... we can then make it
-       * available for general use since quoting does not actually
-       * require any database operation.
-       */
-      q = RETAIN([self provideClient]);
-      [self swallowClient: q];
-      RELEASE(arp);
     }
   return self;
 }
@@ -155,7 +148,7 @@
   [s appendString: [self description]];
   [s appendFormat: @", max:%d, min:%d\n", max, min];
   [s appendString: [self statistics]];
-  [s appendString: [q description]];
+  [s appendString: [c[0] description]];
   return s;
 }
 
@@ -176,10 +169,11 @@
 
 - (SQLClient*) provideClientBeforeDate: (NSDate*)when
 {
-  int   connected = -1;
-  int   found = -1;
-  int   index;
-  int   cond = 0;
+  SQLClient     *client;
+  int           connected = -1;
+  int           found = -1;
+  int           index;
+  int           cond = 0;
 
   /* If we haven't been given a timeout, we should wait for a client
    * indefinitely ... so we set the timeout to be in the distant future.
@@ -215,7 +209,7 @@
 
       if (_debugging > 1)
         {
-          NSLog(@"%@ has no clients available", [self description]);
+          NSLog(@"%@ has no clients available", self);
         }
       now = [NSDate timeIntervalSinceReferenceDate];
       until = [[NSDate alloc]
@@ -244,7 +238,7 @@
               if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
                 {
                   NSLog(@"%@ still waiting after %g seconds",
-                    [self description], dif);
+                    self, dif);
                 }
               [until release];
               until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
@@ -260,7 +254,7 @@
           if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
             {
               NSLog(@"%@ abandoned wait after %g seconds",
-                [self description], dif);
+                self, dif);
             }
           _failed++;
           _failWaits += dif;
@@ -269,7 +263,7 @@
       if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
         {
           NSLog(@"%@ provided client after %g seconds",
-            [self description], dif);
+            self, dif);
         }
       _delayed++;
       _delayWaits += dif;
@@ -306,11 +300,12 @@
     }
   u[found] = YES;
   [lock unlockWithCondition: cond];
+  client = [c[found] autorelease];
   if (_debugging > 2)
     {
-      NSLog(@"%@ provides %p", [self description], c[found]);
+      NSLog(@"%@ provides %p%@", self, c[found], [self _rc: client]);
     }
-  return [c[found] autorelease];
+  return client;
 }
 
 - (void) purge
@@ -349,7 +344,7 @@
           if (_debugging > 2)
             {
               NSLog(@"%@ purge found %p age %g",
-                [self description], found, age);
+                self, found, age);
             }
           if (age > _purgeAll
             || (connected > min && age > _purgeMin))
@@ -531,7 +526,7 @@
   return s;
 }
 
-- (BOOL) swallowClient: (SQLClient*)client
+- (BOOL) _swallowClient: (SQLClient*)client withRetain: (BOOL)shouldRetain
 {
   BOOL  found = NO;
   int   index;
@@ -564,6 +559,10 @@
         {
           u[index] = NO;
           found = YES;
+          if (YES == shouldRetain)
+            {
+              NSIncrementExtraRefCount(client);
+            }
         }
     }
   [self _unlock];
@@ -572,17 +571,21 @@
     {
       if (YES == found)
         {
-          NSLog(@"%@ swallows %p", [self description], client);
+          NSLog(@"%@ swallows %p%@", self, client, [self _rc: client]);
         }
       else
         {
-          NSLog(@"%@ rejects %p", [self description], client);
+          NSLog(@"%@ rejects %p%@", self, client, [self _rc: client]);
         }
     }
 
   return found;
 }
 
+- (BOOL) swallowClient: (SQLClient*)client
+{
+  return [self _swallowClient: client withRetain: YES];
+}
 @end
 
 @implementation SQLClientPool (Private)
@@ -590,6 +593,28 @@
 - (void) _lock
 {
   [lock lock];
+}
+
+- (NSString*) _rc: (SQLClient*)o
+{
+#if     defined(GNUSTEP)
+  if (_debugging > 3)
+    {
+      static Class      cls = Nil;
+      unsigned long     rc;
+      unsigned long     ac;
+
+      if (Nil == cls)
+        {
+          cls = [NSAutoreleasePool class];
+        }
+      rc = (unsigned long)[o retainCount];
+      ac = (unsigned long)[cls autoreleaseCountForObject: o];
+      return [NSString stringWithFormat: @" refs %ld (%lu-%lu)",
+        rc - ac, rc, ac];
+    }
+#endif
+  return @"";
 }
 
 - (void) _unlock
@@ -660,7 +685,7 @@
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  sql = [[q prepare: stmt args: ap] objectAtIndex: 0];
+  sql = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   return sql;
@@ -668,7 +693,7 @@
 
 - (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  NSString      *result = [q buildQuery: stmt with: values];
+  NSString      *result = [c[0] buildQuery: stmt with: values];
 
   return result;
 }
@@ -681,7 +706,7 @@
   va_list	        ap;
 
   va_start (ap, stmt);
-  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -764,7 +789,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  info = [q prepare: stmt args: ap];
+  info = [c[0] prepare: stmt args: ap];
   va_end (ap);
   db = [self provideClient];
   NS_DURING
@@ -803,7 +828,7 @@
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -842,7 +867,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -876,7 +901,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[q prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -909,7 +934,7 @@
 
 - (NSString*) quote: (id)obj
 {
-  NSString      *result = [q quote: obj];
+  NSString      *result = [c[0] quote: obj];
 
   return result;
 }
@@ -920,7 +945,7 @@
 {
   NSMutableString       *result;
 
-  result = [q quoteArray: a toString:s quotingStrings: _q];
+  result = [c[0] quoteArray: a toString:s quotingStrings: _q];
 
   return result;
 }
@@ -935,49 +960,49 @@
   str = [[NSString allocWithZone: NSDefaultMallocZone()]
     initWithFormat: fmt arguments: ap];
   va_end(ap);
-  quoted = [q quoteString: str];
+  quoted = [c[0] quoteString: str];
   [str release];
   return quoted;
 }
 
 - (NSString*) quoteBigInteger: (int64_t)i
 {
-  NSString      *result = [q quoteBigInteger: i];
+  NSString      *result = [c[0] quoteBigInteger: i];
 
   return result;
 }
 
 - (NSString*) quoteCString: (const char *)s
 {
-  NSString      *result = [q quoteCString: s];
+  NSString      *result = [c[0] quoteCString: s];
 
   return result;
 }
 
 - (NSString*) quoteChar: (char)chr
 {
-  NSString      *result = [q quoteChar: chr];
+  NSString      *result = [c[0] quoteChar: chr];
 
   return result;
 }
 
 - (NSString*) quoteFloat: (float)f
 {
-  NSString      *result = [q quoteFloat: f];
+  NSString      *result = [c[0] quoteFloat: f];
 
   return result;
 }
 
 - (NSString*) quoteInteger: (int)i
 {
-  NSString      *result = [q quoteInteger: i];
+  NSString      *result = [c[0] quoteInteger: i];
 
   return result;
 }
 
 - (NSString*) quoteString: (NSString *)s
 {
-  NSString      *result = [q quoteString: s];
+  NSString      *result = [c[0] quoteString: s];
 
   return result;
 }

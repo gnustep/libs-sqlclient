@@ -79,7 +79,7 @@ main()
   SQLClient             *c0;
   SQLClient             *c1;
 
-  [sp setDebugging: 2];
+  [sp setDebugging: 4];
   p = [NSAutoreleasePool new];
   c0 = [sp provideClient];
   c1 = [sp provideClient];
@@ -89,6 +89,9 @@ main()
   NSLog(@"Now putting clients back in pool again");
   [sp swallowClient: c0];
   [sp swallowClient: c1];
+  NSLog(@"And emptying autorelease pool");
+  [p release];
+  p = [NSAutoreleasePool new];
   [sp setPurgeAll: 60 min: 1];
   [NSThread sleepForTimeInterval: 1.0];
   NSLog(@"Expecting purge to disconnect one client");

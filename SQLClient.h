@@ -1534,7 +1534,6 @@ SQLCLIENT_PRIVATE
 {
   NSConditionLock       *lock;  /** Controls access to the pool contents */
   SQLClient             **c;    /** The clients of the pool. */
-  SQLClient             *q;     /** The clients used for quoting. */
   BOOL                  *u;     /** Whether the client is in use. */
   int                   max;    /** Maximum connection count */
   int                   min;    /** Minimum connection count */

@@ -85,6 +85,10 @@ static Class	NSDateClass = Nil;
 static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
 
+@interface      SQLClientPool (Swallow)
+- (BOOL) _swallowClient: (SQLClient*)client withRetain: (BOOL)shouldRetain;
+@end
+
 @implementation         SQLRecordKeys
 
 - (NSUInteger) count
@@ -1765,7 +1769,7 @@ static int	        poolConnections = 0;
     {
       if (nil != _pool)
         {
-          [_pool swallowClient: self];
+          [_pool _swallowClient: self withRetain: NO];
         }
       else
         {
