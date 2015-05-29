@@ -71,7 +71,7 @@
   available = index = max;
   while (index-- > 0)
     {
-      if (YES ==  u[index])
+      if (YES == u[index])
         {
           available--;
         }
@@ -87,18 +87,21 @@
 
 - (void) dealloc
 {
-  SQLClient     **clients;
-  BOOL          *used;
-  int           count;
-  int           i;
+  SQLClient             **clients;
+  NSTimeInterval        *times;
+  BOOL                  *used;
+  int                   count;
+  int                   i;
 
   [lock lock];
   count = max;
   max = 0;
   min = 0;
   clients = c;
+  times = t;
   used = u;
   c = 0;
+  t = 0;
   u = 0;
   [lock unlock];
   DESTROY(lock);
@@ -115,6 +118,7 @@
             }
         }
       free(clients);
+      free(times);
       free(used);
     }
   [SQLClientPool _adjustPoolConnections: -count];
@@ -146,7 +150,8 @@
   NSMutableString	*s = [[NSMutableString new] autorelease];
 
   [s appendString: [self description]];
-  [s appendFormat: @", max:%d, min:%d\n", max, min];
+  [s appendString: @", "];
+  [s appendString: [self status]];
   [s appendString: [self statistics]];
   [s appendString: [c[0] description]];
   return s;
@@ -169,11 +174,13 @@
 
 - (SQLClient*) provideClientBeforeDate: (NSDate*)when
 {
-  SQLClient     *client;
-  int           connected = -1;
-  int           found = -1;
-  int           index;
-  int           cond = 0;
+  NSTimeInterval        start = [NSDate timeIntervalSinceReferenceDate];
+  NSTimeInterval        now = start;
+  SQLClient             *client;
+  int                   connected = -1;
+  int                   found = -1;
+  int                   cond = 0;
+  int                   index;
 
   /* If we haven't been given a timeout, we should wait for a client
    * indefinitely ... so we set the timeout to be in the distant future.
@@ -200,9 +207,7 @@
     }
   else
     {
-      NSTimeInterval    start = [NSDate timeIntervalSinceReferenceDate];
       NSTimeInterval    end = [when timeIntervalSinceReferenceDate];
-      NSTimeInterval    now = 0.0;
       NSTimeInterval    dif = 0.0;
       NSDate            *until;
       BOOL              locked;
@@ -211,7 +216,6 @@
         {
           NSLog(@"%@ has no clients available", self);
         }
-      now = [NSDate timeIntervalSinceReferenceDate];
       until = [[NSDate alloc]
         initWithTimeIntervalSinceReferenceDate: now + 10.0];
       locked = NO;
@@ -235,10 +239,11 @@
           dif = now - start;
           if (NO == locked && now < end)
             {
-              if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
+              if (_debugging > 0 || dif > 30.0
+                || (_duration >= 0.0 && dif > _duration))
                 {
-                  NSLog(@"%@ still waiting after %g seconds",
-                    self, dif);
+                  NSLog(@"%@ still waiting after %g seconds:\n%@",
+                    self, dif, [self status]);
                 }
               [until release];
               until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
@@ -251,10 +256,11 @@
         }
       if (NO == locked)
         {
-          if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
+          if (_debugging > 0 || dif > 30.0
+            || (_duration >= 0.0 && dif > _duration))
             {
-              NSLog(@"%@ abandoned wait after %g seconds",
-                self, dif);
+              NSLog(@"%@ abandoned wait after %g seconds:\n%@",
+                self, dif, [self status]);
             }
           _failed++;
           _failWaits += dif;
@@ -299,6 +305,7 @@
       found = connected;
     }
   u[found] = YES;
+  t[found] = now;
   [lock unlockWithCondition: cond];
   client = [c[found] autorelease];
   if (_debugging > 2)
@@ -380,7 +387,7 @@
       [c[0] setCache: nil];
       aCache = [c[0] cache];
     }
-  for (index = 0; index < max; index++)
+  for (index = 1; index < max; index++)
     {
       [c[index] setCache: aCache];
     }
@@ -452,11 +459,13 @@
                 }
             }
           c = realloc(c, maxConnections * sizeof(SQLClient*));
+          t = realloc(t, maxConnections * sizeof(NSTimeInterval));
           u = realloc(u, maxConnections * sizeof(BOOL));
         }
       else
         {
           c = calloc(maxConnections, sizeof(SQLClient*));
+          t = calloc(maxConnections, sizeof(NSTimeInterval));
           u = calloc(maxConnections, sizeof(BOOL));
         }
       for (index = max; index < maxConnections; index++)
@@ -523,6 +532,117 @@
     (_immediate + _delayed + _failed) > 0
       ? (_failWaits + _delayWaits) / (_immediate + _delayed + _failed)
       : 0.0];
+  return s;
+}
+
+- (NSString*) status
+{
+  NSMutableArray        *idleInfo = nil;
+  NSMutableArray        *liveInfo = nil;
+  unsigned int          cond = 0;
+  unsigned int          free = 0;
+  unsigned int          dead = 0;
+  unsigned int          idle = 0;
+  unsigned int          live = 0;
+  unsigned int          used = 0;
+  int                   index;
+  NSMutableString       *s;
+
+  [lock lock];
+  for (index = 0; index < max; index++)
+    {
+      SQLClient *client = c[index];
+
+      /* Check to see if this client is free to be taken from the pool.
+       * Also, if a client is connected but not in use, we call it idle.
+       */
+      if (YES == u[index])
+        {
+          /* This is a client which has been provided by the pool,
+           * so it is in use by some code.
+           */
+          if (YES == [client isInTransaction])
+            {
+              NSDate    *d = [client lastOperation];
+
+              live++;
+              if (nil == liveInfo)
+                {
+                  liveInfo = [NSMutableArray array];
+                }
+              [liveInfo addObject: [NSString stringWithFormat:
+                @"  Client '%@' active in transaction since %@\n",
+                [client name], d]];
+            }
+          else
+            {
+              if (YES == [client connected])
+                {
+                  NSDate        *d = [client lastOperation];
+
+                  used++;
+                  if (nil == d)
+                    {
+                      d = [client lastConnect];
+                    }
+                  if ([d timeIntervalSinceReferenceDate] < t[index])
+                    {
+                      d = [NSDate dateWithTimeIntervalSinceReferenceDate:
+                        t[index]];
+                    }
+                  if (nil == idleInfo)
+                    {
+                      idleInfo = [NSMutableArray array];
+                    }
+                  [idleInfo addObject: [NSString stringWithFormat:
+                    @"  Client '%@' taken from pool but idle since %@\n",
+                    [client name], d]];
+                }
+              else
+                {
+                  idle++;
+                }
+            }
+        }
+      else
+        {
+          /* The client is not in use and can be provided by the pool,
+           * so we must therefore re-lock with condition 1.
+           */
+          cond = 1;
+          if (YES == [c[index] connected])
+            {
+              /* Still connected, so we count it as a free connection.
+               */
+              free++;
+            }
+          else
+            {
+              /* Not connected, so we count it as a dead connection.
+               */
+              dead++;
+            }
+        }
+    }
+
+  s = [NSMutableString stringWithFormat: @" size min: %u, max: %u\n"
+    @"live:%u, used:%u, idle:%u, free:%u, dead:%u\n",
+    min, max, live, used, idle, free, dead];
+  if (liveInfo)
+    {
+      for (index = 0; index < [liveInfo count]; index++)
+        {
+          [s appendString: [liveInfo objectAtIndex: index]];
+        }
+    }
+  if (idleInfo)
+    {
+      for (index = 0; index < [idleInfo count]; index++)
+        {
+          [s appendString: [idleInfo objectAtIndex: index]];
+        }
+    }
+  [lock unlockWithCondition: cond];
   return s;
 }
 
@@ -619,57 +739,19 @@
 
 - (void) _unlock
 {
-  int   idle = 0;
-  int   used = 0;
-  int   cond = 0;
   int   index;
 
   for (index = 0; index < max; index++)
     {
       /* Check to see if this client is free to be taken from the pool.
-       * Also, if a client is connected but not in use, we call it idle.
        */
-      if (YES == u[index])
+      if (NO == u[index])
         {
-          /* This is a client which has been provided by the pool,
-           * so it is in use by some code.
-           */
-          used++;
-        }
-      else
-        {
-          /* The client is not in use and can be provided by the pool,
-           * so we must therefore re-lock with condition 1.
-           */
-          cond = 1;
-
-          if (YES == [c[index] connected])
-            {
-              /* This unused client is still connected, so we count
-               * it as an idle connection.
-               */
-              idle++;
-            }
+          [lock unlockWithCondition: 1];
+          return;
         }
     }
-
-  /* If we have fewer connections than we want, connect clients until we
-   * are back up to the minimum.
-   */
-  for (index = 0; index < max && (used + idle) < min; index++)
-    {
-      if (NO == u[index] && NO == [c[index] connected])
-        {
-          NS_DURING
-            [c[index] connect];
-          NS_HANDLER
-            NSLog(@"Failed to connect %@ ... %@", c[index], localException);
-          NS_ENDHANDLER
-          idle++;
-        }
-    }
-
-  [lock unlockWithCondition: cond];
+  [lock unlockWithCondition: 0];
 }
 
 @end

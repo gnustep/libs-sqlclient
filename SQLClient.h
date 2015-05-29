@@ -439,6 +439,7 @@ SQLCLIENT_PRIVATE
    * -lastOperation method in that case.
    */
   NSTimeInterval	_lastOperation;	
+  NSTimeInterval	_lastConnect;	/** Last successful connect */
   NSTimeInterval	_lastStart;	/** Last op start or connect */
   NSTimeInterval	_duration;      /** Duration logging threshold */
   unsigned int		_debugging;	/** The current debugging level */
@@ -743,6 +744,12 @@ SQLCLIENT_PRIVATE
  * -begin, -commit, and -rollback.
  */
 - (BOOL) isInTransaction;
+
+/**
+ * Returns the date/time stamp of the last database connection established
+ * by the receiver, or nil if no connection has ever been established.
+ */
+- (NSDate*) lastConnect;
 
 /**
  * Returns the date/time stamp of the last database operation performed
@@ -1535,6 +1542,7 @@ SQLCLIENT_PRIVATE
   NSConditionLock       *lock;  /** Controls access to the pool contents */
   SQLClient             **c;    /** The clients of the pool. */
   BOOL                  *u;     /** Whether the client is in use. */
+  NSTimeInterval        *t;     /** When client was removed from pool. */
   int                   max;    /** Maximum connection count */
   int                   min;    /** Minimum connection count */
   NSDictionary          *_config;       /** The pool configuration object */
@@ -1577,8 +1585,8 @@ SQLCLIENT_PRIVATE
                          max: (int)maxConnections
                          min: (int)minConnections;
 
-/** Returns a long description of the pool including statistics and
- * the description of a sample client.
+/** Returns a long description of the pool including statistics, status,
+ * and the description of a sample client.
  */
 - (NSString*) longDescription;
 
@@ -1654,6 +1662,10 @@ SQLCLIENT_PRIVATE
 /** Returns a string describing the usage of the pool.
  */
 - (NSString*) statistics;
+
+/** Returns a string describing the status of the pool.
+ */
+- (NSString*) status;
 
 /** Puts the client back in the pool.  This happens automatically
  * when a client from a pool would normally be deallocated so you don't

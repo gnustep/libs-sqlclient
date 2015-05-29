@@ -1105,6 +1105,7 @@ static int	        poolConnections = 0;
                       [self backendListen: n];
                     }
                 }
+	      _lastConnect = GSTickerTimeNow();
 	      _connectFails = 0;
 	    }
 	  NS_HANDLER
@@ -1396,6 +1397,15 @@ static int	        poolConnections = 0;
 - (BOOL) isInTransaction
 {
   return _inTransaction;
+}
+
+- (NSDate*) lastConnect
+{
+  if (_lastConnect > 0.0)
+    {
+      return [NSDate dateWithTimeIntervalSinceReferenceDate: _lastConnect];
+    }
+  return nil;
 }
 
 - (NSDate*) lastOperation
@@ -2401,22 +2411,9 @@ static int	        poolConnections = 0;
   GSCache	*cache;
   id		result;
 
-  [lock lock];
-  NS_DURING
-    {
-      result = [self backendQuery: a->query
-		       recordType: a->recordType
-		         listType: a->listType];
-    }
-  NS_HANDLER
-    {
-      result = nil;
-      [lock unlock];
-      [localException raise];
-    }
-  NS_ENDHANDLER
-  [lock unlock];
-
+  result = [self simpleQuery: a->query
+                  recordType: a->recordType
+                    listType: a->listType];
   cache = [self cache];
   [cache setObject: result
 	    forKey: a->query
