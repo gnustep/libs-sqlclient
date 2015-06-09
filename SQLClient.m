@@ -903,10 +903,15 @@ static int	        poolConnections = 0;
 + (void) purgeConnections: (NSDate*)since
 {
   NSHashEnumerator	e;
+  NSMutableArray        *a = nil;
   SQLClient		*o;
   unsigned int		connectionCount = 0;
-  NSTimeInterval	t = [since timeIntervalSinceReferenceDate];
+  NSTimeInterval	t;
 
+  t = (nil == since) ? 0.0 : [since timeIntervalSinceReferenceDate];
+
+  /* Find clients we may want to disconnect.
+   */
   [clientsLock lock];
   e = NSEnumerateHashTable(clientsHash);
   while (nil != (o = (SQLClient*)NSNextHashEnumeratorItem(&e)))
@@ -915,18 +920,60 @@ static int	        poolConnections = 0;
 	{
 	  NSTimeInterval	when = o->_lastOperation;
 
+          if (when < o->_lastStart)
+            {
+              when = o->_lastStart;
+            }
 	  if (when < t && YES == o->connected)
 	    {
-	      [o disconnect];
+              if (nil == a)
+                {
+                  a = [NSMutableArray array];
+                }
+              [a addObject: o];
 	    }
 	}
-      if ([o connected] == YES)
+      else if ([o connected] == YES)
 	{
 	  connectionCount++;
 	}
     }
   NSEndHashTableEnumeration(&e);
   [clientsLock unlock];
+
+  /* Disconnect any clients idle too long
+   */
+  while ([a count] > 0)
+    {
+      o = [a lastObject];
+      if ([o->lock tryLock])
+        {
+	  NSTimeInterval	when = o->_lastOperation;
+
+          if (when < o->_lastStart)
+            {
+              when = o->_lastStart;
+            }
+	  if (when < t && YES == o->connected)
+            {
+              NS_DURING
+                {
+                  [o disconnect];
+                  if ([o connected] == YES)
+                    {
+                      connectionCount++;
+                    }
+                }
+              NS_HANDLER
+                {
+                  NSLog(@"Problem disconnecting: %@", localException);
+                }
+              NS_ENDHANDLER
+            }
+          [o->lock unlock];
+        }
+      [a removeLastObject];
+    }
 
   while (connectionCount >= (maxConnections + poolConnections))
     {
@@ -942,11 +989,15 @@ static int	        poolConnections = 0;
 	    {
 	      NSTimeInterval	when = o->_lastOperation;
 
+              if (when < o->_lastStart)
+                {
+                  when = o->_lastStart;
+                }
 	      connectionCount++;
 	      if (oldest == 0.0 || when < oldest)
 		{
 		  oldest = when;
-		  other = o;
+		  ASSIGN(other, o);
 		}
 	    }
 	}
@@ -959,7 +1010,7 @@ static int	        poolConnections = 0;
 	    @"Force disconnect of '%@' because max connections (%u) reached",
 	    other, maxConnections]; 
 	}
-      [other disconnect];
+      [AUTORELEASE(other) disconnect];
     }
 }
 

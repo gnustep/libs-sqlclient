@@ -1,3 +1,9 @@
+2015-06-09 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Fix reace condition spotted by Wolfgang and change
+	purge operation to avoid disconnecting clients while the class lock
+	is locked.
+
 2015-05-28 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Add pool purge control method.
