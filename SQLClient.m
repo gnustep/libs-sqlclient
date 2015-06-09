@@ -723,13 +723,23 @@ NSString	*SQLUniqueException = @"SQLUniqueException";
 
 @end
 
-/**
- * Container for all instances.
+/* Containers for all instances.
+ * Access to and update of these containers is protected by classLock.
+ * Most other operations involving an instance are protected by a lock
+ * in that  instance.
+ * To avoid deadlocks, we always obtain the instance lock *before* we
+ * obtain the class lock, so we don't get the situation where one thread
+ * has locked the instance and another has locked the class lock, and
+ * each thread then tries to get the other lock.
  */
-static NSRecursiveLock	*cacheLock = nil;
 static NSHashTable	*clientsHash = 0;
 static NSMapTable	*clientsMap = 0;
 static NSRecursiveLock	*clientsLock = nil;
+
+/* Protect changes to the cache used for queries by any individual client.
+ */
+static NSRecursiveLock	*cacheLock = nil;
+
 static NSString		*beginString = @"begin";
 static NSArray		*beginStatement = nil;
 static NSString		*commitString = @"commit";
