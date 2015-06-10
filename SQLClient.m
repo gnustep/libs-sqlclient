@@ -926,27 +926,27 @@ static int	        poolConnections = 0;
   e = NSEnumerateHashTable(clientsHash);
   while (nil != (o = (SQLClient*)NSNextHashEnumeratorItem(&e)))
     {
-      if (since != nil)
-	{
-	  NSTimeInterval	when = o->_lastOperation;
-
-          if (when < o->_lastStart)
+      if (YES == o->connected)
+        {
+          connectionCount++;
+          if (since != nil)
             {
-              when = o->_lastStart;
-            }
-	  if (when < t && YES == o->connected)
-	    {
-              if (nil == a)
+              NSTimeInterval	when = o->_lastOperation;
+
+              if (when < o->_lastStart)
                 {
-                  a = [NSMutableArray array];
+                  when = o->_lastStart;
                 }
-              [a addObject: o];
-	    }
-	}
-      else if ([o connected] == YES)
-	{
-	  connectionCount++;
-	}
+              if (when < t)
+                {
+                  if (nil == a)
+                    {
+                      a = [NSMutableArray array];
+                    }
+                  [a addObject: o];
+                }
+            }
+        }
     }
   NSEndHashTableEnumeration(&e);
   [clientsLock unlock];
@@ -958,27 +958,30 @@ static int	        poolConnections = 0;
       o = [a lastObject];
       if ([o->lock tryLock])
         {
-	  NSTimeInterval	when = o->_lastOperation;
+	  if (YES == o->connected)
+            {
+              NSTimeInterval	when = o->_lastOperation;
 
-          if (when < o->_lastStart)
-            {
-              when = o->_lastStart;
-            }
-	  if (when < t && YES == o->connected)
-            {
-              NS_DURING
+              if (when < o->_lastStart)
                 {
-                  [o disconnect];
-                  if ([o connected] == YES)
+                  when = o->_lastStart;
+                }
+              if (when < t)
+                {
+                  NS_DURING
                     {
-                      connectionCount++;
+                      [o disconnect];
                     }
+                  NS_HANDLER
+                    {
+                      NSLog(@"Problem disconnecting: %@", localException);
+                    }
+                  NS_ENDHANDLER
                 }
-              NS_HANDLER
-                {
-                  NSLog(@"Problem disconnecting: %@", localException);
-                }
-              NS_ENDHANDLER
+            }
+          if (NO == o->connected)
+            {
+              connectionCount--;
             }
           [o->lock unlock];
         }
