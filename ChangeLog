@@ -1,3 +1,7 @@
+2015-06-19 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Fix error parsing timezone in date.
+
 2015-06-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fix reace condition spotted by Wolfgang and change

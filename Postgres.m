@@ -199,6 +199,7 @@ newDateFromBuffer(const char *b, int l)
 	    {
 	      int	tzmin;
 
+              i++;
 	      if (i >= l || !isdigit(b[i])) return nil;
 	      tzmin = b[i++] - '0';
 	      if (i >= l || !isdigit(b[i])) return nil;
