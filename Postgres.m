@@ -212,6 +212,14 @@ newDateFromBuffer(const char *b, int l)
 	    timezone = -timezone;
 	}
     }
+  if (year <= 1)
+    {
+      return [[NSDate distantPast] retain];
+    }
+  else if (year > 4000)
+    {
+      return [[NSDate distantFuture] retain];
+    }
   if (timezone % 60 == 0)
     {
       zone = zones[23 + timezone / 60];

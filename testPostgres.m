@@ -254,6 +254,8 @@ main()
       NSString	*oddChars;
       NSString	*nonLatin;
       id	e1, e2, e3, e4, e5;
+      id	d0;
+      id	d1;
       id	r0;
       id	r1;
 
@@ -447,6 +449,47 @@ main()
 	}
 
       NSLog(@"Records - %@", [GSCache class]);
+
+      [db begin];
+      [db execute: @"create table xxx ( "
+	@"id int, "
+	@"k char(40), "
+	@"char1 char(1), "
+	@"boolval BOOL, "
+	@"intval int, "
+	@"when1 timestamp with time zone, "
+	@"when2 timestamp, "
+	@"b bytea,"
+        @"extra1 int[],"
+        @"extra2 varchar[],"
+        @"extra3 bytea[],"
+        @"extra4 boolean[],"
+        @"extra5 timestamp with time zone[]"
+	@")",
+	nil];
+      [db execute: @"insert into xxx "
+	@"(id, k, char1, boolval, intval, when1, when2, b) "
+	@"values (99,",
+	[db quote: oddChars],
+	@", ",
+	[db quote: nonLatin],
+	@",TRUE, "
+	@"1, ",
+	[NSDate distantPast], @", ",
+	[NSDate distantFuture], @", ",
+	[NSData dataWithBytes: "" length: 0],
+	@")",
+	nil];
+      r0 = [[db query: @"select * from xxx where id=99", nil] lastObject];
+      [db execute: @"drop table xxx", nil];
+      [db commit];
+
+      d0 = [r0 objectForKey:@"when1"];
+      d1 = [r0 objectForKey:@"when2"];
+      NSCAssert([d0 isEqual: [NSDate distantPast]],
+        NSInternalInconsistencyException);
+      NSCAssert([d1 isEqual: [NSDate distantFuture]],
+        NSInternalInconsistencyException);
     }
 
   NSLog(@"Pool stats:\n%@", [sp statistics]);
