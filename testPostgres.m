@@ -73,7 +73,7 @@ main()
                                                 name: @"test"
                                                  max: 2
                                                  min: 1] autorelease];
-#if 0
+#if 1
 {
   NSAutoreleasePool     *p;
   SQLClient             *c0;
@@ -453,32 +453,13 @@ main()
       [db begin];
       [db execute: @"create table xxx ( "
 	@"id int, "
-	@"k char(40), "
-	@"char1 char(1), "
-	@"boolval BOOL, "
-	@"intval int, "
 	@"when1 timestamp with time zone, "
-	@"when2 timestamp, "
-	@"b bytea,"
-        @"extra1 int[],"
-        @"extra2 varchar[],"
-        @"extra3 bytea[],"
-        @"extra4 boolean[],"
-        @"extra5 timestamp with time zone[]"
-	@")",
+	@"when2 timestamp)",
 	nil];
-      [db execute: @"insert into xxx "
-	@"(id, k, char1, boolval, intval, when1, when2, b) "
+      [db execute: @"insert into xxx (id, when1, when2) "
 	@"values (99,",
-	[db quote: oddChars],
-	@", ",
-	[db quote: nonLatin],
-	@",TRUE, "
-	@"1, ",
 	[NSDate distantPast], @", ",
-	[NSDate distantFuture], @", ",
-	[NSData dataWithBytes: "" length: 0],
-	@")",
+	[NSDate distantFuture], @")",
 	nil];
       r0 = [[db query: @"select * from xxx where id=99", nil] lastObject];
       [db execute: @"drop table xxx", nil];
