@@ -73,7 +73,7 @@ main()
                                                 name: @"test"
                                                  max: 2
                                                  min: 1] autorelease];
-#if 1
+#if 0
 {
   NSAutoreleasePool     *p;
   SQLClient             *c0;
@@ -486,9 +486,11 @@ main()
 
       d0 = [r0 objectForKey:@"when1"];
       d1 = [r0 objectForKey:@"when2"];
-      NSCAssert([d0 isEqual: [NSDate distantPast]],
+      NSCAssert([d0 timeIntervalSinceReferenceDate]
+        == [[NSDate distantPast]timeIntervalSinceReferenceDate],
         NSInternalInconsistencyException);
-      NSCAssert([d1 isEqual: [NSDate distantFuture]],
+      NSCAssert([d1 timeIntervalSinceReferenceDate]
+        == [[NSDate distantFuture]timeIntervalSinceReferenceDate],
         NSInternalInconsistencyException);
     }
 

@@ -100,7 +100,7 @@ static NSDate*
 newDateFromBuffer(const char *b, int l)
 {
   NSCalendarDate	*d;
-  NSTimeZone		*zone;
+  NSTimeZone 		*zone;
   int		        milliseconds = 0;
   int                   timezone = 0;
   int			day;
@@ -212,14 +212,7 @@ newDateFromBuffer(const char *b, int l)
 	    timezone = -timezone;
 	}
     }
-  if (year <= 1)
-    {
-      return [[NSDate distantPast] retain];
-    }
-  else if (year > 4000)
-    {
-      return [[NSDate distantFuture] retain];
-    }
+
   if (timezone % 60 == 0)
     {
       zone = zones[23 + timezone / 60];
@@ -229,23 +222,49 @@ newDateFromBuffer(const char *b, int l)
       zone = [NSTimeZone timeZoneForSecondsFromGMT: timezone * 60];
     }
 
-  d = [[NSCalendarDate alloc] initWithYear: year
-				     month: month
-				       day: day
-				      hour: hour
-				    minute: minute
-				    second: second
-				  timeZone: zone];
-
-  if (milliseconds > 0)
+  d = [NSCalendarDate alloc];
+  if (year <= 1)
     {
-      NSTimeInterval	ti;
+      static NSTimeInterval     p = 0.0;
 
-      ti = milliseconds;
-      ti /= 1000.0;
-      ti += [d timeIntervalSinceReferenceDate];
-      d = [d initWithTimeIntervalSinceReferenceDate: ti];
+      if (0.0 == p)
+        {
+          p = [[NSDate distantPast] timeIntervalSinceReferenceDate];
+        }
+      d = [d initWithTimeIntervalSinceReferenceDate: p];
       [d setTimeZone: zone];
+    }
+  else if (year > 4000)
+    {
+      static NSTimeInterval     f = 0.0;
+
+      if (0.0 == f)
+        {
+          f = [[NSDate distantFuture] timeIntervalSinceReferenceDate];
+        }
+      d = [d initWithTimeIntervalSinceReferenceDate: f];
+      [d setTimeZone: zone];
+    }
+  else
+    {
+      d = [d initWithYear: year
+                    month: month
+                      day: day
+                     hour: hour
+                   minute: minute
+                   second: second
+                 timeZone: zone];
+
+      if (milliseconds > 0)
+        {
+          NSTimeInterval	ti;
+
+          ti = milliseconds;
+          ti /= 1000.0;
+          ti += [d timeIntervalSinceReferenceDate];
+          d = [d initWithTimeIntervalSinceReferenceDate: ti];
+          [d setTimeZone: zone];
+        }
     }
   [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
   return d;
