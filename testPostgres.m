@@ -254,8 +254,10 @@ main()
       NSString	*oddChars;
       NSString	*nonLatin;
       id	e1, e2, e3, e4, e5;
+      id        d;
       id	d0;
       id	d1;
+      id	d2;
       id	r0;
       id	r1;
 
@@ -450,14 +452,18 @@ main()
 
       NSLog(@"Records - %@", [GSCache class]);
 
+      d = [NSCalendarDate date];
+      [d setTimeZone: [NSTimeZone timeZoneForSecondsFromGMT: 240]];
       [db begin];
       [db execute: @"create table xxx ( "
 	@"id int, "
+	@"when0 timestamp with time zone, "
 	@"when1 timestamp with time zone, "
 	@"when2 timestamp)",
 	nil];
-      [db execute: @"insert into xxx (id, when1, when2) "
+      [db execute: @"insert into xxx (id, when0, when1, when2) "
 	@"values (99,",
+	d, @", ",
 	[NSDate distantPast], @", ",
 	[NSDate distantFuture], @")",
 	nil];
@@ -465,13 +471,17 @@ main()
       [db execute: @"drop table xxx", nil];
       [db commit];
 
-      d0 = [r0 objectForKey:@"when1"];
-      d1 = [r0 objectForKey:@"when2"];
-      NSCAssert([d0 timeIntervalSinceReferenceDate]
-        == [[NSDate distantPast]timeIntervalSinceReferenceDate],
+      d0 = [r0 objectForKey:@"when0"];
+      NSCAssert(floor([d0 timeIntervalSinceReferenceDate])
+        == floor([d timeIntervalSinceReferenceDate]),
         NSInternalInconsistencyException);
+      d1 = [r0 objectForKey:@"when1"];
       NSCAssert([d1 timeIntervalSinceReferenceDate]
-        == [[NSDate distantFuture]timeIntervalSinceReferenceDate],
+        == [[NSDate distantPast] timeIntervalSinceReferenceDate],
+        NSInternalInconsistencyException);
+      d2 = [r0 objectForKey:@"when2"];
+      NSCAssert([d2 timeIntervalSinceReferenceDate]
+        == [[NSDate distantFuture] timeIntervalSinceReferenceDate],
         NSInternalInconsistencyException);
     }
 
