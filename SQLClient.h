@@ -1598,6 +1598,11 @@ SQLCLIENT_PRIVATE
  */
 - (int) minConnections;
 
+/** Returns the name of the database configuration for the connections in
+ * the pool.
+ */
+- (NSString*) name;
+
 /** Fetches an (autoreleased) client from the pool.<br />
  * This method blocks indefinitely waiting for a client to become
  * available in the pool.

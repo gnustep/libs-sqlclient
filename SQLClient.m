@@ -826,15 +826,11 @@ static int	        poolConnections = 0;
 
   if ([reference isKindOfClass: NSStringClass] == NO)
     {
-      if (config == nil)
+      if (nil == config)
 	{
-	  reference = [[NSUserDefaults standardUserDefaults] objectForKey:
-	    @"SQLClientName"];
+	  config = (NSDictionary*)[NSUserDefaults standardUserDefaults];
 	}
-      else
-	{
-	  reference = [config objectForKey: @"SQLClientName"];
-	}
+      reference = [config objectForKey: @"SQLClientName"];
       if ([reference isKindOfClass: NSStringClass] == NO)
 	{
 	  reference = @"Database";
@@ -1382,7 +1378,7 @@ static int	        poolConnections = 0;
       reference = [conf objectForKey: @"SQLClientName"];
       if ([reference isKindOfClass: NSStringClass] == NO)
 	{
-	  reference = [conf objectForKey: @"Database"];
+	  reference = @"Database";
 	}
     }
 

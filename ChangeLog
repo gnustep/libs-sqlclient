@@ -1,10 +1,16 @@
+2015-06-25 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Add -name method for pools.
+	* SQLClient.m: Match documentation and use 'Database' as default name.
+	* SQLClientPool.m: Add -name method and fix default name.
+
 2015-06-19 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: Fix error parsing timezone in date.
 
 2015-06-09 Richard Frith-Macdonald  <rfm@gnu.org>
 
-	* SQLClient.m: Fix reace condition spotted by Wolfgang and change
+	* SQLClient.m: Fix race condition spotted by Wolfgang and change
 	purge operation to avoid disconnecting clients while the class lock
 	is locked.
 

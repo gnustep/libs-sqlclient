@@ -33,6 +33,7 @@
 #import	<Foundation/NSInvocation.h>
 #import	<Foundation/NSLock.h>
 #import	<Foundation/NSString.h>
+#import	<Foundation/NSUserDefaults.h>
 
 #import	<Performance/GSCache.h>
 #import	"SQLClient.h"
@@ -137,7 +138,19 @@
 {
   if (nil != (self = [super init]))
     {
+      if (nil == config)
+        {
+          config = (NSDictionary*)[NSUserDefaults standardUserDefaults];
+        }
       ASSIGN(_config, config);
+      if (NO == [reference isKindOfClass: [NSString class]])
+        {
+          reference = [_config objectForKey: @"SQLClientName"];
+          if (NO == [reference isKindOfClass: [NSString class]])
+            {
+              reference = @"Database";
+            }
+        }
       ASSIGNCOPY(_name, reference);
       lock = [[NSConditionLock alloc] initWithCondition: 0];
       [self setMax: maxConnections min: minConnections];
@@ -165,6 +178,11 @@
 - (int) minConnections
 {
   return min;
+}
+
+- (NSString*) name
+{
+  return  _name;
 }
 
 - (SQLClient*) provideClient
