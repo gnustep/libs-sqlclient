@@ -1855,6 +1855,11 @@ static int	        poolConnections = 0;
   return self;
 }
 
+- (SQLClientPool*) pool
+{
+  return _pool;
+}
+
 - (void) rollback
 {
   [lock lock];

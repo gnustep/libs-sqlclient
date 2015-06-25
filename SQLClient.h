@@ -1002,6 +1002,13 @@ SQLCLIENT_PRIVATE
  * Return the database user for this instance (or nil).
  */
 - (NSString*) user;
+
+
+/**
+ * Return the pool to which the receiver belongs, or nil if it is not part of a
+ * connection pool.
+ */
+- (SQLClientPool*) pool;
 @end
 
 /**
