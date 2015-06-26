@@ -1730,6 +1730,7 @@ SQLCLIENT_PRIVATE
 - (NSMutableArray*) columns: (NSMutableArray*)records;
 - (NSInteger) execute: (NSString*)stmt,...;
 - (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values;
+- (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
 - (NSMutableArray*) query: (NSString*)stmt,...;
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values;
 - (SQLRecord*) queryRecord: (NSString*)stmt,...;

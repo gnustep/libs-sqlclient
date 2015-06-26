@@ -952,6 +952,11 @@
   return result;
 }
 
+- (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
+{
+  return [c[0] prepare: stmt args: args];
+}
+
 - (NSMutableArray*) query: (NSString*)stmt, ...
 {
   SQLClient             *db;
