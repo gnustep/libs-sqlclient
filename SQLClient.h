@@ -925,6 +925,14 @@ SQLCLIENT_PRIVATE
 - (void) rollback;
 
 /**
+ * Set the client name for this client.<br />
+ * If this is not set (or is set to nul) a globally unique string is used.<br />
+ * NB. Setting the name may not be reflected in the database server until
+ * the client disconnects and reconnects.
+ */
+- (void) setClientName: (NSString*)s;
+
+/**
  * Set the database host/name for this object.<br />
  * This is called automatically to configure the connection ...
  * you normally shouldn't need to call it yourself.
@@ -1343,8 +1351,7 @@ SQLCLIENT_PRIVATE
  */
 - (void) singletons: (NSMutableArray*)records;
 
-/**
- * Creates and returns an autoreleased SQLTransaction instance  which will
+/** Creates and returns an autoreleased SQLTransaction instance  which will
  * use the receiver as the database connection to perform transactions.
  */
 - (SQLTransaction*) transaction;
@@ -1637,10 +1644,19 @@ SQLCLIENT_PRIVATE
  */
 - (void) setCache: (GSCache*)aCache;
 
-/**
- * Sets the cache thread for all the clients in the pool.
+/** Sets the cache thread for all the clients in the pool.
  */
 - (void) setCacheThread: (NSThread*)aThread;
+
+/** Set the client name for all the client connections in the pool.<br />
+ * If the argument is not nil, the name of each client in the pool
+ * is set to the argument with a suffix of '(x)' where x is the number
+ * of the client within the pool, otherwise (nil argument) each client
+ * is allocated a globally unique string as its name.<br />
+ * NB. This setting does not apply to new connections added when the pool
+ * maximum size is increased.
+ */
+- (void) setClientName: (NSString*)s;
 
 /** Set the debugging level for all clients in the pool.
  */
@@ -1685,6 +1701,11 @@ SQLCLIENT_PRIVATE
  * Returns YES if the supplied client was from the pool, NO otherwise.
  */
 - (BOOL) swallowClient: (SQLClient*)client;
+
+/** Creates and returns an autoreleased SQLTransaction instance  which will
+ * use the receiver as the database connection to perform transactions.
+ */
+- (SQLTransaction*) transaction;
 
 @end
 
@@ -1750,7 +1771,7 @@ SQLCLIENT_PRIVATE
 @interface	SQLTransaction : NSObject <NSCopying>
 {
 SQLCLIENT_PRIVATE
-  SQLClient		*_db;
+  id		        _db;
   NSMutableArray	*_info;
   unsigned		_count;
   BOOL                  _batch;
@@ -1803,9 +1824,11 @@ SQLCLIENT_PRIVATE
 
 /**
  * Returns the database client with which this instance operates.<br />
- * This client is retained by the transaction.
+ * This client is retained by the transaction.<br />
+ * If the transaction was created by/for an SQLClientPool, this method
+ * returns that pool rather than an individual client.
  */
-- (SQLClient*) db;
+- (id) db;
 
 /**
  * <p>Performs any statements added to the transaction as a single operation.

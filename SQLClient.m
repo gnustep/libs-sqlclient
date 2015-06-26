@@ -88,6 +88,9 @@ static Class	SQLClientClass = Nil;
 @interface      SQLClientPool (Swallow)
 - (BOOL) _swallowClient: (SQLClient*)client withRetain: (BOOL)shouldRetain;
 @end
+@interface      SQLTransaction (Creation)
++ (SQLTransaction*) _transactionUsing: (id)clientOrPool;
+@end
 
 @implementation         SQLRecordKeys
 
@@ -1088,7 +1091,16 @@ static int	        poolConnections = 0;
 
 - (NSString*) clientName
 {
-  return _client;
+  NSString      *s;
+
+  [lock lock];
+  if (nil == _client)
+    {
+      _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
+    }
+  s = [_client retain];
+  [lock unlock];
+  return [s autorelease];
 }
 
 - (void) commit
@@ -1890,6 +1902,13 @@ static int	        poolConnections = 0;
   NS_ENDHANDLER
 }
 
+- (void) setClientName: (NSString*)s
+{
+  [lock lock];
+  ASSIGNCOPY(_client, s);
+  [lock unlock];
+}
+
 - (void) setDatabase: (NSString*)s
 {
   [lock lock];
@@ -1949,8 +1968,11 @@ static int	        poolConnections = 0;
           s = [s copy];
           [_name release];
           _name = s;
-          [_client release];
-          _client = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
+          if (nil == _client)
+            {
+              _client
+                = [[[NSProcessInfo processInfo] globallyUniqueString] retain];
+            }
           if (nil == _pool && _name != nil)
             {
               NSMapInsert(clientsMap, (void*)_name, (void*)self);
@@ -2842,15 +2864,9 @@ static int	        poolConnections = 0;
 
 - (SQLTransaction*) transaction
 {
-  SQLTransaction	*transaction;
-
-  transaction = (SQLTransaction*)NSAllocateObject([SQLTransaction class], 0,
-    NSDefaultMallocZone());
- 
-  transaction->_db = [self retain];
-  transaction->_info = [NSMutableArray new];
-  return [(SQLTransaction*)transaction autorelease];
+  return [SQLTransaction _transactionUsing: self];
 }
+
 @end
 
 
@@ -3107,6 +3123,18 @@ static int	        poolConnections = 0;
 @end
 
 @implementation	SQLTransaction
+
++ (SQLTransaction*) _transactionUsing: (id)clientOrPool
+{
+  SQLTransaction	*transaction;
+
+  transaction = (SQLTransaction*)NSAllocateObject(self, 0,
+    NSDefaultMallocZone());
+ 
+  transaction->_db = [clientOrPool retain];
+  transaction->_info = [NSMutableArray new];
+  return [transaction autorelease];
+}
 
 - (void) _addSQL: (NSMutableString*)sql andArgs: (NSMutableArray*)args
 {
@@ -3399,7 +3427,7 @@ static int	        poolConnections = 0;
   return [_info count];
 }
 
-- (SQLClient*) db
+- (id) db
 {
   return _db;
 }
@@ -3423,11 +3451,24 @@ static int	        poolConnections = 0;
   if (_count > 0)
     {
       NSMutableArray    *info = nil;
-      NSRecursiveLock   *dbLock = [_db _lock];
+      SQLClientPool     *pool = nil;
+      SQLClient         *db;
+      NSRecursiveLock   *dbLock;
       BOOL              wrap;
 
+      if ([_db isKindOfClass: [SQLClientPool class]])
+        {
+          pool = (SQLClientPool*)_db;
+          db = [pool provideClient];
+        }
+      else
+        {
+          db = _db;
+        }
+          
+      dbLock = [db _lock];
       [dbLock lock];
-      wrap = [_db isInTransaction] ? NO : YES;
+      wrap = [db isInTransaction] ? NO : YES;
       NS_DURING
 	{
           NSMutableString   *sql;
@@ -3454,9 +3495,13 @@ static int	        poolConnections = 0;
               [sql appendString: @"commit;"];
             }
 
-          [_db simpleExecute: info];
+          [db simpleExecute: info];
           [info release]; info = nil;
           [dbLock unlock];
+          if (nil != pool)
+            {
+              [pool swallowClient: db];
+            }
 	}
       NS_HANDLER
 	{
@@ -3467,16 +3512,20 @@ static int	        poolConnections = 0;
             {
               NS_DURING
                 {
-                  [_db simpleExecute: rollbackStatement];
+                  [db simpleExecute: rollbackStatement];
                 }
               NS_HANDLER
                 {
-                  [_db disconnect];
+                  [db disconnect];
                   NSLog(@"Disconnected due to failed rollback after %@", e);
                 }
               NS_ENDHANDLER
             }
           [dbLock unlock];
+          if (nil != pool)
+            {
+              [pool swallowClient: db];
+            }
           [e raise];
 	}
       NS_ENDHANDLER
@@ -3496,7 +3545,20 @@ static int	        poolConnections = 0;
   if (_count > 0)
     {
       NSRecursiveLock   *dbLock = [_db _lock];
+      SQLClientPool     *pool = nil;
+      SQLClient         *db;
 
+      if ([_db isKindOfClass: [SQLClientPool class]])
+        {
+          pool = (SQLClientPool*)_db;
+          db = [pool provideClient];
+        }
+      else
+        {
+          db = _db;
+        }
+
+      dbLock = [db _lock];
       [dbLock lock];
       NS_DURING
         {
@@ -3505,9 +3567,9 @@ static int	        poolConnections = 0;
         }
       NS_HANDLER
         {
-	  if (log == YES || [_db debugging] > 0)
+	  if (log == YES || [db debugging] > 0)
 	    {
-	      [_db debug: @"Initial failure executing batch %@: %@",
+	      [db debug: @"Initial failure executing batch %@: %@",
 		self, localException];
 	    }
           if (_batch == YES)
@@ -3536,7 +3598,7 @@ static int	        poolConnections = 0;
 			   */
 			  if (wrapper == nil)
 			    {
-			      wrapper = [_db transaction];
+			      wrapper = [db transaction];
 			    }
 			  [wrapper reset];
 			  [wrapper addPrepared: o];
@@ -3550,9 +3612,9 @@ static int	        poolConnections = 0;
 			    {
 			      [failures addPrepared: o];
 			    }
-			  if (log == YES || [_db debugging] > 0)
+			  if (log == YES || [db debugging] > 0)
 			    {
-			      [_db debug:
+			      [db debug:
 				@"Failure of %d executing batch %@: %@",
 				i, self, localException];
 			    }
@@ -3601,6 +3663,10 @@ static int	        poolConnections = 0;
         }
       NS_ENDHANDLER
       [dbLock unlock];
+      if (nil != pool)
+        {
+          [pool swallowClient: db];
+        }
     }
   return executed;
 }

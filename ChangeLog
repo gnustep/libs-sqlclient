@@ -1,7 +1,17 @@
+2015-06-26 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* SQLClientPool.m:
+	Implement -transaction method for client pools so that we can build
+	a transaction which, when executed, will use any available client
+	from the pool.
+	Support setting of the client name for clients in a pool.
+
 2015-06-25 Niels Grewe <niels.grewe@halbordnung.de>
 
 	* SQLClient.[hm]: Add an accessor method to obtain the SQLClientPool
-	  object owning a specific SQLClient.
+	object owning a specific SQLClient.
 
 2015-06-25 Richard Frith-Macdonald  <rfm@gnu.org>
 

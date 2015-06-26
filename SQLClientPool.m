@@ -61,6 +61,10 @@
 - (void) _unlock;
 @end
 
+@interface      SQLTransaction (Creation)
++ (SQLTransaction*) _transactionUsing: (id)clientOrPool;
+@end
+
 @implementation	SQLClientPool
 
 - (int) availableConnections
@@ -724,6 +728,36 @@
 {
   return [self _swallowClient: client withRetain: YES];
 }
+
+- (void) setClientName: (NSString*)s
+{
+  unsigned int   index;
+
+  [lock lock];
+  for (index = 0; index < max; index++)
+    {
+      SQLClient *client = c[index];
+
+      if (nil == s)
+        {
+          [client setClientName: s];
+        }
+      else
+        {
+          NSString      *n;
+
+          n = [s stringByAppendingFormat: @" (%u)", index];
+          [client setClientName: n];
+        }
+    }
+  [lock unlock];
+}
+
+- (SQLTransaction*) transaction
+{
+  return [SQLTransaction _transactionUsing: self];
+}
+
 @end
 
 @implementation SQLClientPool (Private)
