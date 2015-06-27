@@ -1577,6 +1577,11 @@ SQLCLIENT_PRIVATE
  */
 - (int) availableConnections;
 
+/** Creates and returns an autoreleased SQLTransaction instance  which will
+ * use the receiver as the database connection to perform transactions.
+ */
+- (SQLTransaction*) batch: (BOOL)stopOnFailure;
+
 /**
  * Returns the cache used by clients in the pool for storing the results of
  * requests made through them.  Creates a new cache if necessary.

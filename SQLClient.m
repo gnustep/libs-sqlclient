@@ -89,7 +89,9 @@ static Class	SQLClientClass = Nil;
 - (BOOL) _swallowClient: (SQLClient*)client withRetain: (BOOL)shouldRetain;
 @end
 @interface      SQLTransaction (Creation)
-+ (SQLTransaction*) _transactionUsing: (id)clientOrPool;
++ (SQLTransaction*) _transactionUsing: (id)clientOrPool
+                                batch: (BOOL)isBatched
+                                 stop: (BOOL)stopOnFailure;
 @end
 
 @implementation         SQLRecordKeys
@@ -2783,16 +2785,9 @@ static int	        poolConnections = 0;
 
 - (SQLTransaction*) batch: (BOOL)stopOnFailure
 {
-  SQLTransaction        *transaction;
-
-  transaction = (SQLTransaction*)NSAllocateObject([SQLTransaction class], 0,
-    NSDefaultMallocZone());
- 
-  transaction->_db = [self retain];
-  transaction->_info = [NSMutableArray new];
-  transaction->_batch = YES;
-  transaction->_stop = stopOnFailure;
-  return [(SQLTransaction*)transaction autorelease];
+  return [SQLTransaction _transactionUsing: self
+                                     batch: YES
+                                      stop: stopOnFailure];
 }
 
 - (NSMutableArray*) columns: (NSMutableArray*)records
@@ -2864,7 +2859,7 @@ static int	        poolConnections = 0;
 
 - (SQLTransaction*) transaction
 {
-  return [SQLTransaction _transactionUsing: self];
+  return [SQLTransaction _transactionUsing: self batch: NO stop: NO];
 }
 
 @end
@@ -3125,6 +3120,8 @@ static int	        poolConnections = 0;
 @implementation	SQLTransaction
 
 + (SQLTransaction*) _transactionUsing: (id)clientOrPool
+                                batch: (BOOL)isBatched
+                                 stop: (BOOL)stopOnFailure
 {
   SQLTransaction	*transaction;
 
@@ -3133,6 +3130,8 @@ static int	        poolConnections = 0;
  
   transaction->_db = [clientOrPool retain];
   transaction->_info = [NSMutableArray new];
+  transaction->_batch = isBatched;
+  transaction->_stop = stopOnFailure;
   return [transaction autorelease];
 }
 

@@ -62,7 +62,9 @@
 @end
 
 @interface      SQLTransaction (Creation)
-+ (SQLTransaction*) _transactionUsing: (id)clientOrPool;
++ (SQLTransaction*) _transactionUsing: (id)clientOrPool
+                                batch: (BOOL)isBatched
+                                 stop: (BOOL)stopOnFailure;
 @end
 
 @implementation	SQLClientPool
@@ -83,6 +85,13 @@
     }
   [self _unlock];
   return available;
+}
+
+- (SQLTransaction*) batch: (BOOL)stopOnFailure
+{
+  return [SQLTransaction _transactionUsing: self
+                                     batch: YES
+                                      stop: stopOnFailure];
 }
 
 - (GSCache*) cache
@@ -755,7 +764,9 @@
 
 - (SQLTransaction*) transaction
 {
-  return [SQLTransaction _transactionUsing: self];
+  return [SQLTransaction _transactionUsing: self
+                                     batch: NO
+                                      stop: NO];
 }
 
 @end
