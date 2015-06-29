@@ -979,6 +979,11 @@
   return [c[0] prepare: stmt args: args];
 }
 
+- (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values
+{
+  return [c[0] prepare: stmt with: values];
+}
+
 - (NSMutableArray*) query: (NSString*)stmt, ...
 {
   SQLClient             *db;

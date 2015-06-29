@@ -790,6 +790,11 @@ SQLCLIENT_PRIVATE
  */
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
 
+/** This method is like -prepare:args:  but takes a dictionary of
+ * values to be substituted into the sql string.
+ */
+- (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values;
+
 /**
  * <p>Perform arbitrary query <em>which returns values.</em>
  * </p>
@@ -1737,6 +1742,7 @@ SQLCLIENT_PRIVATE
 - (NSInteger) execute: (NSString*)stmt,...;
 - (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values;
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
+- (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values;
 - (NSMutableArray*) query: (NSString*)stmt,...;
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values;
 - (SQLRecord*) queryRecord: (NSString*)stmt,...;

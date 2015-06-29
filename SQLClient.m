@@ -776,16 +776,6 @@ static NSArray		*rollbackStatement = nil;
  */
 - (void) _recordMainThread;
 
-/**
- * Internal method to substitute values from the dictionary into
- * a string containing markup identifying where the values should
- * appear by name.  Non-string objects in the dictionary are quoted.<br />
- * Returns an array containing the statement as the first object and
- * any NSData objects following.  The NSData objects appear in the
- * statement strings as the marker sequence - <code>'?'''?'</code>
- */
-- (NSMutableArray*) _substitute: (NSString*)str with: (NSDictionary*)vals;
-
 /*
  * Called at one second intervals to ensure that our current timestamp
  * is reasonably accurate.
@@ -1086,7 +1076,7 @@ static int	        poolConnections = 0;
 {
   NSString	*sql = nil;
 
-  sql = [[self _substitute: stmt with: values] objectAtIndex: 0];
+  sql = [[self prepare: stmt with: values] objectAtIndex: 0];
 
   return sql;
 }
@@ -1352,7 +1342,7 @@ static int	        poolConnections = 0;
 {
   NSArray	*info;
 
-  info = [self _substitute: stmt with: values];
+  info = [self prepare: stmt with: values];
   return [self simpleExecute: info];
 }
 
@@ -1594,6 +1584,180 @@ static int	        poolConnections = 0;
   return ma;
 }
 
+- (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values
+{
+  unsigned int		l = [stmt length];
+  NSRange		r;
+  NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
+  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
+
+  if (l < 2)
+    {
+      [ma addObject: stmt];		// Can't contain a {...} sequence
+    }
+  else if ((r = [stmt rangeOfString: @"{"]).length == 0)
+    {
+      [ma addObject: stmt];		// No '{' markup
+    }
+  else if (l - r.location < 2)
+    {
+      [ma addObject: stmt];		// Can't contain a {...} sequence
+    }
+  else if ([stmt rangeOfString: @"}" options: NSLiteralSearch
+    range: NSMakeRange(r.location, l - r.location)].length == 0
+    && [stmt rangeOfString: @"{{" options: NSLiteralSearch
+    range: NSMakeRange(0, l)].length == 0)
+    {
+      [ma addObject: stmt];		// No closing '}' or repeated '{{'
+    }
+  else if (r.length == 0)
+    {
+      [ma addObject: stmt];		// Nothing to do.
+    }
+  else
+    {
+      NSMutableString	*mtext = [[stmt mutableCopy] autorelease];
+
+      /*
+       * Replace {FieldName} with the value of the field
+       */
+      while (r.length > 0)
+	{
+	  unsigned	pos = r.location;
+	  unsigned	nxt;
+	  unsigned	vLength;
+	  NSArray	*a;
+	  NSRange	s;
+	  NSString	*v;
+	  NSString	*alt;
+	  id		o;
+	  unsigned	i;
+
+	  r.length = l - pos;
+
+	  /*
+	   * If the length of the string from the '{' onwards is less than two,
+	   * there is nothing to do and we can end processing.
+	   */
+	  if (r.length < 2)
+	    {
+	      break;
+	    }
+
+	  if ([mtext characterAtIndex: r.location + 1] == '{')
+	    {
+	      // Got '{{' ... remove one of them.
+	      r.length = 1;
+	      [mtext replaceCharactersInRange: r withString: @""];
+	      l--;
+	      r.location++;
+	      r.length = l - r.location;
+	      r = [mtext rangeOfString: @"{"
+			       options: NSLiteralSearch
+				 range: r];
+	      continue;
+	    }
+
+	  r = [mtext rangeOfString: @"}"
+			   options: NSLiteralSearch
+			     range: r];
+	  if (r.length == 0)
+	    {
+	      break;	// No closing bracket
+	    }
+	  nxt = NSMaxRange(r);
+	  r = NSMakeRange(pos, nxt - pos);
+	  s.location = r.location + 1;
+	  s.length = r.length - 2;
+	  v = [mtext substringWithRange: s];
+
+	  /*
+	   * If the value contains a '?', it is actually in two parts,
+	   * the first part is the field name, and the second part is
+	   * an alternative text to be used if the value from the
+	   * dictionary is empty.
+	   */
+	  s = [v rangeOfString: @"?"];
+	  if (s.length == 0)
+	    {
+	      alt = @"";	// No alternative value.
+	    }
+	  else
+	    {
+	      alt = [v substringFromIndex: NSMaxRange(s)];
+	      v = [v substringToIndex: s.location];
+	    }
+       
+	  /*
+	   * If the value we are substituting contains dots, we split it apart.
+	   * We use the value to make a reference into the dictionary we are
+	   * given.
+	   */
+	  a = [v componentsSeparatedByString: @"."];
+	  o = values;
+	  for (i = 0; i < [a count]; i++)
+	    {
+	      NSString	*k = [a objectAtIndex: i];
+
+	      if ([k length] > 0)
+		{
+		  o = [(NSDictionary*)o objectForKey: k];
+		}
+	    }
+	  if (o == values)
+	    {
+	      v = nil;		// Mo match found.
+	    }
+	  else
+	    {
+	      if ([o isKindOfClass: NSStringClass] == YES)
+		{
+		  v = (NSString*)o;
+		}
+	      else
+		{
+		  if ([o isKindOfClass: [NSData class]] == YES)
+		    {
+		      [ma addObject: o];
+		      v = @"'?'''?'";
+		    }
+		  else
+		    {
+		      v = [self quote: o];
+		    }
+		}
+	    }
+
+	  if ([v length] == 0)
+	    {
+	      v = alt;
+	      if (v == nil)
+	        {
+		  v = @"";
+	        }
+	    }
+	  vLength = [v length];
+
+	  [mtext replaceCharactersInRange: r withString: v];
+	  l += vLength;			// Add length of string inserted
+	  l -= r.length;		// Remove length of string replaced
+	  r.location += vLength;
+
+	  if (r.location >= l)
+	    {
+	      break;
+	    }
+	  r.length = l - r.location;
+	  r = [mtext rangeOfString: @"{"
+			   options: NSLiteralSearch
+			     range: r];
+	}
+      [ma insertObject: mtext atIndex: 0];
+    }
+  [arp release];
+  return ma;
+}
+
 - (NSMutableArray*) query: (NSString*)stmt, ...
 {
   va_list		ap;
@@ -1615,7 +1779,7 @@ static int	        poolConnections = 0;
 {
   NSMutableArray	*result = nil;
 
-  stmt = [[self _substitute: stmt with: values] objectAtIndex: 0];
+  stmt = [[self prepare: stmt with: values] objectAtIndex: 0];
 
   result = [self simpleQuery: stmt];
 
@@ -2514,180 +2678,6 @@ static int	        poolConnections = 0;
   mainThread = [NSThread currentThread];
 }
 
-- (NSMutableArray*) _substitute: (NSString*)str with: (NSDictionary*)vals
-{
-  unsigned int		l = [str length];
-  NSRange		r;
-  NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
-  NSAutoreleasePool     *arp = [NSAutoreleasePool new];
-
-  if (l < 2)
-    {
-      [ma addObject: str];		// Can't contain a {...} sequence
-    }
-  else if ((r = [str rangeOfString: @"{"]).length == 0)
-    {
-      [ma addObject: str];		// No '{' markup
-    }
-  else if (l - r.location < 2)
-    {
-      [ma addObject: str];		// Can't contain a {...} sequence
-    }
-  else if ([str rangeOfString: @"}" options: NSLiteralSearch
-    range: NSMakeRange(r.location, l - r.location)].length == 0
-    && [str rangeOfString: @"{{" options: NSLiteralSearch
-    range: NSMakeRange(0, l)].length == 0)
-    {
-      [ma addObject: str];		// No closing '}' or repeated '{{'
-    }
-  else if (r.length == 0)
-    {
-      [ma addObject: str];		// Nothing to do.
-    }
-  else
-    {
-      NSMutableString	*mtext = [[str mutableCopy] autorelease];
-
-      /*
-       * Replace {FieldName} with the value of the field
-       */
-      while (r.length > 0)
-	{
-	  unsigned	pos = r.location;
-	  unsigned	nxt;
-	  unsigned	vLength;
-	  NSArray	*a;
-	  NSRange	s;
-	  NSString	*v;
-	  NSString	*alt;
-	  id		o;
-	  unsigned	i;
-
-	  r.length = l - pos;
-
-	  /*
-	   * If the length of the string from the '{' onwards is less than two,
-	   * there is nothing to do and we can end processing.
-	   */
-	  if (r.length < 2)
-	    {
-	      break;
-	    }
-
-	  if ([mtext characterAtIndex: r.location + 1] == '{')
-	    {
-	      // Got '{{' ... remove one of them.
-	      r.length = 1;
-	      [mtext replaceCharactersInRange: r withString: @""];
-	      l--;
-	      r.location++;
-	      r.length = l - r.location;
-	      r = [mtext rangeOfString: @"{"
-			       options: NSLiteralSearch
-				 range: r];
-	      continue;
-	    }
-
-	  r = [mtext rangeOfString: @"}"
-			   options: NSLiteralSearch
-			     range: r];
-	  if (r.length == 0)
-	    {
-	      break;	// No closing bracket
-	    }
-	  nxt = NSMaxRange(r);
-	  r = NSMakeRange(pos, nxt - pos);
-	  s.location = r.location + 1;
-	  s.length = r.length - 2;
-	  v = [mtext substringWithRange: s];
-
-	  /*
-	   * If the value contains a '?', it is actually in two parts,
-	   * the first part is the field name, and the second part is
-	   * an alternative text to be used if the value from the
-	   * dictionary is empty.
-	   */
-	  s = [v rangeOfString: @"?"];
-	  if (s.length == 0)
-	    {
-	      alt = @"";	// No alternative value.
-	    }
-	  else
-	    {
-	      alt = [v substringFromIndex: NSMaxRange(s)];
-	      v = [v substringToIndex: s.location];
-	    }
-       
-	  /*
-	   * If the value we are substituting contains dots, we split it apart.
-	   * We use the value to make a reference into the dictionary we are
-	   * given.
-	   */
-	  a = [v componentsSeparatedByString: @"."];
-	  o = vals;
-	  for (i = 0; i < [a count]; i++)
-	    {
-	      NSString	*k = [a objectAtIndex: i];
-
-	      if ([k length] > 0)
-		{
-		  o = [(NSDictionary*)o objectForKey: k];
-		}
-	    }
-	  if (o == vals)
-	    {
-	      v = nil;		// Mo match found.
-	    }
-	  else
-	    {
-	      if ([o isKindOfClass: NSStringClass] == YES)
-		{
-		  v = (NSString*)o;
-		}
-	      else
-		{
-		  if ([o isKindOfClass: [NSData class]] == YES)
-		    {
-		      [ma addObject: o];
-		      v = @"'?'''?'";
-		    }
-		  else
-		    {
-		      v = [self quote: o];
-		    }
-		}
-	    }
-
-	  if ([v length] == 0)
-	    {
-	      v = alt;
-	      if (v == nil)
-	        {
-		  v = @"";
-	        }
-	    }
-	  vLength = [v length];
-
-	  [mtext replaceCharactersInRange: r withString: v];
-	  l += vLength;			// Add length of string inserted
-	  l -= r.length;		// Remove length of string replaced
-	  r.location += vLength;
-
-	  if (r.location >= l)
-	    {
-	      break;
-	    }
-	  r.length = l - r.location;
-	  r = [mtext rangeOfString: @"{"
-			   options: NSLiteralSearch
-			     range: r];
-	}
-      [ma insertObject: mtext atIndex: 0];
-    }
-  [arp release];
-  return ma;
-}
-
 + (void) _tick: (NSTimer*)t
 {
   (void) GSTickerTimeNow();
@@ -2943,7 +2933,7 @@ static int	        poolConnections = 0;
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values
 {
-  stmt = [[self _substitute: stmt with: values] objectAtIndex: 0];
+  stmt = [[self prepare: stmt with: values] objectAtIndex: 0];
   return [self cache: seconds simpleQuery: stmt];
 }
 
@@ -3375,7 +3365,7 @@ static int	        poolConnections = 0;
 {
   NSMutableArray        *p;
 
-  p = [_db _substitute: stmt with: values];
+  p = [_db prepare: stmt with: values];
   [self _merge: p];
 }
 
