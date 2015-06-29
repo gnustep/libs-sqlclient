@@ -1722,6 +1722,7 @@ SQLCLIENT_PRIVATE
 @interface      SQLClientPool (Convenience)
 - (NSString*) buildQuery: (NSString*)stmt,...;
 - (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
+- (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt;
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...;
 - (NSMutableArray*) cache: (int)seconds

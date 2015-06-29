@@ -843,6 +843,17 @@
   return result;
 }
 
+- (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt
+{
+  NSMutableArray        *result = [[c[0] cache] objectForKey: stmt];
+
+  if (result != nil)
+    {
+      result = [[result mutableCopy] autorelease];
+    }
+  return result;
+}
+
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...
 {
