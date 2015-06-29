@@ -3118,7 +3118,7 @@ static int	        poolConnections = 0;
   transaction = (SQLTransaction*)NSAllocateObject(self, 0,
     NSDefaultMallocZone());
  
-  transaction->_db = [clientOrPool retain];
+  transaction->_owner = [clientOrPool retain];
   transaction->_info = [NSMutableArray new];
   transaction->_batch = isBatched;
   transaction->_stop = stopOnFailure;
@@ -3356,7 +3356,7 @@ static int	        poolConnections = 0;
   NSMutableArray        *p;
 
   va_start (ap, stmt);
-  p = [_db prepare: stmt args: ap];
+  p = [_owner prepare: stmt args: ap];
   va_end (ap);
   [self _merge: p];
 }
@@ -3365,7 +3365,7 @@ static int	        poolConnections = 0;
 {
   NSMutableArray        *p;
 
-  p = [_db prepare: stmt with: values];
+  p = [_owner prepare: stmt with: values];
   [self _merge: p];
 }
 
@@ -3373,10 +3373,10 @@ static int	        poolConnections = 0;
 {
   if (other != nil && other->_count > 0)
     {
-      if (NO == [_db isEqual: other->_db])
+      if (NO == [_owner isEqual: other->_owner])
 	{
 	  [NSException raise: NSInvalidArgumentException
-		      format: @"[%@-%@] database client missmatch",
+		      format: @"[%@-%@] database owner missmatch",
 	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
 	}
       if (_merge > 0)
@@ -3406,7 +3406,7 @@ static int	        poolConnections = 0;
   SQLTransaction        *c;
 
   c = (SQLTransaction*)NSCopyObject(self, 0, z);
-  c->_db = [c->_db retain];
+  c->_owner = [c->_owner retain];
   c->_info = [c->_info mutableCopy];
   return c;
 }
@@ -3418,12 +3418,12 @@ static int	        poolConnections = 0;
 
 - (id) db
 {
-  return _db;
+  return _owner;
 }
 
 - (void) dealloc
 {
-  [_db release]; _db = nil;
+  [_owner release]; _owner = nil;
   [_info release]; _info = nil;
   [super dealloc];
 }
@@ -3432,7 +3432,7 @@ static int	        poolConnections = 0;
 {
   return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
     [super description],
-    (_count == 0 ? (id)@"" : (id)_info), _db];
+    (_count == 0 ? (id)@"" : (id)_info), _owner];
 }
 
 - (void) execute
@@ -3445,14 +3445,14 @@ static int	        poolConnections = 0;
       NSRecursiveLock   *dbLock;
       BOOL              wrap;
 
-      if ([_db isKindOfClass: [SQLClientPool class]])
+      if ([_owner isKindOfClass: [SQLClientPool class]])
         {
-          pool = (SQLClientPool*)_db;
+          pool = (SQLClientPool*)_owner;
           db = [pool provideClient];
         }
       else
         {
-          db = _db;
+          db = _owner;
         }
           
       dbLock = [db _lock];
@@ -3537,14 +3537,14 @@ static int	        poolConnections = 0;
       SQLClientPool     *pool = nil;
       SQLClient         *db;
 
-      if ([_db isKindOfClass: [SQLClientPool class]])
+      if ([_owner isKindOfClass: [SQLClientPool class]])
         {
-          pool = (SQLClientPool*)_db;
+          pool = (SQLClientPool*)_owner;
           db = [pool provideClient];
         }
       else
         {
-          db = _db;
+          db = _owner;
         }
 
       dbLock = [db _lock];
@@ -3674,16 +3674,21 @@ static int	        poolConnections = 0;
 		  format: @"[%@-%@] attempt to insert nil/empty transaction",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
     }
-  if (NO == [_db isEqual: trn->_db])
+  if (NO == [_owner isEqual: trn->_owner])
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"[%@-%@] database client missmatch",
+		  format: @"[%@-%@] database owner missmatch",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
     }
   trn = [trn copy];
   [_info addObject: trn];
   _count += trn->_count;
   [trn release];
+}
+
+- (id) owner
+{
+  return _owner;
 }
 
 - (void) removeTransactionAtIndex: (unsigned)index
@@ -3740,7 +3745,7 @@ static int	        poolConnections = 0;
   o = [_info objectAtIndex: index];
   if ([o isKindOfClass: NSArrayClass] == YES)
     {
-      SQLTransaction	*t = [[self db] transaction];
+      SQLTransaction	*t = [[self owner] transaction];
 
       [t addPrepared: o];
       return t;

@@ -1784,7 +1784,7 @@ SQLCLIENT_PRIVATE
 @interface	SQLTransaction : NSObject <NSCopying>
 {
 SQLCLIENT_PRIVATE
-  id		        _db;
+  id		        _owner;
   NSMutableArray	*_info;
   unsigned		_count;
   BOOL                  _batch;
@@ -1834,14 +1834,6 @@ SQLCLIENT_PRIVATE
  * of statements, use the -totalCount method.
  */
 - (NSUInteger) count;
-
-/**
- * Returns the database client with which this instance operates.<br />
- * This client is retained by the transaction.<br />
- * If the transaction was created by/for an SQLClientPool, this method
- * returns that pool rather than an individual client.
- */
-- (id) db;
 
 /**
  * <p>Performs any statements added to the transaction as a single operation.
@@ -1907,6 +1899,14 @@ SQLCLIENT_PRIVATE
  * database client as the receiver.
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
+
+/**
+ * Returns the database client with which this instance operates.<br />
+ * This client is retained by the transaction.<br />
+ * If the transaction was created by/for an SQLClientPool, this method
+ * returns that pool rather than an individual client.
+ */
+- (id) owner;
 
 /** Remove the index'th transaction or statement from the receiver.
  */

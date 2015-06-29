@@ -6,6 +6,7 @@
 	Implement another missing convenience method.
 	Fix locking error when executing a batch.
 	Add -prepare:with: method for use by transactions.
+	Add -owner method to get a transaction's owner.
 
 2015-06-27 Richard Frith-Macdonald  <rfm@gnu.org>
 

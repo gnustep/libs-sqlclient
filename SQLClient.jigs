@@ -72,7 +72,7 @@
 	"add:with:",
 	"append:",
 	"count",
-	"db",
+	"owner",
 	"execute",
 	"reset"
       );
