@@ -337,7 +337,7 @@
     }
   u[found] = YES;
   t[found] = now;
-  [lock unlockWithCondition: cond];
+  [self _unlock];
   client = [c[found] autorelease];
   if (_debugging > 2)
     {
@@ -742,7 +742,7 @@
 {
   unsigned int   index;
 
-  [lock lock];
+  [self _lock];
   for (index = 0; index < max; index++)
     {
       SQLClient *client = c[index];
@@ -759,7 +759,7 @@
           [client setClientName: n];
         }
     }
-  [lock unlock];
+  [self _unlock];
 }
 
 - (SQLTransaction*) transaction

@@ -1,3 +1,11 @@
+2015-06-29 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* SQLClientPool.m:
+	Implement another missing convenience method.
+	Fix locking error when executing a batch.
+
 2015-06-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

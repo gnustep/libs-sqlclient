@@ -3543,7 +3543,7 @@ static int	        poolConnections = 0;
 
   if (_count > 0)
     {
-      NSRecursiveLock   *dbLock = [_db _lock];
+      NSRecursiveLock   *dbLock;
       SQLClientPool     *pool = nil;
       SQLClient         *db;
 
