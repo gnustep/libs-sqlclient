@@ -3373,7 +3373,11 @@ static int	        poolConnections = 0;
 {
   if (other != nil && other->_count > 0)
     {
-      if (NO == [_owner isEqual: other->_owner])
+      /* Owners must the the same client, or the same pool, or members
+       * of the same pool oar a client and the pool it belongs to.
+       */
+      if (NO == [_owner isEqual: other->_owner]
+       && NO == [[_owner pool] isEqual: [other->_owner pool]])
 	{
 	  [NSException raise: NSInvalidArgumentException
 		      format: @"[%@-%@] database owner missmatch",

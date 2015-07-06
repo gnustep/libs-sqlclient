@@ -974,6 +974,11 @@
   return result;
 }
 
+- (SQLClientPool*) pool
+{
+  return self;
+}
+
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
 {
   return [c[0] prepare: stmt args: args];
