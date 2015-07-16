@@ -157,6 +157,25 @@ static Class	SQLClientClass = Nil;
 {
   return order;
 }
+
+- (NSUInteger) sizeInBytesExcluding: (NSHashTable*)exclude
+{
+  NSUInteger    size = [super sizeInBytesExcluding: exclude];
+
+  if (size > 0)
+    {
+      if (0 == bytes)
+        {
+          bytes = size;
+          bytes += [order sizeInBytesExcluding: exclude];
+          bytes += [map sizeInBytesExcluding: exclude];
+          bytes += [low sizeInBytesExcluding: exclude];
+        }
+      size = bytes;
+    }
+  return size;
+}
+
 @end
 
 
@@ -653,6 +672,36 @@ static Class rClass = 0;
 	}
       return size;
     }
+}
+
+- (NSUInteger) sizeInBytesExcluding: (NSHashTable*)exclude
+{
+  static NSUInteger     (*imp)(id,SEL,id) = 0;
+  NSUInteger            size;
+
+  /* We use the NSObject implementation to get the memory used,
+   * and then add in the fields within the record.
+   */
+  if (0 == imp)
+    {
+      imp = (NSUInteger(*)(id,SEL,id))
+        [NSObject instanceMethodForSelector: _cmd];
+    }
+  size = (*imp)(self, _cmd, exclude);
+  if (size > 0)
+    {
+      NSUInteger	pos;
+      id		*ptr;
+
+      size += [keys sizeInBytesExcluding: exclude];
+      size += sizeof(void*) * count;
+      ptr = (id*)(((void*)&count) + sizeof(count));
+      for (pos = 0; pos < count; pos++)
+	{
+	  size += [ptr[pos] sizeInBytesExcluding: exclude];
+	}
+    }
+  return size;
 }
 
 @end

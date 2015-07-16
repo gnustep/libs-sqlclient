@@ -217,6 +217,7 @@ extern NSString * const SQLClientDidDisconnectNotification;
   NSArray       *order; // Keys in order
   NSMapTable    *map;   // Key to index
   NSMapTable    *low;   // lowercase map
+  NSUInteger    bytes;  // Size in bytes
 }
 
 /** Returns the number of keys in the receiver.
