@@ -100,9 +100,8 @@ static NSDate*
 newDateFromBuffer(const char *b, int l)
 {
   NSCalendarDate	*d;
-  NSTimeZone 		*zone;
+  NSTimeZone 		*zone = nil;
   int		        milliseconds = 0;
-  int                   timezone = 0;
   int			day;
   int			month;
   int			year;
@@ -143,6 +142,7 @@ newDateFromBuffer(const char *b, int l)
       hour = 0;
       minute = 0;
       second = 0;
+      zone = [NSTimeZone localTimeZone];
     }
   else
     {
@@ -188,6 +188,7 @@ newDateFromBuffer(const char *b, int l)
       if (i < l && ('+' == b[i] || '-' == b[i]))
 	{
 	  char	sign = b[i++];
+          int   timezone;
 
 	  if (i >= l || !isdigit(b[i])) return nil;
 	  timezone = b[i++] - '0';
@@ -210,17 +211,21 @@ newDateFromBuffer(const char *b, int l)
 	    }
 	  if ('-' == sign)
 	    timezone = -timezone;
+          if (timezone % 60 == 0)
+            {
+              zone = zones[23 + timezone / 60];
+            }
+          else
+            {
+              zone = [NSTimeZone timeZoneForSecondsFromGMT: timezone * 60];
+            }
 	}
+      else
+        {
+          zone = [NSTimeZone localTimeZone];
+        }
     }
 
-  if (timezone % 60 == 0)
-    {
-      zone = zones[23 + timezone / 60];
-    }
-  else
-    {
-      zone = [NSTimeZone timeZoneForSecondsFromGMT: timezone * 60];
-    }
 
   d = [NSCalendarDate alloc];
   if (year <= 1)
