@@ -914,6 +914,7 @@ static inline unsigned int trim(char *str, unsigned len)
       case 1022:        // DOUBLE ARRAY
       case 1002:        // CHAR ARRAY
       case 1009:        // TEXT ARRAY
+      case 1014:        // "char" ARRAY
       case 1015:        // VARCHAR ARRAY
       case 1263:        // CSTRING ARRAY
         if ('{' == *p)
