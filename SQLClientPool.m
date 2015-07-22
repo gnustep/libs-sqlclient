@@ -221,7 +221,8 @@
       [_lock lock];
       for (index = 0; index < _max; index++)
         {
-          if (_items[index].o == thread && _items[index].u < NSNotFound)
+          if (_items[index].o == thread && _items[index].u < NSNotFound
+            && NO == [_items[index].c isInTransaction])
             {
               connected = -1;   // Ignore any other connected client
               found = index;
