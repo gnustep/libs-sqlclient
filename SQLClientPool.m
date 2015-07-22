@@ -112,10 +112,6 @@
   _max = 0;
   _min = 0;
   _items = 0;
-  [_lock unlock];
-  DESTROY(_lock);
-  DESTROY(_config);
-  DESTROY(_name);
   if (0 != old)
     {
       for (i = 0; i < count; i++)
@@ -129,6 +125,10 @@
         }
       free(old);
     }
+  [_lock unlock];
+  DESTROY(_lock);
+  DESTROY(_config);
+  DESTROY(_name);
   [SQLClientPool _adjustPoolConnections: -count];
   [super dealloc];
 }
@@ -194,18 +194,83 @@
 
 - (SQLClient*) provideClient
 {
-  return [self provideClientBeforeDate: nil];
+  return [self provideClientBeforeDate: nil exclusive: NO];
 }
 
 - (SQLClient*) provideClientBeforeDate: (NSDate*)when
 {
+  return [self provideClientBeforeDate: when exclusive: NO];
+}
+
+- (SQLClient*) provideClientBeforeDate: (NSDate*)when exclusive: (BOOL)isLocal
+{
+  NSThread              *thread = [NSThread currentThread];
   NSTimeInterval        start = [NSDate timeIntervalSinceReferenceDate];
   NSTimeInterval        now = start;
-  SQLClient             *client;
+  SQLClient             *client = nil;
   int                   connected = -1;
   int                   found = -1;
   int                   cond = 0;
   int                   index;
+
+  /* If this is a request for a non-exclusive connection, we can simply
+   * check to see if there's already such a connection available.
+   */
+  if (NO == isLocal)
+    {
+      [_lock lock];
+      for (index = 0; index < _max; index++)
+        {
+          if (_items[index].o == thread && _items[index].u < NSNotFound)
+            {
+              connected = -1;   // Ignore any other connected client
+              found = index;
+              break;
+            }
+          if (nil == _items[index].o && 0 == _items[index].u)
+            {
+              if (connected < 0 && YES == [_items[index].c connected])
+                {
+                  connected = index;
+                }
+              else
+                {
+                  found = index;
+                }
+            }
+        }
+      if (connected >= 0)
+        {
+          found = connected;    // Prefer a connected client.
+        }
+      if (found >= 0)
+        {
+          _items[found].t = now;
+          if (0 == _items[found].u++)
+            {
+              ASSIGN(_items[found].o, thread);
+              client = [_items[found].c autorelease];
+            }
+          else
+            {
+              /* We have already provided this client, so we must retain it
+               * before we autorelease it, to keep retain counts  in sync.
+               */
+              client = [[_items[found].c retain] autorelease];
+            }
+          _immediate++;
+        }
+      [self _unlock];
+      if (nil != client)
+        {
+          if (_debugging > 2)
+            {
+              NSLog(@"%@ provides %p%@",
+                self, _items[found].c, [self _rc: client]);
+            }
+          return client;
+        }
+    }
 
   /* If we haven't been given a timeout, we should wait for a client
    * indefinitely ... so we set the timeout to be in the distant future.
@@ -329,8 +394,16 @@
     {
       found = connected;
     }
-  _items[found].u++;
+  if (YES == isLocal)
+    {
+      _items[found].u = NSNotFound;
+    }
+  else
+    {
+      _items[found].u++;
+    }
   _items[found].t = now;
+  ASSIGN(_items[found].o, thread);
   [self _unlock];
   client = [_items[found].c autorelease];
   if (_debugging > 2)
@@ -338,6 +411,11 @@
       NSLog(@"%@ provides %p%@", self, _items[found].c, [self _rc: client]);
     }
   return client;
+}
+
+- (SQLClient*) provideClientExclusive
+{
+  return [self provideClientBeforeDate: nil exclusive: YES];
 }
 
 - (void) purge
@@ -700,11 +778,32 @@
     {
       if (_items[index].u > 0 && client == _items[index].c)
         {
-          _items[index].u--;
           found = YES;
           if (YES == shouldRetain)
             {
               NSIncrementExtraRefCount(client);
+              if (NSNotFound == _items[index].u)
+                {
+                  /* This was exclusively owned, so now it must not be
+                   * owned by any thread.
+                   */
+                  _items[index].u = 0;
+                }
+              else
+                {
+                  _items[index].u--;
+                }
+            }
+          else
+            {
+              /* Nothing is using this client connection any more (it had
+               * -dealloc called), so we know the count must be zero.
+               */
+              _items[index].u = 0;
+            }
+          if (0 == _items[index].u)
+            {
+              DESTROY(_items[index].o);
             }
         }
     }

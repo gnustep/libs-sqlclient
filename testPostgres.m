@@ -76,13 +76,14 @@ main()
 #if 1
 {
   NSAutoreleasePool     *p;
+  NSAutoreleasePool     *q;
   SQLClient             *c0;
   SQLClient             *c1;
 
   [sp setDebugging: 4];
   p = [NSAutoreleasePool new];
-  c0 = [sp provideClient];
-  c1 = [sp provideClient];
+  c0 = [sp provideClientExclusive];
+  c1 = [sp provideClientExclusive];
   NSLog(@"Got two clients from pool");
   [c0 connect];
   [c1 connect];
@@ -96,31 +97,46 @@ main()
   [NSThread sleepForTimeInterval: 1.0];
   NSLog(@"Expecting purge to disconnect one client");
   [sp purge];
-  c0 = [sp provideClient];
-  c1 = [sp provideClient];
+  c0 = [sp provideClientExclusive];
+  c1 = [sp provideClientExclusive];
   NSLog(@"Expecting connected: %@", [c0 connected] ? @"YES" : @"NO");
   NSLog(@"Expecting not connected: %@", [c1 connected] ? @"NO" : @"YES");
 
   NSLog(@"Pool has provided both it's clients ... now try for another with a 15 second timeout");
-  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]
+                    exclusive: YES];
   NSLog(@"Emptying autorelease pool ... clients should be put back in pool");
   [p release];
   p = [NSAutoreleasePool new];
   NSLog(@"Getting two clients again");
-  c0 = [sp provideClient];
-  c1 = [sp provideClient];
+  c0 = [sp provideClientExclusive];
+  c1 = [sp provideClientExclusive];
   NSLog(@"Pool has provided both it's clients ... now try for another with a 15 second timeout");
-  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]];
+  [sp provideClientBeforeDate: [NSDate dateWithTimeIntervalSinceNow: 15.0]
+                    exclusive: YES];
   NSLog(@"Emptying autorelease pool again");
   [p release];
+  p = [NSAutoreleasePool new];
+  c0 = [sp provideClient];
+  q = [NSAutoreleasePool new];
+  c1 = [sp provideClient];
+  if (c0 != c1)
+    {
+      NSLog(@"ERROR was expecting provideClient to give the same object");
+      exit(1);
+    }
+  [q release];
+  [c0 connect]; 
+  [p release];
+
   NSLog(@"Expect to get client immediately");
 }
 #endif
-  db = [sp provideClient];
+  db = [sp provideClientExclusive];
   [sp swallowClient: db];
 
   [sp queryString: @"SELECT CURRENT_TIMESTAMP", nil];
-  db = [sp provideClient];
+  db = [sp provideClientExclusive];
 
   l = [Logger new];
   [[NSNotificationCenter defaultCenter] addObserver: l

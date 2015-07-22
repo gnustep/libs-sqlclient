@@ -1635,17 +1635,36 @@ typedef struct {
 
 /** Fetches an (autoreleased) client from the pool.<br />
  * This method blocks indefinitely waiting for a client to become
- * available in the pool.
+ * available in the pool.<br />
+ * Calls -provideClientBeforeDate:exclusive: for a date in the distant
+ * future and for a non-exclusive client.
  */
 - (SQLClient*) provideClient;
+
+/** Fetches an (autoreleased) client from the pool.<br />
+ * Calls -provideClientBeforeDate:exclusive: for a non-exclusive client.
+ */
+- (SQLClient*) provideClientBeforeDate: (NSDate*)when;
 
 /** Fetches an (autoreleased) client from the pool.<br />
  * If no client is or becomes available before the specified date then
  * the method returns nil.<br />
  * If when is nil then a date in the distant future is used so that
- * the method will effectively wait forever to get a client.
+ * the method will effectively wait forever to get a client.<br />
+ * If isLocal is YES, this method provides a client which will not be
+ * used elsewhere in the same thread until/unless the calling code
+ * returns it to the pool. Otherwise (isLocal is NO), the client may
+ * be used by other code in the same thread.
  */
-- (SQLClient*) provideClientBeforeDate: (NSDate*)when;
+- (SQLClient*) provideClientBeforeDate: (NSDate*)when exclusive: (BOOL)isLocal;
+
+/** Fetches an (autoreleased) client from the pool.<br />
+ * This method blocks indefinitely waiting for a client to become
+ * available in the pool.<br />
+ * Calls -provideClientBeforeDate:exclusive: for a date in the distant
+ * future and for an exclusive client.
+ */
+- (SQLClient*) provideClientExclusive;
 
 /**
  * Disconnects the least recently active unused database clients in the

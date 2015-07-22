@@ -3,7 +3,15 @@
 	* SQLClient.h:
 	* SQLClientPool.m:
 	Change internal pool data to allow for storing reference counts and
-	the threads which own each client conenction.
+	the threads which own each client connection.
+	Support exclusive and non-exclusive clients in the pool, where an
+	exclusive client is one which is only usable by the code which
+	fetched it from the pool, but a non-exclusive client may be provided
+	to other code in the same thread.
+	Change behavior of -provideClient and -provideClientBeforeDate: to
+	provide non-exclusive clients.
+	Add -provideClientExclusive and -provideClientBeforeDate:exclusive:
+	to support the old behavior.
 
 2015-07-17  Niels Grewe <niels.grewe@halbordnung.de>
 
