@@ -1,3 +1,10 @@
+2015-07-22 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClientPool.m:
+	Change internal pool data to allow for storing reference counts and
+	the threads which own each client conenction.
+
 2015-07-17  Niels Grewe <niels.grewe@halbordnung.de>
 
 	* Postgres.m: Support for "char"[] parsing.

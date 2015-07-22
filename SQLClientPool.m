@@ -33,6 +33,7 @@
 #import	<Foundation/NSInvocation.h>
 #import	<Foundation/NSLock.h>
 #import	<Foundation/NSString.h>
+#import	<Foundation/NSThread.h>
 #import	<Foundation/NSUserDefaults.h>
 
 #import	<Performance/GSCache.h>
@@ -75,10 +76,10 @@
   int   index;
 
   [self _lock];
-  available = index = max;
+  available = index = _max;
   while (index-- > 0)
     {
-      if (YES == u[index])
+      if (_items[index].u > 0)
         {
           available--;
         }
@@ -96,44 +97,37 @@
 
 - (GSCache*) cache
 {
-  return [c[0] cache];
+  return [_items[0].c cache];
 }
 
 - (void) dealloc
 {
-  SQLClient             **clients;
-  NSTimeInterval        *times;
-  BOOL                  *used;
+  SQLClientPoolItem     *old;
   int                   count;
   int                   i;
 
-  [lock lock];
-  count = max;
-  max = 0;
-  min = 0;
-  clients = c;
-  times = t;
-  used = u;
-  c = 0;
-  t = 0;
-  u = 0;
-  [lock unlock];
-  DESTROY(lock);
+  [_lock lock];
+  count = _max;
+  old = _items;
+  _max = 0;
+  _min = 0;
+  _items = 0;
+  [_lock unlock];
+  DESTROY(_lock);
   DESTROY(_config);
   DESTROY(_name);
-  if (0 != clients)
+  if (0 != old)
     {
       for (i = 0; i < count; i++)
         {
-          [clients[i] _clearPool: self];
-          if (NO == used[i])
+          [old[i].c _clearPool: self];
+          [old[i].o release];
+          if (0 == old[i].u)
             {
-              [clients[i] release];
+              [old[i].c release];
             }
         }
-      free(clients);
-      free(times);
-      free(used);
+      free(old);
     }
   [SQLClientPool _adjustPoolConnections: -count];
   [super dealloc];
@@ -165,7 +159,7 @@
             }
         }
       ASSIGNCOPY(_name, reference);
-      lock = [[NSConditionLock alloc] initWithCondition: 0];
+      _lock = [[NSConditionLock alloc] initWithCondition: 0];
       [self setMax: maxConnections min: minConnections];
     }
   return self;
@@ -179,18 +173,18 @@
   [s appendString: @", "];
   [s appendString: [self status]];
   [s appendString: [self statistics]];
-  [s appendString: [c[0] description]];
+  [s appendString: [_items[0].c description]];
   return s;
 }
 
 - (int) maxConnections
 {
-  return max;
+  return _max;
 }
 
 - (int) minConnections
 {
-  return min;
+  return _min;
 }
 
 - (NSString*) name
@@ -232,7 +226,7 @@
    * but if not we want to log every ten seconds (and possibly
    * when we begin waiting).
    */
-  if (YES == [lock tryLockWhenCondition: 1])
+  if (YES == [_lock tryLockWhenCondition: 1])
     {
       _immediate++;
     }
@@ -256,15 +250,15 @@
             {
               /* End date is passed ... try to get the lock immediately.
                */
-              locked = [lock tryLockWhenCondition: 1];
+              locked = [_lock tryLockWhenCondition: 1];
             }
           else if ([when earlierDate: until] == until)
             { 
-              locked = [lock lockWhenCondition: 1 beforeDate: until];
+              locked = [_lock lockWhenCondition: 1 beforeDate: until];
             }
           else
             { 
-              locked = [lock lockWhenCondition: 1 beforeDate: when];
+              locked = [_lock lockWhenCondition: 1 beforeDate: when];
             }
           now = [NSDate timeIntervalSinceReferenceDate];
           dif = now - start;
@@ -306,9 +300,9 @@
       _delayWaits += dif;
     }
 
-  for (index = 0; index < max && 0 == cond; index++)
+  for (index = 0; index < _max && 0 == cond; index++)
     {
-      if (NO == u[index])
+      if (0 == _items[index].u)
         {
           if (connected >= 0 || found >= 0)
             {
@@ -317,7 +311,7 @@
                */
               cond = 1;
             }
-          if (connected < 0 && YES == [c[index] connected])
+          if (connected < 0 && YES == [_items[index].c connected])
             {
               connected = index;
             }
@@ -335,13 +329,13 @@
     {
       found = connected;
     }
-  u[found] = YES;
-  t[found] = now;
+  _items[found].u++;
+  _items[found].t = now;
   [self _unlock];
-  client = [c[found] autorelease];
+  client = [_items[found].c autorelease];
   if (_debugging > 2)
     {
-      NSLog(@"%@ provides %p%@", self, c[found], [self _rc: client]);
+      NSLog(@"%@ provides %p%@", self, _items[found].c, [self _rc: client]);
     }
   return client;
 }
@@ -359,18 +353,18 @@
       int       index;
 
       more = NO;
-      for (index = 0; index < max; index++)
+      for (index = 0; index < _max; index++)
         {
-          if (YES == [c[index] connected])
+          if (YES == [_items[index].c connected])
             {
               /* This is a connected client.
                */
               connected++;
-              if (NO == u[index])
+              if (0 == _items[index].u)
                 {
                   /* Not in use; so a candidate to be purged
                    */
-                  found = [c[index] longestIdle: found];
+                  found = [_items[index].c longestIdle: found];
                 }
             }
         }
@@ -385,7 +379,7 @@
                 self, found, age);
             }
           if (age > _purgeAll
-            || (connected > min && age > _purgeMin))
+            || (connected > _min && age > _purgeMin))
             {
               NS_DURING
                 {
@@ -415,12 +409,12 @@
   [self _lock];
   if (nil == aCache)
     {
-      [c[0] setCache: nil];
-      aCache = [c[0] cache];
+      [_items[0].c setCache: nil];
+      aCache = [_items[0].c cache];
     }
-  for (index = 1; index < max; index++)
+  for (index = 1; index < _max; index++)
     {
-      [c[index] setCache: aCache];
+      [_items[index].c setCache: aCache];
     }
   [self _unlock];
 }
@@ -430,9 +424,9 @@
   int   index;
 
   [self _lock];
-  for (index = 0; index < max; index++)
+  for (index = 0; index < _max; index++)
     {
-      [c[index] setCacheThread: aThread];
+      [_items[index].c setCacheThread: aThread];
     }
   [self _unlock];
 }
@@ -443,9 +437,9 @@
 
   [self _lock];
   _debugging = level;
-  for (index = 0; index < max; index++)
+  for (index = 0; index < _max; index++)
     {
-      [c[index] setDebugging: _debugging];
+      [_items[index].c setDebugging: _debugging];
     }
   [self _unlock];
 }
@@ -456,9 +450,9 @@
 
   [self _lock];
   _duration = threshold;
-  for (index = 0; index < max; index++)
+  for (index = 0; index < _max; index++)
     {
-      [c[index] setDurationLogging: _duration];
+      [_items[index].c setDurationLogging: _duration];
     }
   [self _unlock];
 }
@@ -473,54 +467,52 @@
   if (minConnections > maxConnections) minConnections = maxConnections;
 
   [self _lock];
-  old = max;
-  if (maxConnections != max)
+  old = _max;
+  if (maxConnections != _max)
     {
       GSCache   *cache = nil;
 
-      if (max > 0)
+      if (_max > 0)
         {
-          while (max > maxConnections)
+          while (_max > maxConnections)
             {
-              max--;
-              [c[max] _clearPool: self];
-              if (NO == u[max])
+              _max--;
+              [_items[_max].c _clearPool: self];
+              if (0 == _items[_max].u)
                 {
-                  [c[max] release];
+                  [_items[_max].c release];
                 }
             }
-          c = realloc(c, maxConnections * sizeof(SQLClient*));
-          t = realloc(t, maxConnections * sizeof(NSTimeInterval));
-          u = realloc(u, maxConnections * sizeof(BOOL));
+          _items = realloc(_items, maxConnections * sizeof(SQLClientPoolItem));
         }
       else
         {
-          c = calloc(maxConnections, sizeof(SQLClient*));
-          t = calloc(maxConnections, sizeof(NSTimeInterval));
-          u = calloc(maxConnections, sizeof(BOOL));
+          _items = calloc(maxConnections, sizeof(SQLClientPoolItem));
         }
-      for (index = max; index < maxConnections; index++)
+      for (index = _max; index < maxConnections; index++)
         {
-          u[index] = NO;
-          c[index] = [[SQLClient alloc] initWithConfiguration: _config
-                                                         name: _name
-                                                         pool: self];
+          _items[index].o = nil;
+          _items[index].t = 0.0;
+          _items[index].u = 0;
+          _items[index].c = [[SQLClient alloc] initWithConfiguration: _config
+                                                                name: _name
+                                                                pool: self];
 
           /* All the clients in the pool should share the same cache.
            */
           if (0 == index)
             {
-              cache = [c[index] cache];
+              cache = [_items[index].c cache];
             }
           else
             {
-              [c[index] setCache: cache];
+              [_items[index].c setCache: cache];
             }
         }
-      max = maxConnections;
-      [SQLClientPool _adjustPoolConnections: max - old];
+      _max = maxConnections;
+      [SQLClientPool _adjustPoolConnections: _max - old];
     }
-  min = minConnections;
+  _min = minConnections;
   [self _unlock];
 }
 
@@ -579,15 +571,15 @@
   int                   index;
   NSMutableString       *s;
 
-  [lock lock];
-  for (index = 0; index < max; index++)
+  [_lock lock];
+  for (index = 0; index < _max; index++)
     {
-      SQLClient *client = c[index];
+      SQLClient *client = _items[index].c;
 
       /* Check to see if this client is free to be taken from the pool.
        * Also, if a client is connected but not in use, we call it idle.
        */
-      if (YES == u[index])
+      if (_items[index].u > 0)
         {
           /* This is a client which has been provided by the pool,
            * so it is in use by some code.
@@ -616,10 +608,10 @@
                     {
                       d = [client lastConnect];
                     }
-                  if ([d timeIntervalSinceReferenceDate] < t[index])
+                  if ([d timeIntervalSinceReferenceDate] < _items[index].t)
                     {
                       d = [NSDate dateWithTimeIntervalSinceReferenceDate:
-                        t[index]];
+                        _items[index].t];
                     }
                   if (nil == idleInfo)
                     {
@@ -641,7 +633,7 @@
            * so we must therefore re-lock with condition 1.
            */
           cond = 1;
-          if (YES == [c[index] connected])
+          if (YES == [_items[index].c connected])
             {
               /* Still connected, so we count it as a free connection.
                */
@@ -658,7 +650,7 @@
 
   s = [NSMutableString stringWithFormat: @" size min: %u, max: %u\n"
     @"live:%u, used:%u, idle:%u, free:%u, dead:%u\n",
-    min, max, live, used, idle, free, dead];
+    _min, _max, live, used, idle, free, dead];
   if (liveInfo)
     {
       for (index = 0; index < [liveInfo count]; index++)
@@ -673,7 +665,7 @@
           [s appendString: [idleInfo objectAtIndex: index]];
         }
     }
-  [lock unlockWithCondition: cond];
+  [_lock unlockWithCondition: cond];
   return s;
 }
 
@@ -704,11 +696,11 @@
     }
 
   [self _lock];
-  for (index = 0; index < max && NO == found; index++)
+  for (index = 0; index < _max && NO == found; index++)
     {
-      if (YES == u[index] && client == c[index])
+      if (_items[index].u > 0 && client == _items[index].c)
         {
-          u[index] = NO;
+          _items[index].u--;
           found = YES;
           if (YES == shouldRetain)
             {
@@ -743,9 +735,9 @@
   unsigned int   index;
 
   [self _lock];
-  for (index = 0; index < max; index++)
+  for (index = 0; index < _max; index++)
     {
-      SQLClient *client = c[index];
+      SQLClient *client = _items[index].c;
 
       if (nil == s)
         {
@@ -775,7 +767,7 @@
 
 - (void) _lock
 {
-  [lock lock];
+  [_lock lock];
 }
 
 - (NSString*) _rc: (SQLClient*)o
@@ -804,17 +796,17 @@
 {
   int   index;
 
-  for (index = 0; index < max; index++)
+  for (index = 0; index < _max; index++)
     {
       /* Check to see if this client is free to be taken from the pool.
        */
-      if (NO == u[index])
+      if (0 == _items[index].u)
         {
-          [lock unlockWithCondition: 1];
+          [_lock unlockWithCondition: 1];
           return;
         }
     }
-  [lock unlockWithCondition: 0];
+  [_lock unlockWithCondition: 0];
 }
 
 @end
@@ -830,7 +822,7 @@
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  sql = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
+  sql = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   return sql;
@@ -838,14 +830,14 @@
 
 - (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  NSString      *result = [c[0] buildQuery: stmt with: values];
+  NSString      *result = [_items[0].c buildQuery: stmt with: values];
 
   return result;
 }
 
 - (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt
 {
-  NSMutableArray        *result = [[c[0] cache] objectForKey: stmt];
+  NSMutableArray        *result = [[_items[0].c cache] objectForKey: stmt];
 
   if (result != nil)
     {
@@ -862,7 +854,7 @@
   va_list	        ap;
 
   va_start (ap, stmt);
-  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -945,7 +937,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  info = [c[0] prepare: stmt args: ap];
+  info = [_items[0].c prepare: stmt args: ap];
   va_end (ap);
   db = [self provideClient];
   NS_DURING
@@ -981,12 +973,12 @@
 
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
 {
-  return [c[0] prepare: stmt args: args];
+  return [_items[0].c prepare: stmt args: args];
 }
 
 - (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values
 {
-  return [c[0] prepare: stmt with: values];
+  return [_items[0].c prepare: stmt with: values];
 }
 
 - (NSMutableArray*) query: (NSString*)stmt, ...
@@ -999,7 +991,7 @@
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -1038,7 +1030,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -1072,7 +1064,7 @@
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[c[0] prepare: stmt args: ap] objectAtIndex: 0];
+  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
@@ -1105,7 +1097,7 @@
 
 - (NSString*) quote: (id)obj
 {
-  NSString      *result = [c[0] quote: obj];
+  NSString      *result = [_items[0].c quote: obj];
 
   return result;
 }
@@ -1116,7 +1108,7 @@
 {
   NSMutableString       *result;
 
-  result = [c[0] quoteArray: a toString:s quotingStrings: _q];
+  result = [_items[0].c quoteArray: a toString:s quotingStrings: _q];
 
   return result;
 }
@@ -1131,49 +1123,49 @@
   str = [[NSString allocWithZone: NSDefaultMallocZone()]
     initWithFormat: fmt arguments: ap];
   va_end(ap);
-  quoted = [c[0] quoteString: str];
+  quoted = [_items[0].c quoteString: str];
   [str release];
   return quoted;
 }
 
 - (NSString*) quoteBigInteger: (int64_t)i
 {
-  NSString      *result = [c[0] quoteBigInteger: i];
+  NSString      *result = [_items[0].c quoteBigInteger: i];
 
   return result;
 }
 
 - (NSString*) quoteCString: (const char *)s
 {
-  NSString      *result = [c[0] quoteCString: s];
+  NSString      *result = [_items[0].c quoteCString: s];
 
   return result;
 }
 
 - (NSString*) quoteChar: (char)chr
 {
-  NSString      *result = [c[0] quoteChar: chr];
+  NSString      *result = [_items[0].c quoteChar: chr];
 
   return result;
 }
 
 - (NSString*) quoteFloat: (float)f
 {
-  NSString      *result = [c[0] quoteFloat: f];
+  NSString      *result = [_items[0].c quoteFloat: f];
 
   return result;
 }
 
 - (NSString*) quoteInteger: (int)i
 {
-  NSString      *result = [c[0] quoteInteger: i];
+  NSString      *result = [_items[0].c quoteInteger: i];
 
   return result;
 }
 
 - (NSString*) quoteString: (NSString *)s
 {
-  NSString      *result = [c[0] quoteString: s];
+  NSString      *result = [_items[0].c quoteString: s];
 
   return result;
 }

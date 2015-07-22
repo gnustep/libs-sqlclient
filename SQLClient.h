@@ -1537,6 +1537,13 @@ SQLCLIENT_PRIVATE
 - (void) setCacheThread: (NSThread*)aThread;
 @end
 
+typedef struct {
+    SQLClient           *c;     /** The clients of the pool. */
+    NSThread            *o;     /** The thread owning the client */
+    NSUInteger          u;      /** Count of client usage. */
+    NSTimeInterval      t;      /** When client was removed from pool. */
+} SQLClientPoolItem;
+
 /** <p>An SQLClientPool instance may be used to create/control a pool of
  * client objects.  Code may obtain autoreleased proxies to the clients
  * from the pool and use them safe in the knowledge that they won't be
@@ -1559,12 +1566,10 @@ SQLCLIENT_PRIVATE
  */
 @interface	SQLClientPool : NSObject
 {
-  NSConditionLock       *lock;  /** Controls access to the pool contents */
-  SQLClient             **c;    /** The clients of the pool. */
-  BOOL                  *u;     /** Whether the client is in use. */
-  NSTimeInterval        *t;     /** When client was removed from pool. */
-  int                   max;    /** Maximum connection count */
-  int                   min;    /** Minimum connection count */
+  NSConditionLock       *_lock;         /** Controls access to items */
+  SQLClientPoolItem     *_items;        /** The items in the pool */
+  int                   _max;           /** Maximum connection count */
+  int                   _min;           /** Minimum connection count */
   NSDictionary          *_config;       /** The pool configuration object */
   NSString              *_name;         /** The pool configuration name */
   NSTimeInterval	_duration;      /** Duration logging threshold */
