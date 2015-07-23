@@ -934,6 +934,7 @@ static int	        poolConnections = 0;
           rollbackStatement
             = [[NSArray arrayWithObject: rollbackString] retain];
           NSStringClass = [NSString class];
+          NSDateClass = [NSDate class];
           NSArrayClass = [NSArray class];
           NSSetClass = [NSSet class];
           [NSTimer scheduledTimerWithTimeInterval: 1.0

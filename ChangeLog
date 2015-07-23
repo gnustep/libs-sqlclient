@@ -1,3 +1,9 @@
+2015-07-23  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* SQLClient.m (initialize): Restore initialization of NSDateClass
+	so that dates are quoted correctly irrespective of their current
+	format.
+
 2015-07-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
