@@ -208,7 +208,7 @@
   NSTimeInterval        start = [NSDate timeIntervalSinceReferenceDate];
   NSTimeInterval        now = start;
   SQLClient             *client = nil;
-  int                   connected = -1;
+  int                   preferred = -1;
   int                   found = -1;
   int                   cond = 0;
   int                   index;
@@ -224,15 +224,14 @@
           if (_items[index].o == thread && _items[index].u < NSNotFound
             && NO == [_items[index].c isInTransaction])
             {
-              connected = -1;   // Ignore any other connected client
-              found = index;
+              preferred = index;        // Ignore any other connected client
               break;
             }
           if (nil == _items[index].o && 0 == _items[index].u)
             {
-              if (connected < 0 && YES == [_items[index].c connected])
+              if (preferred < 0 && YES == [_items[index].c connected])
                 {
-                  connected = index;
+                  preferred = index;
                 }
               else
                 {
@@ -240,9 +239,9 @@
                 }
             }
         }
-      if (connected >= 0)
+      if (preferred >= 0)
         {
-          found = connected;    // Prefer a connected client.
+          found = preferred;    // Prefer a connected client.
         }
       if (found >= 0)
         {
@@ -370,30 +369,40 @@
     {
       if (0 == _items[index].u)
         {
-          if (connected >= 0 || found >= 0)
+          if (preferred >= 0 || found >= 0)
             {
               /* There's at least one more client available to be
                * provided, so we want to re-lock with condition 1.
                */
               cond = 1;
             }
-          if (connected < 0 && YES == [_items[index].c connected])
+          if (preferred < 0 && YES == [_items[index].c connected])
             {
-              connected = index;
+              preferred = index;
             }
           else
             {
               found = index;
             }
         }
+      else if (NO == isLocal
+        && _items[index].o == thread
+        && _items[index].u < NSNotFound
+        && NO == [_items[index].c isInTransaction])
+        {
+          /* We are allowed to re-use connections in the current thread,
+           * so if we have found one, treat it as the preferred choice.
+           */
+          preferred = index;
+        }
     }
 
   /* We prefer to use a client which is already connected, so we
    * avoid opening unnecessary connections.
    */
-  if (connected >= 0)
+  if (preferred >= 0)
     {
-      found = connected;
+      found = preferred;
     }
   if (YES == isLocal)
     {
