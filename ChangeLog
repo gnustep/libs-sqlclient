@@ -1,3 +1,8 @@
+2015-07-22 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: disconnect on fatal error, so we don't keep trying to
+	re-use the same connection when there's a problem with the server.
+
 2015-07-23  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* SQLClient.m (initialize): Restore initialization of NSDateClass

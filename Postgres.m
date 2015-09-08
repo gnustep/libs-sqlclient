@@ -430,18 +430,36 @@ connectQuote(NSString *str)
 	      p = PQparameterStatus(connection, "standard_conforming_strings");
               if (p != 0)
                 {
+                  PGresult	*result;
+
                   /* If the escape_string_warning setting is on,
                    * the server will warn about backslashes even
                    * in properly quoted strings, so turn it off.
                    */
                   if (strcmp(p, "on") == 0)
                     {
-                      [self execute: @"SET escape_string_warning=off", nil];
+                      result = PQexec(connection,
+                        "SET escape_string_warning=off");
                     }
                   else
                     {
-                      [self execute: @"SET standard_conforming_strings=on;"
-                        @"SET escape_string_warning=off", nil];
+                      result = PQexec(connection,
+                        "SET standard_conforming_strings=on;"
+                        "SET escape_string_warning=off");
+                    }
+                  if (0 == result
+                    || PQresultStatus(result) != PGRES_COMMAND_OK)
+                    {
+                      [self debug: @"Error setting string handling"
+                        @" with '%@' (%@) - %s",
+                        [self name], m, PQerrorMessage(connection)];
+                      if (result != 0)
+                        {
+                          PQclear(result);
+                        }
+                      PQfinish(connection);
+                      connection = 0;
+                      connected = NO;
                     }
                 }
               else
@@ -454,7 +472,14 @@ connectQuote(NSString *str)
 
 	      if ([self debugging] > 0)
 		{
-		  [self debug: @"Connected to '%@'", [self name]];
+                  if (YES == connected)
+                    {
+                      [self debug: @"Connected to '%@'", [self name]];
+                    }
+                  else
+                    {
+                      [self debug: @"Disconnected '%@'", [self name]];
+                    }
 		}
 	    }
 	}
@@ -634,6 +659,7 @@ connectQuote(NSString *str)
             {
               str = [NSString stringWithCString: cstr];
             }
+          [self backendDisconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -989,6 +1015,7 @@ static inline unsigned int trim(char *str, unsigned len)
             {
               str = [NSString stringWithCString: cstr];
             }
+          [self backendDisconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
