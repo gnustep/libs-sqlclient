@@ -523,6 +523,7 @@ connectQuote(NSString *str)
 	}
       NS_ENDHANDLER
     }
+  connected = NO;
 }
 
 - (void) _postNotification: (NSNotification*)n
@@ -658,7 +659,7 @@ connectQuote(NSString *str)
             {
               str = [NSString stringWithCString: cstr];
             }
-          [self disconnect];
+          [self backendDisconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -1014,7 +1015,7 @@ static inline unsigned int trim(char *str, unsigned len)
             {
               str = [NSString stringWithCString: cstr];
             }
-          [self disconnect];
+          [self backendDisconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
