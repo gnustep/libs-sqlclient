@@ -641,7 +641,9 @@ connectQuote(NSString *str)
 			     giving: &length];
 
       result = PQexec(connection, statement);
-      if (0 == result || PQresultStatus(result) == PGRES_FATAL_ERROR)
+      if (0 == result
+        || (PQresultStatus(result) != PGRES_COMMAND_OK
+          && PQresultStatus(result) != PGRES_TUPLES_OK))
 	{
 	  NSString	*str;
 	  const char	*cstr;
@@ -659,15 +661,13 @@ connectQuote(NSString *str)
             {
               str = [NSString stringWithCString: cstr];
             }
+          if (result != 0)
+            {
+              PQclear(result);
+            }
           [self backendDisconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
-	}
-      if (PQresultStatus(result) != PGRES_COMMAND_OK
-        && PQresultStatus(result) != PGRES_TUPLES_OK)
-	{
-	  [NSException raise: SQLException format: @"Error executing %@: %s",
-	    stmt, PQresultErrorMessage(result)];
 	}
       tuples = PQcmdTuples(result);
       if (0 != tuples)
@@ -997,7 +997,9 @@ static inline unsigned int trim(char *str, unsigned len)
 
       statement = (char*)[stmt UTF8String];
       result = PQexec(connection, statement);
-      if (0 == result || PQresultStatus(result) == PGRES_FATAL_ERROR)
+      if (0 == result
+        || (PQresultStatus(result) != PGRES_COMMAND_OK
+          && PQresultStatus(result) != PGRES_TUPLES_OK))
 	{
 	  NSString	*str;
 	  const char	*cstr;
@@ -1014,6 +1016,10 @@ static inline unsigned int trim(char *str, unsigned len)
           if (nil == str)
             {
               str = [NSString stringWithCString: cstr];
+            }
+          if (result != 0)
+            {
+              PQclear(result);
             }
           [self backendDisconnect];
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
@@ -1128,15 +1134,10 @@ static inline unsigned int trim(char *str, unsigned len)
 	      [obj[i] release];
 	    }
 	}
-      else if (PQresultStatus(result) == PGRES_COMMAND_OK)
-	{
-	  [NSException raise: SQLException format: @"Error executing %@: %s",
-	    stmt, "query produced no result"];
-	}
       else
 	{
 	  [NSException raise: SQLException format: @"Error executing %@: %s",
-	    stmt, PQresultErrorMessage(result)];
+	    stmt, "query produced no result"];
 	}
     }
   NS_HANDLER
