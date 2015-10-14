@@ -664,8 +664,12 @@ connectQuote(NSString *str)
           if (result != 0)
             {
               PQclear(result);
+              result = 0;
             }
-          [self backendDisconnect];
+          if (PQstatus(connection) != CONNECTION_OK)
+            {
+              [self backendDisconnect];
+            }
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -677,13 +681,11 @@ connectQuote(NSString *str)
     }
   NS_HANDLER
     {
-      NSString	*n = [localException name];
-
       if (result != 0)
 	{
 	  PQclear(result);
 	}
-      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
+      if (YES == connected && PQstatus(connection) != CONNECTION_OK)
 	{
 	  [self disconnect];
 	}
@@ -1020,8 +1022,12 @@ static inline unsigned int trim(char *str, unsigned len)
           if (result != 0)
             {
               PQclear(result);
+              result = 0;
             }
-          [self backendDisconnect];
+          if (PQstatus(connection) != CONNECTION_OK)
+            {
+              [self backendDisconnect];
+            }
 	  [NSException raise: SQLException format: @"Error executing %@: %@",
 	    stmt, str];
 	}
@@ -1142,13 +1148,12 @@ static inline unsigned int trim(char *str, unsigned len)
     }
   NS_HANDLER
     {
-      NSString	*n = [localException name];
-
       if (result != 0)
 	{
 	  PQclear(result);
+          result = 0;
 	}
-      if (YES == connected && [n isEqual: SQLConnectionException] == YES) 
+      if (YES == connected && PQstatus(connection) != CONNECTION_OK)
 	{
 	  [self disconnect];
 	}
