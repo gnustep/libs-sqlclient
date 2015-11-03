@@ -1845,7 +1845,7 @@ SQLCLIENT_PRIVATE
  * a group of merged transactions fails, it is then possible to attempt
  * to commit the individual transactions separately.<br />
  * NB. All transactions appended must be using the same database
- * connection (SQLClient instance).
+ * connection (SQLClient/SQLClientPool instance).
  */
 - (void) append: (SQLTransaction*)other;
 
@@ -1922,7 +1922,7 @@ SQLCLIENT_PRIVATE
 /**
  * Insert trn at the index'th position in the receiver.<br />
  * The transaction trn must be non-empty and must use the same
- * database client as the receiver.
+ * database client/pool as the receiver.
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
 

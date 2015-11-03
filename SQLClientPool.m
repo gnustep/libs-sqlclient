@@ -650,6 +650,7 @@
 {
   NSMutableArray        *idleInfo = nil;
   NSMutableArray        *liveInfo = nil;
+  NSMutableString       *retainInfo = nil;
   unsigned int          cond = 0;
   unsigned int          free = 0;
   unsigned int          dead = 0;
@@ -662,7 +663,8 @@
   [_lock lock];
   for (index = 0; index < _max; index++)
     {
-      SQLClient *client = _items[index].c;
+      SQLClient         *client = _items[index].c;
+      NSUInteger        rc = [client retainCount];
 
       /* Check to see if this client is free to be taken from the pool.
        * Also, if a client is connected but not in use, we call it idle.
@@ -682,8 +684,10 @@
                   liveInfo = [NSMutableArray array];
                 }
               [liveInfo addObject: [NSString stringWithFormat:
-                @"  Client '%@' active in transaction since %@\n",
-                [client name], d]];
+                @"  Client '%@' (retain count %"PRIuPTR
+                @") active in transaction since %@\n",
+                [client name], rc, d]];
+              rc = 0;
             }
           else
             {
@@ -706,8 +710,10 @@
                       idleInfo = [NSMutableArray array];
                     }
                   [idleInfo addObject: [NSString stringWithFormat:
-                    @"  Client '%@' taken from pool but idle since %@\n",
-                    [client name], d]];
+                    @"  Client '%@' (retain count %"PRIuPTR
+                    @") taken from pool but idle since %@\n",
+                    [client name], rc, d]];
+                  rc = 0;
                 }
               else
                 {
@@ -734,11 +740,24 @@
               dead++;
             }
         }
+      if (rc > 1)
+        {
+          if (nil == retainInfo)
+            {
+              retainInfo = [NSMutableString stringWithCapacity: 100];
+            }
+          [retainInfo appendFormat:
+            @"  Client '%@' (retain count %"PRIuPTR
+            @") %s pool\n",
+            [client name], rc,
+            (_items[index].u > 0) ? "taken from" : "available in"];
+        }
     }
 
   s = [NSMutableString stringWithFormat: @" size min: %u, max: %u\n"
     @"live:%u, used:%u, idle:%u, free:%u, dead:%u\n",
     _min, _max, live, used, idle, free, dead];
+
   if (liveInfo)
     {
       for (index = 0; index < [liveInfo count]; index++)
@@ -752,6 +771,10 @@
         {
           [s appendString: [idleInfo objectAtIndex: index]];
         }
+    }
+  if (retainInfo)
+    {
+      [s appendString: retainInfo];
     }
   [_lock unlockWithCondition: cond];
   return s;
