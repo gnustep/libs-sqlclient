@@ -861,7 +861,7 @@
 
 - (BOOL) swallowClient: (SQLClient*)client
 {
-  return [self _swallowClient: client withRetain: YES];
+  return [self _swallowClient: client explicit: YES];
 }
 
 - (void) setClientName: (NSString*)s
