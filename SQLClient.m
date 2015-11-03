@@ -86,7 +86,7 @@ static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
 
 @interface      SQLClientPool (Swallow)
-- (BOOL) _swallowClient: (SQLClient*)client withRetain: (BOOL)shouldRetain;
+- (BOOL) _swallowClient: (SQLClient*)client explicit: (BOOL)swallowed;
 @end
 @interface      SQLTransaction (Creation)
 + (SQLTransaction*) _transactionUsing: (id)clientOrPool
@@ -2067,7 +2067,7 @@ static int	        poolConnections = 0;
     {
       if (nil != _pool)
         {
-          [_pool _swallowClient: self withRetain: NO];
+          [_pool _swallowClient: self explicit: NO];
         }
       else
         {

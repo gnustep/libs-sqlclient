@@ -780,7 +780,7 @@
   return s;
 }
 
-- (BOOL) _swallowClient: (SQLClient*)client withRetain: (BOOL)shouldRetain
+- (BOOL) _swallowClient: (SQLClient*)client explicit: (BOOL)swallowed
 {
   BOOL  found = NO;
   int   index;
@@ -812,15 +812,17 @@
       if (_items[index].u > 0 && client == _items[index].c)
         {
           found = YES;
-          if (YES == shouldRetain)
+          if (YES == swallowed)
             {
-              NSIncrementExtraRefCount(client);
-              if (NSNotFound == _items[index].u)
+              if (NSNotFound == _items[index].u || 1 == _items[index].u)
                 {
-                  /* This was exclusively owned, so now it must not be
-                   * owned by any thread.
+                  /* This was only provided once, and has been explicitly
+                   * swallowed by the pool again, so we should increment
+                   * the reference count to prevent an implicit swallow
+                   * caused by deallocation.
                    */
                   _items[index].u = 0;
+                  NSIncrementExtraRefCount(client);
                 }
               else
                 {
