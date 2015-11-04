@@ -912,15 +912,30 @@
       static Class      cls = Nil;
       unsigned long     rc;
       unsigned long     ac;
+      unsigned long     uc;
+      int               index;
 
       if (Nil == cls)
         {
           cls = [NSAutoreleasePool class];
         }
+
       rc = (unsigned long)[o retainCount];
       ac = (unsigned long)[cls autoreleaseCountForObject: o];
-      return [NSString stringWithFormat: @" refs %ld (%lu-%lu)",
-        rc - ac, rc, ac];
+      [_lock lock];
+      uc = 0;
+      for (index = 0; index < _max; index++)
+        {
+          if (o == _items[index].c)
+            {
+              uc = _items[index].u;
+              break;
+            }
+        }
+      [self _unlock];
+      return [NSString stringWithFormat:
+        @" provided %ld times (retained:%lu - autoreleased:%lu)",
+        uc, rc, ac];
     }
 #endif
   return @"";
