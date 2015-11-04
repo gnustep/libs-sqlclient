@@ -762,16 +762,19 @@ static Class      cls = Nil;
            * so we must therefore re-lock with condition 1.
            */
           cond = 1;
-          if (nil == retainInfo)
+          if (_debugging > 0)
             {
-              retainInfo = [NSMutableString stringWithCapacity: 100];
+              if (nil == retainInfo)
+                {
+                  retainInfo = [NSMutableString stringWithCapacity: 100];
+                }
+              [retainInfo appendFormat:
+                @"  Client '%@' (retain count %"PRIuPTR
+                @") %s pool %s connected to server\n",
+                [client name], rc,
+                ((_items[index].u > 0) ? "taken from" : "available in"),
+                ((YES == connected) ? "and" : "but not")];
             }
-          [retainInfo appendFormat:
-            @"  Client '%@' (retain count %"PRIuPTR
-            @") %s pool %s connected to server\n",
-            [client name], rc,
-            ((_items[index].u > 0) ? "taken from" : "available in"),
-            ((YES == connected) ? "and" : "but not")];
           if (YES == connected)
             {
               /* Still connected, so we count it as a free connection.
