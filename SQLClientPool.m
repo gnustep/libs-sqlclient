@@ -70,6 +70,16 @@
 
 @implementation	SQLClientPool
 
+static Class      cls = Nil;
+
++ (void) initialize
+{
+  if (Nil == cls)
+    {
+      cls = [NSAutoreleasePool class];
+    }
+}
+
 - (int) availableConnections
 {
   int   available;
@@ -665,12 +675,33 @@
     {
       SQLClient         *client = _items[index].c;
       NSUInteger        rc = [client retainCount];
+      NSUInteger        uc = _items[index].u;
 
       /* Check to see if this client is free to be taken from the pool.
        * Also, if a client is connected but not in use, we call it idle.
        */
-      if (_items[index].u > 0)
+      if (uc > 0)
         {
+          NSUInteger    ac;
+          NSString      *s;
+
+          ac = [cls autoreleaseCountForObject: client];
+          if (NSNotFound == uc)
+            {
+              s = [NSString stringWithFormat: @"  Client '%@'"
+                @" provided exclusively (retained:%llu - autoreleased:%llu)",
+                [client name],
+                (unsigned long long)rc, (unsigned long long)ac];
+            }
+          else
+            {
+              s = [NSString stringWithFormat: @"  Client '%@'"
+                @" provided %lld time%s (retained:%llu - autoreleased:%llu)",
+                [client name],
+                (unsigned long long)uc, (1 == uc) ? "" : "s",
+                (unsigned long long)rc, (unsigned long long)ac];
+            }
+
           /* This is a client which has been provided by the pool,
            * so it is in use by some code.
            */
@@ -683,10 +714,8 @@
                 {
                   liveInfo = [NSMutableArray array];
                 }
-              [liveInfo addObject: [NSString stringWithFormat:
-                @"  Client '%@' (retain count %"PRIuPTR
-                @") active in transaction since %@\n",
-                [client name], rc, d]];
+              [liveInfo addObject: [s stringByAppendingFormat:
+                @" active in transaction since %@\n", d]];
               rc = 0;
             }
           else
@@ -709,15 +738,14 @@
                     {
                       idleInfo = [NSMutableArray array];
                     }
-                  [idleInfo addObject: [NSString stringWithFormat:
-                    @"  Client '%@' (retain count %"PRIuPTR
-                    @") taken from pool but idle since %@\n",
-                    [client name], rc, d]];
-                  rc = 0;
+                  [idleInfo addObject: [s stringByAppendingFormat:
+                    @" taken from pool but idle since %@\n", d]];
                 }
               else
                 {
                   idle++;
+                  [idleInfo addObject: [s stringByAppendingFormat:
+                    @" taken from pool and recently used\n"]];
                 }
             }
         }
@@ -739,18 +767,18 @@
                */
               dead++;
             }
-        }
-      if (rc > 1)
-        {
-          if (nil == retainInfo)
+          if (rc > 1)
             {
-              retainInfo = [NSMutableString stringWithCapacity: 100];
+              if (nil == retainInfo)
+                {
+                  retainInfo = [NSMutableString stringWithCapacity: 100];
+                }
+              [retainInfo appendFormat:
+                @"  Client '%@' (retain count %"PRIuPTR
+                @") %s pool\n",
+                [client name], rc,
+                (_items[index].u > 0) ? "taken from" : "available in"];
             }
-          [retainInfo appendFormat:
-            @"  Client '%@' (retain count %"PRIuPTR
-            @") %s pool\n",
-            [client name], rc,
-            (_items[index].u > 0) ? "taken from" : "available in"];
         }
     }
 
@@ -909,16 +937,10 @@
 #if     defined(GNUSTEP)
   if (_debugging > 3)
     {
-      static Class      cls = Nil;
       NSUInteger        rc;
       NSUInteger        ac;
       NSUInteger        uc;
       int               index;
-
-      if (Nil == cls)
-        {
-          cls = [NSAutoreleasePool class];
-        }
 
       rc = (unsigned long)[o retainCount];
       ac = (unsigned long)[cls autoreleaseCountForObject: o];
@@ -942,8 +964,8 @@
       else
         {
           return [NSString stringWithFormat:
-            @" provided %lld times (retained:%llu - autoreleased:%llu)",
-            (unsigned long long)uc,
+            @" provided %lld time%s (retained:%llu - autoreleased:%llu)",
+            (unsigned long long)uc, (1 == uc) ? "" : "s",
             (unsigned long long)rc, (unsigned long long)ac];
         }
     }
