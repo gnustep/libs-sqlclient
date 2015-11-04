@@ -70,6 +70,7 @@
 
 @implementation	SQLClientPool
 
+#if     defined(GNUSTEP)
 static Class      cls = Nil;
 
 + (void) initialize
@@ -79,6 +80,7 @@ static Class      cls = Nil;
       cls = [NSAutoreleasePool class];
     }
 }
+#endif
 
 - (int) availableConnections
 {
@@ -580,6 +582,7 @@ static Class      cls = Nil;
                 {
                   [_items[_max].c release];
                 }
+              DESTROY(_items[_max].o);
             }
           _items = realloc(_items, maxConnections * sizeof(SQLClientPoolItem));
         }
@@ -682,25 +685,27 @@ static Class      cls = Nil;
        */
       if (uc > 0)
         {
-          NSUInteger    ac;
-          NSString      *s;
+          NSString      *tmp;
 
-          ac = [cls autoreleaseCountForObject: client];
           if (NSNotFound == uc)
             {
-              s = [NSString stringWithFormat: @"  Client '%@'"
-                @" provided exclusively (retained:%llu - autoreleased:%llu)",
-                [client name],
-                (unsigned long long)rc, (unsigned long long)ac];
+              tmp = [NSString stringWithFormat: @"  Client '%@'"
+                @" provided exclusively (retained:%"PRIuPTR,
+                [client name], rc];
             }
           else
             {
-              s = [NSString stringWithFormat: @"  Client '%@'"
-                @" provided %lld time%s (retained:%llu - autoreleased:%llu)",
-                [client name],
-                (unsigned long long)uc, (1 == uc) ? "" : "s",
-                (unsigned long long)rc, (unsigned long long)ac];
+              tmp = [NSString stringWithFormat: @"  Client '%@'"
+                @" provided %"PRIuPTR
+                @" time%s (retained:%"PRIuPTR,
+                [client name], uc, ((1 == uc) ? "" : "s"), rc];
             }
+
+#if     defined(GNUSTEP)
+          NSUInteger    ac = [cls autoreleaseCountForObject: client];
+
+          tmp = [tmp stringByAppendingFormat: @" - autoreleased:%"PRIuPTR, ac];
+#endif
 
           /* This is a client which has been provided by the pool,
            * so it is in use by some code.
@@ -714,8 +719,8 @@ static Class      cls = Nil;
                 {
                   liveInfo = [NSMutableArray array];
                 }
-              [liveInfo addObject: [s stringByAppendingFormat:
-                @" active in transaction since %@\n", d]];
+              [liveInfo addObject: [tmp stringByAppendingFormat:
+                @") active in transaction since %@\n", d]];
               rc = 0;
             }
           else
@@ -738,24 +743,36 @@ static Class      cls = Nil;
                     {
                       idleInfo = [NSMutableArray array];
                     }
-                  [idleInfo addObject: [s stringByAppendingFormat:
-                    @" taken from pool but idle since %@\n", d]];
+                  [idleInfo addObject: [tmp stringByAppendingFormat:
+                    @") taken from pool but idle since %@\n", d]];
                 }
               else
                 {
                   idle++;
-                  [idleInfo addObject: [s stringByAppendingFormat:
-                    @" taken from pool and recently used\n"]];
+                  [idleInfo addObject: [tmp stringByAppendingFormat:
+                    @") taken from pool and recently used\n"]];
                 }
             }
         }
       else
         {
+          BOOL  connected = [_items[index].c connected];
+
           /* The client is not in use and can be provided by the pool,
            * so we must therefore re-lock with condition 1.
            */
           cond = 1;
-          if (YES == [_items[index].c connected])
+          if (nil == retainInfo)
+            {
+              retainInfo = [NSMutableString stringWithCapacity: 100];
+            }
+          [retainInfo appendFormat:
+            @"  Client '%@' (retain count %"PRIuPTR
+            @") %s pool %s connected to server\n",
+            [client name], rc,
+            ((_items[index].u > 0) ? "taken from" : "available in"),
+            ((YES == connected) ? "and" : "but not")];
+          if (YES == connected)
             {
               /* Still connected, so we count it as a free connection.
                */
@@ -766,18 +783,6 @@ static Class      cls = Nil;
               /* Not connected, so we count it as a dead connection.
                */
               dead++;
-            }
-          if (rc > 1)
-            {
-              if (nil == retainInfo)
-                {
-                  retainInfo = [NSMutableString stringWithCapacity: 100];
-                }
-              [retainInfo appendFormat:
-                @"  Client '%@' (retain count %"PRIuPTR
-                @") %s pool\n",
-                [client name], rc,
-                (_items[index].u > 0) ? "taken from" : "available in"];
             }
         }
     }
@@ -942,8 +947,8 @@ static Class      cls = Nil;
       NSUInteger        uc;
       int               index;
 
-      rc = (unsigned long)[o retainCount];
-      ac = (unsigned long)[cls autoreleaseCountForObject: o];
+      rc = [o retainCount];
+      ac = [cls autoreleaseCountForObject: o];
       [_lock lock];
       uc = 0;
       for (index = 0; index < _max; index++)
@@ -958,15 +963,19 @@ static Class      cls = Nil;
       if (NSNotFound == uc)
         {
           return [NSString stringWithFormat:
-            @" provided exclusively (retained:%llu - autoreleased:%llu)",
-            (unsigned long long)rc, (unsigned long long)ac];
+            @" provided exclusively (retained:%"PRIuPTR
+            @" - autoreleased:%"PRIuPTR
+            @")",
+            rc, ac];
         }
       else
         {
           return [NSString stringWithFormat:
-            @" provided %lld time%s (retained:%llu - autoreleased:%llu)",
-            (unsigned long long)uc, (1 == uc) ? "" : "s",
-            (unsigned long long)rc, (unsigned long long)ac];
+            @" provided %"PRIuPTR
+            @" time%s (retained:%"PRIuPTR
+            @" - autoreleased:%"PRIuPTR
+            @")",
+            uc, ((1 == uc) ? "" : "s"), rc, ac];
         }
     }
 #endif
