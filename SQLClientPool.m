@@ -910,9 +910,9 @@
   if (_debugging > 3)
     {
       static Class      cls = Nil;
-      unsigned long     rc;
-      unsigned long     ac;
-      unsigned long     uc;
+      NSUInteger        rc;
+      NSUInteger        ac;
+      NSUInteger        uc;
       int               index;
 
       if (Nil == cls)
@@ -933,9 +933,19 @@
             }
         }
       [self _unlock];
-      return [NSString stringWithFormat:
-        @" provided %ld times (retained:%lu - autoreleased:%lu)",
-        uc, rc, ac];
+      if (NSNotFound == uc)
+        {
+          return [NSString stringWithFormat:
+            @" provided exclusively (retained:%llu - autoreleased:%llu)",
+            (unsigned long long)rc, (unsigned long long)ac];
+        }
+      else
+        {
+          return [NSString stringWithFormat:
+            @" provided %lld times (retained:%llu - autoreleased:%llu)",
+            (unsigned long long)uc,
+            (unsigned long long)rc, (unsigned long long)ac];
+        }
     }
 #endif
   return @"";
