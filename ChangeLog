@@ -1,3 +1,10 @@
+2016-02-18 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* configure.ac: get host and cpu with more recent gnustep-make
+	* configure: regenerate
+	* JDBC.m: Update for connection pools (bug #47178)
+	* testJDBC.m: get rid of compiler warnings
+
 2015-07-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: disconnect on fatal error, so we don't keep trying to

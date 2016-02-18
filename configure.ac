@@ -14,6 +14,11 @@ else
   . $GNUSTEP_MAKEFILES/GNUstep.sh
 fi
 
+if test "x$GNUSTEP_HOST_OS" = "x"; then
+  GNUSTEP_HOST_OS=`gnustep-config --variable=GNUSTEP_HOST_OS`
+  GNUSTEP_HOST_CPU=`gnustep-config --variable=GNUSTEP_HOST_CPU`
+fi
+
 #--------------------------------------------------------------------
 AC_ARG_WITH(additional-include, [  
 --with-additional-include=flags  

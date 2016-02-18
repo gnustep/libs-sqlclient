@@ -125,7 +125,7 @@ main()
 	  if (count == 0)
 	    {
 	      [db commit];
-	      sleep(1);
+	      [NSThread sleepForTimeInterval: 1.0];
 	      [db begin];
 	      records = [db query: @"SELECT * FROM Queue WHERE Consumer = ",
 		[db quote: name],
@@ -242,7 +242,7 @@ main()
       r0 = [db cache: 1 query: @"select * from xxx", nil];
       r1 = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] == [r1 lastObject], @"Cache failed");
-      sleep(2);
+      [NSThread sleepForTimeInterval: 2.0];
       records = [db cache: 1 query: @"select * from xxx", nil];
       NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
 
@@ -250,7 +250,7 @@ main()
 
       if ([records count] != 3)
 	{
-	  NSLog(@"Expected 3 records but got %u", [records count]);
+	  NSLog(@"Expected 3 records but got %"PRIuPTR, [records count]);
 	}
       else
 	{

@@ -1521,7 +1521,7 @@ static	int	JDBCVARCHAR = 0;
   transaction = (_JDBCTransaction*)NSAllocateObject([_JDBCTransaction class], 0,
     NSDefaultMallocZone());
  
-  transaction->_db = [self retain];
+  transaction->_owner = [self retain];
   transaction->_info = [NSMutableArray new];
   transaction->_batch = YES;
   transaction->_stop = stopOnFailure;
@@ -1680,7 +1680,7 @@ static	int	JDBCVARCHAR = 0;
   transaction = (_JDBCTransaction*)NSAllocateObject([_JDBCTransaction class], 0,
     NSDefaultMallocZone());
  
-  transaction->_db = [self retain];
+  transaction->_owner = [self retain];
   transaction->_info = [NSMutableArray new];
   return [(SQLTransaction*)transaction autorelease];
 }
@@ -1728,20 +1728,12 @@ static	int	JDBCVARCHAR = 0;
   if (_count > 0)
     {
       NSAutoreleasePool *arp = [NSAutoreleasePool new];
+      SQLClientPool     *pool;
+      SQLClient         *db;
       BOOL	wrapped = NO;
       BOOL	batched = NO;
       JNIEnv	*env;
       JInfo	*ji;
-
-      /*
-       * Ensure we have a working connection.
-       */
-      if ([_db connect] == NO)
-	{
-	  [NSException raise: SQLException
-	    format: @"Unable to connect to '%@' to execute transaction %@",
-	    [_db name], self];
-	} 
 
       env = SQLClientJNIEnv();
       if ((*env)->PushLocalFrame (env, 32) < 0)
@@ -1752,16 +1744,38 @@ static	int	JDBCVARCHAR = 0;
 		      format: @"No java memory for execute"];
 	}
 
-      ji = [(SQLClientJDBC*)_db _backendExtra];
+      if ([_owner isKindOfClass: [SQLClientPool class]])
+        {
+          pool = (SQLClientPool*)_owner;
+          db = [pool provideClient];
+        }
+      else
+        {
+          pool = nil;
+          db = _owner;
+        }
+          
+      ji = [(SQLClientJDBC*)db _backendExtra];
 
       NS_DURING
 	{
 	  NSMutableArray	*statements;
 	  unsigned		numberOfStatements;
 	  unsigned		statement;
-	  NSTimeInterval	_duration = [_db durationLogging];
+	  NSTimeInterval	_duration;
 	  NSTimeInterval	start = 0.0;
 
+          /*
+           * Ensure we have a working connection.
+           */
+          if ([db connect] == NO)
+            {
+              [NSException raise: SQLException
+                format: @"Unable to connect to '%@' to execute transaction %@",
+                [_owner name], self];
+            } 
+
+	  _duration = [db durationLogging];
           statements = [NSMutableArray arrayWithCapacity: 100];
           [self _merge: statements];
 	  numberOfStatements = [statements count];
@@ -1771,7 +1785,7 @@ static	int	JDBCVARCHAR = 0;
 	      start = GSTickerTimeNow();
 	    }
 
-	  if ([_db isInTransaction] == NO)
+	  if ([db isInTransaction] == NO)
 	    {
 	      wrapped = YES;
 	    }
@@ -1883,15 +1897,15 @@ static	int	JDBCVARCHAR = 0;
 
 	  (*env)->PopLocalFrame (env, NULL);
 
-	  _db->_lastOperation = GSTickerTimeNow();
+	  db->_lastOperation = GSTickerTimeNow();
 	  if (_duration >= 0)
 	    {
 	      NSTimeInterval	d;
 
-	      d = _db->_lastOperation - start;
+	      d = db->_lastOperation - start;
 	      if (d >= _duration)
 		{
-		  [_db debug: @"Duration %g for transaction %@",
+		  [db debug: @"Duration %g for transaction %@",
 		    d, statements];
 		}
 	    }
@@ -1912,6 +1926,11 @@ static	int	JDBCVARCHAR = 0;
 	  [localException raise];
 	}
       NS_ENDHANDLER
+
+      if (nil != pool)
+        {
+          [pool swallowClient: db];
+        }
 
       [arp release];
     }
