@@ -30,6 +30,7 @@
 #import	<Foundation/NSCharacterSet.h>
 #import	<Foundation/NSData.h>
 #import	<Foundation/NSDate.h>
+#import	<Foundation/NSDictionary.h>
 #import	<Foundation/NSException.h>
 #import	<Foundation/NSLock.h>
 #import	<Foundation/NSMapTable.h>
