@@ -690,6 +690,7 @@ with_jre_architecture
 enable_mysql_bundle
 enable_sqllite_bundle
 enable_postgres_bundle
+enable_ecpg_bundle
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1329,6 +1330,12 @@ Optional Features:
 --disable-postgres-bundle
    Disable creating the Postgres bundle.
    Use this option to force the Postgres bundle not to be built
+   even if the Postgres libraries look like being present.
+
+
+--disable-ecpg-bundle
+   Disable creating the ECPG bundle.
+   Use this option to force the ECPG bundle not to be built
    even if the Postgres libraries look like being present.
 
 
@@ -3612,7 +3619,7 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no: build if possible" >&5
 $as_echo "no: build if possible" >&6; }
 
-for ac_header in mysql/mysql.h
+  for ac_header in mysql/mysql.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "mysql/mysql.h" "ac_cv_header_mysql_mysql_h" "$ac_includes_default"
 if test "x$ac_cv_header_mysql_mysql_h" = xyes; then :
@@ -3624,30 +3631,30 @@ fi
 
 done
 
-if test "$ac_cv_header_mysql_mysql_h" = "yes"; then
-  MYSQL=yes
-else
-  MYSQL=
-  echo "*********************************************************"
-  echo "Unable to locate mysqlclient headers (are they installed)"
-  echo "*********************************************************"
-fi
-if test "$MYSQL" = "yes"; then
-  if test -d /usr/lib/mysql ; then
-    CPPFLAGS="$CPPFLAGS -L/usr/lib/mysql"
-    LIBD="$LIBD -L/usr/lib/mysql"
+  if test "$ac_cv_header_mysql_mysql_h" = "yes"; then
+    MYSQL=yes
   else
-    if test -d /usr/local/lib/mysql ; then
-      CPPFLAGS="$CPPFLAGS -L/usr/local/lib/mysql"
-      LIBD="$LIBD -L/usr/local/lib/mysql"
+    MYSQL=
+    echo "*********************************************************"
+    echo "Unable to locate mysqlclient headers (are they installed)"
+    echo "*********************************************************"
+  fi
+  if test "$MYSQL" = "yes"; then
+    if test -d /usr/lib/mysql ; then
+      CPPFLAGS="$CPPFLAGS -L/usr/lib/mysql"
+      LIBD="$LIBD -L/usr/lib/mysql"
     else
-      if test -d /usr/local/mysql/lib ; then
-        CPPFLAGS="$CPPFLAGS -L/usr/local/mysql/lib"
-        LIBD="$LIBD -L/usr/local/mysql/lib"
+      if test -d /usr/local/lib/mysql ; then
+        CPPFLAGS="$CPPFLAGS -L/usr/local/lib/mysql"
+        LIBD="$LIBD -L/usr/local/lib/mysql"
+      else
+        if test -d /usr/local/mysql/lib ; then
+          CPPFLAGS="$CPPFLAGS -L/usr/local/mysql/lib"
+          LIBD="$LIBD -L/usr/local/mysql/lib"
+        fi
       fi
     fi
-  fi
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_init in -lmysqlclient" >&5
 $as_echo_n "checking for mysql_init in -lmysqlclient... " >&6; }
 if ${ac_cv_lib_mysqlclient_mysql_init+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -3692,16 +3699,15 @@ _ACEOF
 
 fi
 
-  if test "$ac_cv_lib_mysqlclient_mysql_init" != "yes"; then
-    MYSQL=
-    echo "******************************************************"
-    echo "Unable to locate mysqlclient library (is it installed)"
-    echo "******************************************************"
+    if test "$ac_cv_lib_mysqlclient_mysql_init" != "yes"; then
+      MYSQL=
+      echo "******************************************************"
+      echo "Unable to locate mysqlclient library (is it installed)"
+      echo "******************************************************"
+    fi
   fi
 fi
 
-
-fi
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking if Sqllite support was manually disabled" >&5
@@ -3722,7 +3728,7 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no: build if possible" >&5
 $as_echo "no: build if possible" >&6; }
 
-for ac_header in sqlite3.h
+  for ac_header in sqlite3.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "sqlite3.h" "ac_cv_header_sqlite3_h" "$ac_includes_default"
 if test "x$ac_cv_header_sqlite3_h" = xyes; then :
@@ -3734,16 +3740,16 @@ fi
 
 done
 
-if test "$ac_cv_header_sqlite3_h" = "yes"; then
-  SQLITE=yes
-else
-  SQLITE=
-  echo "*****************************************************"
-  echo "Unable to locate sqlite3 headers (are they installed)"
-  echo "*****************************************************"
-fi
-if test "$SQLITE" = "yes"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sqlite3_open in -lsqlite3" >&5
+  if test "$ac_cv_header_sqlite3_h" = "yes"; then
+    SQLITE=yes
+  else
+    SQLITE=
+    echo "*****************************************************"
+    echo "Unable to locate sqlite3 headers (are they installed)"
+    echo "*****************************************************"
+  fi
+  if test "$SQLITE" = "yes"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sqlite3_open in -lsqlite3" >&5
 $as_echo_n "checking for sqlite3_open in -lsqlite3... " >&6; }
 if ${ac_cv_lib_sqlite3_sqlite3_open+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -3788,16 +3794,15 @@ _ACEOF
 
 fi
 
-  if test "$ac_cv_lib_sqlite3_sqlite3_open" != "yes"; then
-    SQLITE=
-    echo "******************************************************"
-    echo "Unable to locate sqlite3 library (is it installed)"
-    echo "******************************************************"
+    if test "$ac_cv_lib_sqlite3_sqlite3_open" != "yes"; then
+      SQLITE=
+      echo "******************************************************"
+      echo "Unable to locate sqlite3 library (is it installed)"
+      echo "******************************************************"
+    fi
   fi
 fi
 
-
-fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking if Postgres support was manually disabled" >&5
 $as_echo_n "checking if Postgres support was manually disabled... " >&6; }
@@ -3817,11 +3822,11 @@ else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no: build if possible" >&5
 $as_echo "no: build if possible" >&6; }
 
-# Start POSTGRES checks
-POSTGRES=
+  # Start POSTGRES checks
+  POSTGRES=
 
-if test "$POSTGRES" = ""; then
-  for ac_header in libpq-fe.h
+  if test "$POSTGRES" = ""; then
+    for ac_header in libpq-fe.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "libpq-fe.h" "ac_cv_header_libpq_fe_h" "$ac_includes_default"
 if test "x$ac_cv_header_libpq_fe_h" = xyes; then :
@@ -3833,30 +3838,13 @@ fi
 
 done
 
-  if test "$ac_cv_header_libpq_fe_h" = "yes"; then
-    POSTGRES=yes
+    if test "$ac_cv_header_libpq_fe_h" = "yes"; then
+      POSTGRES=yes
+    fi
   fi
-fi
-if test "$ECPG" = ""; then
-  for ac_header in ecpglib.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "ecpglib.h" "ac_cv_header_ecpglib_h" "$ac_includes_default"
-if test "x$ac_cv_header_ecpglib_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_ECPGLIB_H 1
-_ACEOF
 
-fi
-
-done
-
-  if test "$ac_cv_header_ecpglib_h" = "yes"; then
-    ECPG=yes
-  fi
-fi
-
-if test "$POSTGRES" = ""; then
-  for ac_header in /usr/include/postgresql/libpq-fe.h
+  if test "$POSTGRES" = ""; then
+    for ac_header in /usr/include/postgresql/libpq-fe.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/postgresql/libpq-fe.h" "ac_cv_header__usr_include_postgresql_libpq_fe_h" "$ac_includes_default"
 if test "x$ac_cv_header__usr_include_postgresql_libpq_fe_h" = xyes; then :
@@ -3868,33 +3856,15 @@ fi
 
 done
 
-  CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
-    POSTGRES=yes
+    CPPFLAGS="$save_CPPFLAGS"
+    if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/include/postgresql"
+      POSTGRES=yes
+    fi
   fi
-fi
-if test "$ECPG" = ""; then
-  for ac_header in /usr/include/postgresql/ecpglib.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/postgresql/ecpglib.h" "ac_cv_header__usr_include_postgresql_ecpglib_h" "$ac_includes_default"
-if test "x$ac_cv_header__usr_include_postgresql_ecpglib_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE__USR_INCLUDE_POSTGRESQL_ECPGLIB_H 1
-_ACEOF
 
-fi
-
-done
-
-  if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql"
-    ECPG=yes
-  fi
-fi
-
-if test "$POSTGRES" = ""; then
-  for ac_header in /usr/include/postgresql/8.0/libpq-fe.h
+  if test "$POSTGRES" = ""; then
+    for ac_header in /usr/include/postgresql/8.0/libpq-fe.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/postgresql/8.0/libpq-fe.h" "ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" "$ac_includes_default"
 if test "x$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = xyes; then :
@@ -3906,33 +3876,15 @@ fi
 
 done
 
-  CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql/8.0"
-    POSTGRES=yes
+    CPPFLAGS="$save_CPPFLAGS"
+    if test "$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/include/postgresql/8.0"
+      POSTGRES=yes
+    fi
   fi
-fi
-if test "$ECPG" = ""; then
-  for ac_header in /usr/include/postgresql/8.0/ecpglib.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/postgresql/8.0/ecpglib.h" "ac_cv_header__usr_include_postgresql_8_0_ecpglib_h" "$ac_includes_default"
-if test "x$ac_cv_header__usr_include_postgresql_8_0_ecpglib_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE__USR_INCLUDE_POSTGRESQL_8_0_ECPGLIB_H 1
-_ACEOF
 
-fi
-
-done
-
-  if test "$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/postgresql/8.0"
-    ECPG=yes
-  fi
-fi
-
-if test "$POSTGRES" = ""; then
-  for ac_header in /usr/include/pgsql/libpq-fe.h
+  if test "$POSTGRES" = ""; then
+    for ac_header in /usr/include/pgsql/libpq-fe.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/pgsql/libpq-fe.h" "ac_cv_header__usr_include_pgsql_libpq_fe_h" "$ac_includes_default"
 if test "x$ac_cv_header__usr_include_pgsql_libpq_fe_h" = xyes; then :
@@ -3944,33 +3896,15 @@ fi
 
 done
 
-  CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/pgsql"
-    POSTGRES=yes
+    CPPFLAGS="$save_CPPFLAGS"
+    if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/include/pgsql"
+      POSTGRES=yes
+    fi
   fi
-fi
-if test "$ECPG" = ""; then
-  for ac_header in /usr/include/pgsql/ecpglib.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/pgsql/ecpglib.h" "ac_cv_header__usr_include_pgsql_ecpglib_h" "$ac_includes_default"
-if test "x$ac_cv_header__usr_include_pgsql_ecpglib_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE__USR_INCLUDE_PGSQL_ECPGLIB_H 1
-_ACEOF
 
-fi
-
-done
-
-  if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/include/pgsql"
-    ECPG=yes
-  fi
-fi
-
-if test "$POSTGRES" = ""; then
-  for ac_header in /usr/local/include/pgsql/libpq-fe.h
+  if test "$POSTGRES" = ""; then
+    for ac_header in /usr/local/include/pgsql/libpq-fe.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "/usr/local/include/pgsql/libpq-fe.h" "ac_cv_header__usr_local_include_pgsql_libpq_fe_h" "$ac_includes_default"
 if test "x$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = xyes; then :
@@ -3982,33 +3916,15 @@ fi
 
 done
 
-  CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/include/pgsql"
-    POSTGRES=yes
+    CPPFLAGS="$save_CPPFLAGS"
+    if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/local/include/pgsql"
+      POSTGRES=yes
+    fi
   fi
-fi
-if test "$ECPG" = ""; then
-  for ac_header in /usr/local/include/pgsql/ecpglib.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "/usr/local/include/pgsql/ecpglib.h" "ac_cv_header__usr_local_include_pgsql_ecpglib_h" "$ac_includes_default"
-if test "x$ac_cv_header__usr_local_include_pgsql_ecpglib_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE__USR_LOCAL_INCLUDE_PGSQL_ECPGLIB_H 1
-_ACEOF
 
-fi
-
-done
-
-  if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/include/pgsql"
-    ECPG=yes
-  fi
-fi
-
-if test "$POSTGRES" = ""; then
-  for ac_header in /usr/local/pgsql/include/libpq-fe.h
+  if test "$POSTGRES" = ""; then
+    for ac_header in /usr/local/pgsql/include/libpq-fe.h
 do :
   ac_fn_c_check_header_mongrel "$LINENO" "/usr/local/pgsql/include/libpq-fe.h" "ac_cv_header__usr_local_pgsql_include_libpq_fe_h" "$ac_includes_default"
 if test "x$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = xyes; then :
@@ -4020,60 +3936,37 @@ fi
 
 done
 
-  CPPFLAGS="$save_CPPFLAGS"
-  if test "$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/pgsql/include"
-    POSTGRES=yes
-  fi
-fi
-if test "$ECPG" = ""; then
-  for ac_header in /usr/local/pgsql/include/ecpglib.h
-do :
-  ac_fn_c_check_header_mongrel "$LINENO" "/usr/local/pgsql/include/ecpglib.h" "ac_cv_header__usr_local_pgsql_include_ecpglib_h" "$ac_includes_default"
-if test "x$ac_cv_header__usr_local_pgsql_include_ecpglib_h" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE__USR_LOCAL_PGSQL_INCLUDE_ECPGLIB_H 1
-_ACEOF
-
-fi
-
-done
-
-  if test "$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = "yes"; then
-    INCD="$INCD -I/usr/local/pgsql/include"
-    ECPG=yes
-  fi
-fi
-
-if test "$POSTGRES" = ""; then
-  echo "**************************************************************"
-  echo "Unable to locate libpq (postgres) headers (are they installed)"
-  echo "**************************************************************"
-fi
-if test "$ECPG" = ""; then
-  echo "*************************************************************"
-  echo "Unable to locate ecpg (postgres) headers (are they installed)"
-  echo "*************************************************************"
-fi
-
-if test "$POSTGRES" = "yes"; then
-  # NICOLA - hack
-  if test -d /usr/lib/pgsql ; then
-    CPPFLAGS="$CPPFLAGS -L/usr/lib/pgsql"
-    LIBD="$LIBD -L/usr/lib/pgsql"
-  else
-    if test -d /usr/local/lib/pgsql ; then
-      CPPFLAGS="$CPPFLAGS -L/usr/local/lib/pgsql"
-      LIBD="$LIBD -L/usr/local/lib/pgsql"
-    else
-      if test -d /usr/local/pgsql/lib ; then
-        CPPFLAGS="$CPPFLAGS -L/usr/local/pgsql/lib"
-        LIBD="$LIBD -L/usr/local/pgsql/lib"
-      fi
+    CPPFLAGS="$save_CPPFLAGS"
+    if test "$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/local/pgsql/include"
+      POSTGRES=yes
     fi
   fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PQfformat in -lpq" >&5
+  if test "$POSTGRES" = ""; then
+    echo "**************************************************************"
+    echo "Unable to locate libpq (postgres) headers (are they installed)"
+    echo "**************************************************************"
+  fi
+
+  if test "$POSTGRES" = "yes"; then
+    # NICOLA - hack
+    if test -d /usr/lib/pgsql ; then
+      CPPFLAGS="$CPPFLAGS -L/usr/lib/pgsql"
+      LIBD="$LIBD -L/usr/lib/pgsql"
+    else
+      if test -d /usr/local/lib/pgsql ; then
+        CPPFLAGS="$CPPFLAGS -L/usr/local/lib/pgsql"
+        LIBD="$LIBD -L/usr/local/lib/pgsql"
+      else
+        if test -d /usr/local/pgsql/lib ; then
+          CPPFLAGS="$CPPFLAGS -L/usr/local/pgsql/lib"
+          LIBD="$LIBD -L/usr/local/pgsql/lib"
+        fi
+      fi
+    fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PQfformat in -lpq" >&5
 $as_echo_n "checking for PQfformat in -lpq... " >&6; }
 if ${ac_cv_lib_pq_PQfformat+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -4118,7 +4011,7 @@ _ACEOF
 
 fi
 
-  if test "$ac_cv_lib_pq_PQfformat" != "yes"; then
+    if test "$ac_cv_lib_pq_PQfformat" != "yes"; then
       POSTGRES=
       { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PQclear in -lpq" >&5
 $as_echo_n "checking for PQclear in -lpq... " >&6; }
@@ -4167,15 +4060,15 @@ fi
 
       echo "******************************************************"
       if test "$ac_cv_lib_pq_PQclear" != "yes"; then
-	echo "Unable to locate postgres pq library (is it installed)"
+        echo "Unable to locate postgres pq library (is it installed)"
       else
-	echo "Located postgres pq library, but it is too old to use!"
+        echo "Located postgres pq library, but it is too old to use!"
       fi
       echo "Perhaps you can try 'configure --with-postgres=dir=path'"
       echo "to point to the postgres version you wish to use."
       echo "******************************************************"
-  else
-    for ac_func in PQescapeStringConn
+    else
+      for ac_func in PQescapeStringConn
 do :
   ac_fn_c_check_func "$LINENO" "PQescapeStringConn" "ac_cv_func_PQescapeStringConn"
 if test "x$ac_cv_func_PQescapeStringConn" = xyes; then :
@@ -4186,8 +4079,215 @@ _ACEOF
 fi
 done
 
+    fi
   fi
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ECPGconnect in -lecpg" >&5
+  # End POSTGRES checks
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if ECPG (Old Postgres) support was manually disabled" >&5
+$as_echo_n "checking if ECPG (Old Postgres) support was manually disabled... " >&6; }
+# Check whether --enable-ecpg-bundle was given.
+if test "${enable_ecpg_bundle+set}" = set; then :
+  enableval=$enable_ecpg_bundle; ac_cv_ecpg_bundle=$enableval
+else
+  ac_cv_ecpg_bundle="yes"
+fi
+
+
+if test "$ac_cv_ecpg_bundle" = "no"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes: disabled from the command-line" >&5
+$as_echo "yes: disabled from the command-line" >&6; }
+  ECPG=
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no: build if possible" >&5
+$as_echo "no: build if possible" >&6; }
+
+  # Start ECPG checks
+  ECPG=
+
+  if test "$ECPG" = ""; then
+    for ac_header in ecpglib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "ecpglib.h" "ac_cv_header_ecpglib_h" "$ac_includes_default"
+if test "x$ac_cv_header_ecpglib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_ECPGLIB_H 1
+_ACEOF
+
+fi
+
+done
+
+    if test "$ac_cv_header_ecpglib_h" = "yes"; then
+      ECPG=yes
+    fi
+  fi
+
+  if test "$ECPG" = ""; then
+    for ac_header in /usr/include/postgresql/ecpglib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/postgresql/ecpglib.h" "ac_cv_header__usr_include_postgresql_ecpglib_h" "$ac_includes_default"
+if test "x$ac_cv_header__usr_include_postgresql_ecpglib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE__USR_INCLUDE_POSTGRESQL_ECPGLIB_H 1
+_ACEOF
+
+fi
+
+done
+
+    if test "$ac_cv_header__usr_include_postgresql_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/include/postgresql"
+      ECPG=yes
+    fi
+  fi
+
+  if test "$ECPG" = ""; then
+    for ac_header in /usr/include/postgresql/8.0/ecpglib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/postgresql/8.0/ecpglib.h" "ac_cv_header__usr_include_postgresql_8_0_ecpglib_h" "$ac_includes_default"
+if test "x$ac_cv_header__usr_include_postgresql_8_0_ecpglib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE__USR_INCLUDE_POSTGRESQL_8_0_ECPGLIB_H 1
+_ACEOF
+
+fi
+
+done
+
+    if test "$ac_cv_header__usr_include_postgresql_8_0_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/include/postgresql/8.0"
+      ECPG=yes
+    fi
+  fi
+
+  if test "$ECPG" = ""; then
+    for ac_header in /usr/include/pgsql/ecpglib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "/usr/include/pgsql/ecpglib.h" "ac_cv_header__usr_include_pgsql_ecpglib_h" "$ac_includes_default"
+if test "x$ac_cv_header__usr_include_pgsql_ecpglib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE__USR_INCLUDE_PGSQL_ECPGLIB_H 1
+_ACEOF
+
+fi
+
+done
+
+    if test "$ac_cv_header__usr_include_pgsql_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/include/pgsql"
+      ECPG=yes
+    fi
+  fi
+
+  if test "$ECPG" = ""; then
+    for ac_header in /usr/local/include/pgsql/ecpglib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "/usr/local/include/pgsql/ecpglib.h" "ac_cv_header__usr_local_include_pgsql_ecpglib_h" "$ac_includes_default"
+if test "x$ac_cv_header__usr_local_include_pgsql_ecpglib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE__USR_LOCAL_INCLUDE_PGSQL_ECPGLIB_H 1
+_ACEOF
+
+fi
+
+done
+
+    if test "$ac_cv_header__usr_local_include_pgsql_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/local/include/pgsql"
+      ECPG=yes
+    fi
+  fi
+
+  if test "$ECPG" = ""; then
+    for ac_header in /usr/local/pgsql/include/ecpglib.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "/usr/local/pgsql/include/ecpglib.h" "ac_cv_header__usr_local_pgsql_include_ecpglib_h" "$ac_includes_default"
+if test "x$ac_cv_header__usr_local_pgsql_include_ecpglib_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE__USR_LOCAL_PGSQL_INCLUDE_ECPGLIB_H 1
+_ACEOF
+
+fi
+
+done
+
+    if test "$ac_cv_header__usr_local_pgsql_include_libpq_fe_h" = "yes"; then
+      INCD="$INCD -I/usr/local/pgsql/include"
+      ECPG=yes
+    fi
+  fi
+
+  if test "$ECPG" = ""; then
+    echo "*************************************************************"
+    echo "Unable to locate ecpg (postgres) headers (are they installed)"
+    echo "*************************************************************"
+  fi
+
+  if test "$ECPG" = "yes"; then
+    # NICOLA - hack
+    if test -d /usr/lib/pgsql ; then
+      CPPFLAGS="$CPPFLAGS -L/usr/lib/pgsql"
+      LIBD="$LIBD -L/usr/lib/pgsql"
+    else
+      if test -d /usr/local/lib/pgsql ; then
+        CPPFLAGS="$CPPFLAGS -L/usr/local/lib/pgsql"
+        LIBD="$LIBD -L/usr/local/lib/pgsql"
+      else
+        if test -d /usr/local/pgsql/lib ; then
+          CPPFLAGS="$CPPFLAGS -L/usr/local/pgsql/lib"
+          LIBD="$LIBD -L/usr/local/pgsql/lib"
+        fi
+      fi
+    fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PQfformat in -lpq" >&5
+$as_echo_n "checking for PQfformat in -lpq... " >&6; }
+if ${ac_cv_lib_pq_PQfformat+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lpq  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char PQfformat ();
+int
+main ()
+{
+return PQfformat ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_pq_PQfformat=yes
+else
+  ac_cv_lib_pq_PQfformat=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pq_PQfformat" >&5
+$as_echo "$ac_cv_lib_pq_PQfformat" >&6; }
+if test "x$ac_cv_lib_pq_PQfformat" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LIBPQ 1
+_ACEOF
+
+  LIBS="-lpq $LIBS"
+
+fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ECPGconnect in -lecpg" >&5
 $as_echo_n "checking for ECPGconnect in -lecpg... " >&6; }
 if ${ac_cv_lib_ecpg_ECPGconnect+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -4232,17 +4332,16 @@ _ACEOF
 
 fi
 
-  if test "$ac_cv_lib_ecpg_ECPGconnect" != "yes"; then
-      ECPG=
-      echo "********************************************************"
-      echo "Unable to locate postgres ecpg library (is it installed)"
-      echo "Perhaps you can try 'configure --with-postgres=dir=path'"
-      echo "to point to the postgres version you wish to use."
-      echo "********************************************************"
+    if test "$ac_cv_lib_ecpg_ECPGconnect" != "yes"; then
+        ECPG=
+        echo "********************************************************"
+        echo "Unable to locate postgres ecpg library (is it installed)"
+        echo "Perhaps you can try 'configure --with-postgres=dir=path'"
+        echo "to point to the postgres version you wish to use."
+        echo "********************************************************"
+    fi
   fi
-fi
-
-# End POSTGRES checks
+  # End ECPG checks
 fi
 
 
