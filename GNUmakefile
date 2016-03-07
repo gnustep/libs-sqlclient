@@ -18,6 +18,10 @@ endif
 
 include $(GNUSTEP_MAKEFILES)/common.make
 
+# Force sequential build to prevent different versions of the same
+# bundle overwriting each other's temporary files during building.
+GNUSTEP_MAKE_PARALLEL_BUILDING=no
+
 -include config.make
 
 PACKAGE_NAME = SQLClient
