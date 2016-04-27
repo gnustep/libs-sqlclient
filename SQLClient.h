@@ -208,6 +208,17 @@ extern NSString * const SQLClientDidDisconnectNotification;
 #define SQLCLIENT_PRIVATE       @private
 #endif
 
+/** This category is to extend NSObject with SQL oriented helper methods.
+ */
+@interface      NSObject(SQLClient)
+
+/** Trivial method to test a field in a record returned from the database
+ * to see if it is a NULL.  This is equivalent to<br />
+ * (receiver == [NSNull null] ? YES : NO)<br />
+ */
+- (BOOL) isNull;
+@end
+
 /** This class is used to hold key information for a set of SQLRecord
  * objects produced by a single query.
  */

@@ -1,3 +1,10 @@
+2016-04-27 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Add -isNull helper method for testing for null fields in records
+	returned from the database.
+
 2016-02-18 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* configure.ac: get host and cpu with more recent gnustep-make

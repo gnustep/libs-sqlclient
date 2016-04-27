@@ -217,7 +217,7 @@ static Class rClass = 0;
 + (void) initialize
 {
   GSTickerTimeNow();
-  if (null == nil)
+  if (nil == null)
     {
       null = [NSNull new];
       aClass = [NSMutableArray class];
@@ -917,6 +917,10 @@ static int	        poolConnections = 0;
     {
       static id	modes[1];
       
+      if (nil == null)
+        {
+          null = [NSNull new];
+        }
       SQLClientClass = self;
       modes[0] = NSDefaultRunLoopMode;
       queryModes = [[NSArray alloc] initWithObjects: modes count: 1];
@@ -4123,5 +4127,16 @@ validName(NSString *name)
   NSAssert(0 == err, NSInvalidArgumentException);
 }
 
+@end
+
+@implementation NSObject (SQLClient)
+- (BOOL) isNull
+{
+  if (nil == null)
+    {
+      null = [NSNull new];
+    }
+  return (self == null ? YES : NO);
+}
 @end
 
