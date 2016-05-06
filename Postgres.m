@@ -759,7 +759,7 @@ static inline unsigned int trim(char *str, unsigned len)
            */
           while (*p != '\0' && *p != '\"')
             {
-              if ('\'' == *p)
+              if ('\\' == *p)
                 {
                   p++;
                 }
