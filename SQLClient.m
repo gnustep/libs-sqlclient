@@ -220,7 +220,13 @@ static Class rClass = 0;
   if (nil == null)
     {
       null = [NSNull new];
+    }
+  if (Nil == aClass)
+    {
       aClass = [NSMutableArray class];
+    }
+  if (Nil == rClass)
+    {
       rClass = [_ConcreteSQLRecord class];
     }
 }
