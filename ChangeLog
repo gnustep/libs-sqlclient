@@ -1,3 +1,8 @@
+2016-05-06 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Fix bug in initialisation ordering.
+	* Postgres.m: Fix bug in array parsing.
+
 2016-04-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
