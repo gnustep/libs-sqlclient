@@ -510,12 +510,15 @@ connectQuote(NSString *str)
   if (extra != 0 && connection != 0)
     {
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
-      if (runLoop != nil)
+      if (extra != 0 && runLoop != nil)
         {
-          [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
-                          type: ET_RDESC
-                       forMode: NSDefaultRunLoopMode
-                           all: YES];
+          if (connection != 0)
+            {
+              [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
+                              type: ET_RDESC
+                           forMode: NSDefaultRunLoopMode
+                               all: YES];
+            }
           DESTROY(runLoop);
         }
 #endif
@@ -730,9 +733,17 @@ connectQuote(NSString *str)
 {
   [self execute: @"LISTEN ", name, nil];
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
-  if (nil == runLoop && 0 != connection)
+  if (extra != 0 && connection != 0)
     {
-      ASSIGN(runLoop, [NSRunLoop currentRunLoop]);
+      if (nil == runLoop)
+        {
+          ASSIGN(runLoop, [NSRunLoop currentRunLoop]);
+        }
+      else if ([NSRunLoop currentRunLoop] != runLoop)
+        {
+          [NSException raise: NSInternalInconsistencyException
+            format: @"Observer added to the same client from another runloop"];
+        }
       [runLoop addEvent: (void*)(uintptr_t)PQsocket(connection)
                    type: ET_RDESC
                 watcher: self
@@ -1209,12 +1220,15 @@ static inline unsigned int trim(char *str, unsigned len)
 - (void) backendUnlisten: (NSString*)name
 {
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
-  if (runLoop != nil)
+  if (extra != 0 && runLoop != nil)
     {
-      [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
-                      type: ET_RDESC
-                   forMode: NSDefaultRunLoopMode
-                       all: YES];
+      if (connection != 0)
+        {
+          [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
+                          type: ET_RDESC
+                       forMode: NSDefaultRunLoopMode
+                           all: YES];
+        }
       DESTROY(runLoop);
     }
 #endif
