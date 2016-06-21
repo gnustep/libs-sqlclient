@@ -39,6 +39,7 @@
 #import	<Foundation/NSNotificationQueue.h>
 #import	<Foundation/NSNull.h>
 #import	<Foundation/NSProcessInfo.h>
+#import	<Foundation/NSRunLoop.h>
 #import	<Foundation/NSString.h>
 #import	<Foundation/NSThread.h>
 #import	<Foundation/NSTimeZone.h>
@@ -61,14 +62,25 @@
 - (NSDate*) dbToDateFromBuffer: (char*)b length: (int)l;
 @end
 
+#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
+@interface SQLClientPostgres (RunLoop) <RunLoopEvents>
+- (void) receivedEvent: (void*)data
+                  type: (RunLoopEventType)type
+                 extra: (void*)extra
+               forMode: (NSString*)mode;
+@end
+#endif
+
 typedef struct	{
   PGconn	*_connection;
   int           _backendPID;
+  NSRunLoop     *_runLoop;
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
 #define	backendPID		(cInfo->_backendPID)
 #define	connection		(cInfo->_connection)
+#define	runLoop		        (cInfo->_runLoop)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -497,6 +509,16 @@ connectQuote(NSString *str)
 {
   if (extra != 0 && connection != 0)
     {
+#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
+      if (runLoop != nil)
+        {
+          [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
+                          type: ET_RDESC
+                       forMode: NSDefaultRunLoopMode
+                           all: YES];
+          DESTROY(runLoop);
+        }
+#endif
       NS_DURING
 	{
 	  if ([self isInTransaction] == YES)
@@ -707,6 +729,16 @@ connectQuote(NSString *str)
 - (void) backendListen: (NSString*)name
 {
   [self execute: @"LISTEN ", name, nil];
+#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
+  if (nil == runLoop && 0 != connection)
+    {
+      ASSIGN(runLoop, [NSRunLoop currentRunLoop]);
+      [runLoop addEvent: (void*)(uintptr_t)PQsocket(connection)
+                   type: ET_RDESC
+                watcher: self
+                forMode: NSDefaultRunLoopMode];
+    }
+#endif
 }
 
 - (void) backendNotify: (NSString*)name payload: (NSString*)more
@@ -1176,6 +1208,16 @@ static inline unsigned int trim(char *str, unsigned len)
 
 - (void) backendUnlisten: (NSString*)name
 {
+#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
+  if (runLoop != nil)
+    {
+      [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
+                      type: ET_RDESC
+                   forMode: NSDefaultRunLoopMode
+                       all: YES];
+      DESTROY(runLoop);
+    }
+#endif
   [self execute: @"UNLISTEN ", name, nil];
 }
 
@@ -1619,3 +1661,18 @@ static inline unsigned int trim(char *str, unsigned len)
 
 @end
 
+#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
+@implementation SQLClientPostgres (RunLoop)
+- (void) receivedEvent: (void*)data
+                  type: (RunLoopEventType)type
+                 extra: (void*)extra
+               forMode: (NSString*)mode
+{
+  if (0 != connection)
+    {
+      PQconsumeInput(connection);
+      [self _checkNotifications];
+    }
+}
+@end
+#endif
