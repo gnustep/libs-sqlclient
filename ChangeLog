@@ -5,6 +5,8 @@
 	* SQLClientPool.m:
 	Allow easy removal of all database notification observers.
 	Remove all observers when a client is returned to a pool.
+	Postgres.m:
+	Implement asynchronous notification by watching descriptor.
 
 2016-05-06 Richard Frith-Macdonald  <rfm@gnu.org>
 
