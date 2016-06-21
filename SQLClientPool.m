@@ -841,7 +841,9 @@ static Class      cls = Nil;
             @" was in progress: %@", client];
         }
     }
-
+  /* The client must not have any observers if it's in a pool.
+   */
+  [client removeObserver: nil name: nil];
   [self _lock];
   for (index = 0; index < _max && NO == found; index++)
     {

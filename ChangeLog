@@ -1,3 +1,11 @@
+2016-06-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* SQLClientPool.m:
+	Allow easy removal of all database notification observers.
+	Remove all observers when a client is returned to a pool.
+
 2016-05-06 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fix bug in initialisation ordering.

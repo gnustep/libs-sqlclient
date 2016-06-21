@@ -3861,6 +3861,11 @@ validName(NSString *name)
 {
   NSMutableSet          *set;
 
+  if (nil == anObserver)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Attempt to add nil observer to SQL client"];
+    }
   name = validName(name);
   [lock lock];
   NS_DURING
@@ -3940,41 +3945,58 @@ validName(NSString *name)
       if (_observers != nil)
         {
           NSNotificationCenter  *nc;
-          NSMutableSet          *set;
-          NSEnumerator          *e;
+          NSEnumerator          *oe = nil;
 
           nc = [NSNotificationCenter defaultCenter];
-          set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
-          if (nil == name)
+          if (nil == anObserver)
             {
-              e = [[set allObjects] objectEnumerator];
-              name = [e nextObject];
+              oe = [NSAllMapTableKeys(_observers) objectEnumerator];
+              anObserver = [oe nextObject];
             }
-          else
+          while (anObserver != nil)
             {
-              e = nil;
-              name = [[name retain] autorelease];
-            }
-          while (nil != name)
-            {
-              if (nil != [set member: name])
+              NSMutableSet      *set;
+              NSEnumerator      *se = nil;
+
+              set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
+              if (nil == name)
                 {
-                  [nc removeObserver: anObserver
-                                name: name
-                              object: self];
-                  [[name retain] autorelease];
-                  [set removeObject: name];
-                  [_names removeObject: name];
-                  if (0 == [_names countForObject: name])
-                    {
-                      [self backendUnlisten: name];
-                    }
+                  se = [[set allObjects] objectEnumerator];
+                  name = [se nextObject];
                 }
-              name = [e nextObject];
-            }
-          if ([set count] == 0)
-            {
-              NSMapRemove(_observers, (void*)anObserver);
+              else
+                {
+                  name = [[name retain] autorelease];
+                }
+              while (nil != name)
+                {
+                  if (nil != [set member: name])
+                    {
+                      [nc removeObserver: anObserver
+                                    name: name
+                                  object: self];
+                      [[name retain] autorelease];
+                      [set removeObject: name];
+                      if (nil != se)
+                        {
+                          while (nil != [set member: name])
+                            {
+                              [set removeObject: name];
+                            }
+                        }
+                      [_names removeObject: name];
+                      if (0 == [_names countForObject: name])
+                        {
+                          [self backendUnlisten: name];
+                        }
+                    }
+                  name = [se nextObject];
+                }
+              if ([set count] == 0)
+                {
+                  NSMapRemove(_observers, (void*)anObserver);
+                }
+              anObserver = [oe nextObject];
             }
         }
     }

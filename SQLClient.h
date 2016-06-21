@@ -1305,8 +1305,13 @@ SQLCLIENT_PRIVATE
 - (void) postNotificationName: (NSString*)name payload: (NSString*)more;
 
 /** Removes anObserver as an observer for asynchronous notifications from
- * the database server.  If name is omitted, the observer will be removed
- * for all names.
+ * the database server.  Each removal matches one earlier addition, and the
+ * observer is not actually removed until all additions are balanced.<br />
+ * If name is omitted, the observer will be removed for all names and for
+ * all additions  (ie complete removal is forced).<br />
+ * If anObserver is nil, the removal will be performed for all current
+ * observers (and if both name and anObserver are nil, then all observations
+ * are removed).
  */
 - (void) removeObserver: (id)anObserver name: (NSString*)name;
 @end
