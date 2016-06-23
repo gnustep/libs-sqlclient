@@ -514,7 +514,9 @@ connectQuote(NSString *str)
         {
           if (connection != 0)
             {
-              [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
+              int       descriptor = PQsocket(connection);
+
+              [runLoop removeEvent: (void*)(uintptr_t)descriptor
                               type: ET_RDESC
                            forMode: NSDefaultRunLoopMode
                                all: YES];
@@ -746,16 +748,28 @@ connectQuote(NSString *str)
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
   if (extra != 0 && connection != 0)
     {
+      int       descriptor = PQsocket(connection);
+
       if (nil == runLoop)
         {
           ASSIGN(runLoop, [NSRunLoop currentRunLoop]);
+          if (nil == runLoop)
+            {
+              [NSException raise: NSInternalInconsistencyException
+                format: @"Observer can't be set up ... no runloop in thread"];
+            }
         }
       else if ([NSRunLoop currentRunLoop] != runLoop)
         {
           [NSException raise: NSInternalInconsistencyException
             format: @"Observer added to the same client from another runloop"];
         }
-      [runLoop addEvent: (void*)(uintptr_t)PQsocket(connection)
+      if (descriptor < 0)
+        {
+          [NSException raise: NSInternalInconsistencyException
+            format: @"Observer can't be set up ... bad file descriptor"];
+        }
+      [runLoop addEvent: (void*)(uintptr_t)descriptor
                    type: ET_RDESC
                 watcher: self
                 forMode: NSDefaultRunLoopMode];
@@ -1235,7 +1249,9 @@ static inline unsigned int trim(char *str, unsigned len)
     {
       if (connection != 0)
         {
-          [runLoop removeEvent: (void*)(uintptr_t)PQsocket(connection)
+          int   descriptor = PQsocket(connection);
+
+          [runLoop removeEvent: (void*)(uintptr_t)descriptor
                           type: ET_RDESC
                        forMode: NSDefaultRunLoopMode
                            all: YES];
