@@ -3889,7 +3889,7 @@ validName(NSString *name)
 
           [set addObject: name];
           [_names addObject: name];
-          if (0 == count)
+          if (0 == count && YES == connected)
             {
               [self backendListen: name];
             }
@@ -3985,7 +3985,8 @@ validName(NSString *name)
                             }
                         }
                       [_names removeObject: name];
-                      if (0 == [_names countForObject: name])
+                      if (YES == connected
+                        && 0 == [_names countForObject: name])
                         {
                           [self backendUnlisten: name];
                         }
