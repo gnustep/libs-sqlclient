@@ -3852,7 +3852,7 @@ validName(NSString *name)
         }
       ptr++;
     }
-  return [name lowercaseString];
+  return [NSString stringWithFormat: @"\"%@\"", name];
 }
 
 - (void) addObserver: (id)anObserver
