@@ -1226,7 +1226,8 @@ static int	        poolConnections = 0;
                   e = [_names objectEnumerator];
                   while (nil != (n = [e nextObject]))
                     {
-                      [self backendListen: n];
+                      [self backendListen:
+                        [NSString stringWithFormat: @"\"%@\"", n]];
                     }
                 }
 	      _lastConnect = GSTickerTimeNow();
@@ -3852,7 +3853,7 @@ validName(NSString *name)
         }
       ptr++;
     }
-  return [NSString stringWithFormat: @"\"%@\"", name];
+  return name;
 }
 
 - (void) addObserver: (id)anObserver
@@ -3891,7 +3892,8 @@ validName(NSString *name)
           [_names addObject: name];
           if (0 == count && YES == connected)
             {
-              [self backendListen: name];
+              [self backendListen:
+                [NSString stringWithFormat: @"\"%@\"", name]];
             }
         }
       [[NSNotificationCenter defaultCenter] addObserver: anObserver
@@ -3922,7 +3924,8 @@ validName(NSString *name)
   [lock lock];
   NS_DURING
     {
-      [self backendNotify: name payload: more];
+      [self backendNotify: [NSString stringWithFormat: @"\"%@\"", name]
+                  payload: more];
     }
   NS_HANDLER
     {
@@ -3988,7 +3991,8 @@ validName(NSString *name)
                       if (YES == connected
                         && 0 == [_names countForObject: name])
                         {
-                          [self backendUnlisten: name];
+                          [self backendUnlisten:
+                            [NSString stringWithFormat: @"\"%@\"", name]];
                         }
                     }
                   name = [se nextObject];
