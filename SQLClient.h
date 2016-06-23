@@ -1180,8 +1180,7 @@ SQLCLIENT_PRIVATE
 /** <override-subclass />
  * Called to enable asynchronous notification of database events using the
  * specified name (which must be a valid identifier consisting of ascii
- * letters, digits, and underscore characters, starting with a letter).
- * Names are not case sensitive (so AAA is the same as aaa).<br />
+ * letters, digits, and underscore characters, starting with a letter).<br />
  * Repeated calls to list on the same name should be treated as a single
  * call.<br />
  * The backend is responsible for implicitly unlistening when a connection
