@@ -561,7 +561,7 @@ connectQuote(NSString *str)
   [nq enqueueNotification: n postingStyle: NSPostASAP];
 }
 
-- (void) _checkNotifications
+- (void) _checkNotifications: (BOOL)async
 {
   PGnotify      *notify;
 
@@ -612,6 +612,17 @@ connectQuote(NSString *str)
           [name release];
           [userInfo release];
 
+	  if ([self debugging] > 0)
+	    {
+              if (YES == async)
+                {
+                  [self debug: @"Notified (asynchronously): %@", n];
+                }
+              else
+                {
+                  [self debug: @"Notified (query/execute): %@", n];
+                }
+	    }
           [self performSelectorOnMainThread: @selector(_postNotification:)
                                  withObject: n
                               waitUntilDone: NO];
@@ -724,7 +735,7 @@ connectQuote(NSString *str)
     {
       PQclear(result);
     }
-  [self _checkNotifications];
+  [self _checkNotifications: NO];
   [arp release];
   return rowCount;
 }
@@ -1213,7 +1224,7 @@ static inline unsigned int trim(char *str, unsigned len)
     {
       PQclear(result);
     }
-  [self _checkNotifications];
+  [self _checkNotifications: NO];
   return [records autorelease];
 }
 
@@ -1685,7 +1696,7 @@ static inline unsigned int trim(char *str, unsigned len)
   if (0 != connection)
     {
       PQconsumeInput(connection);
-      [self _checkNotifications];
+      [self _checkNotifications: YES];
     }
 }
 @end
