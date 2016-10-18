@@ -3054,7 +3054,7 @@ static int	        poolConnections = 0;
 	}
       else
 	{
-	  /* Not really an asynchronous query becuse we wait until it's
+	  /* Not really an asynchronous query because we wait until it's
 	   * done in order to have a result we can return.
 	   */
 	  [self performSelectorOnMainThread: @selector(_populateCache:)
@@ -3866,6 +3866,11 @@ validName(NSString *name)
     {
       [NSException raise: NSInvalidArgumentException
                   format: @"Attempt to add nil observer to SQL client"];
+    }
+  if (nil != _pool)
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Attempt to use pool client as observer"];
     }
   name = validName(name);
   [lock lock];

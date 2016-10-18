@@ -1,3 +1,11 @@
+2016-10-18 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Make -addObserver:selector:name: raise if applied to a client in a
+	pool.  Improve documentation to make it clear that pool clients
+	can't be used as observers of database notifications.
+
 2016-06-23 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fixup to use case sensitive notification names.

@@ -1291,7 +1291,13 @@ SQLCLIENT_PRIVATE
  * occur inside a transaction is the -begin and -commit statements
  * are used.  For this reason, observing code may want to use the
  * -lockBeforeDate: -isInTransaction and -unlock methods to ensure
- * that they don't interfere with ongoing transactions.
+ * that they don't interfere with ongoing transactions.<br />
+ * For observation of notifications to be immediately effective, the
+ * instance must be connected to the database (and remain connected),
+ * so you can't call this method on a client from a pool, and you should
+ * make sure that you don't close the client connection (or if you do,
+ * that you make sure to re-open it in order to start receiving
+ * notifications again).
  */
 - (void) addObserver: (id)anObserver
             selector: (SEL)aSelector
@@ -1578,6 +1584,13 @@ typedef struct {
  * method which would be required to be followed up by another message to
  * the same client.
  * </p>
+ * <p>NB. Any client provided from a pool should be returned to the
+ * pool as soon as reasonably possible (and if left idle will have its
+ * connection to the server closed anyway) so that it can be used by
+ * other threads.  If you want a permenantly open database connection
+ * you should use a normal SQLClient instance, not one from a pool.
+ * You must not call -addObserver:selector:name: on a client from a pool.
+ * </p>
  */
 @interface	SQLClientPool : NSObject
 {
@@ -1669,7 +1682,12 @@ typedef struct {
  * If isLocal is YES, this method provides a client which will not be
  * used elsewhere in the same thread until/unless the calling code
  * returns it to the pool. Otherwise (isLocal is NO), the client may
- * be used by other code in the same thread.
+ * be used by other code in the same thread.<br />
+ * NB. Any client provided using this method should be returned to the
+ * pool as soon as reasonably possible (and if left idle will have its
+ * connection to the server closed anyway) so that it can be used by
+ * other threads.  If you want a permenantly open database connection
+ * you should use a normal SQLClient instance, not one from a pool.
  */
 - (SQLClient*) provideClientBeforeDate: (NSDate*)when exclusive: (BOOL)isLocal;
 
