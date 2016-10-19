@@ -563,6 +563,8 @@ connectQuote(NSString *str)
   [nq enqueueNotification: n postingStyle: NSPostASAP];
 }
 
+/* This method must only be called when the receiver is locked.
+ */
 - (void) _checkNotifications: (BOOL)async
 {
   PGnotify      *notify;
@@ -1709,11 +1711,16 @@ static inline unsigned int trim(char *str, unsigned len)
                  extra: (void*)extra
                forMode: (NSString*)mode
 {
+  /* Ensure that the receiver is locked so that no other thread can
+   * be using the database connection while we use it.
+   */
+  [lock lock];
   if (0 != connection)
     {
       PQconsumeInput(connection);
       [self _checkNotifications: YES];
     }
+  [lock unlock];
 }
 @end
 #endif

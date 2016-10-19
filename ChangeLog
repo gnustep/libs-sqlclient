@@ -1,3 +1,11 @@
+2016-10-19 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Wolfgang spotted that the asynchronous notification
+	code is not thread safe ... we must not have one thread handle a
+	notification at the same time that another is trying to use the
+	database connectionto execute a query/statement.
+	Use the client's lock to prevent that from happening.
+
 2016-10-18 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
