@@ -557,10 +557,15 @@ connectQuote(NSString *str)
 {
   NSNotificationQueue   *nq;
 
-  /* Post asynchronously
+  /* Post asynchronously with no coalesce
    */
   nq = [NSNotificationQueue defaultQueue];
   [nq enqueueNotification: n postingStyle: NSPostASAP];
+  [nq enqueueNotification: n
+             postingStyle: NSPostASAP
+             coalesceMask: 0
+                 forModes: nil];
+
 }
 
 /* This method must only be called when the receiver is locked.
