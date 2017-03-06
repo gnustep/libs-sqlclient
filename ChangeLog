@@ -1,3 +1,14 @@
+2017-03-06 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	SQLClient.h:
+	SQLClient.m:
+	SQLClientPool.m:
+	Add new +literal: and -literal: methods to make a normal string into
+	one recognised as suitable for use literally (ie without quoting) in
+	an SQL query/statement.
+	Add +setAutoquote: method to turn on automatic quoting of non-literal
+	strings as an aid to avoiding SQL injectiuon attacks.
+
 2016-10-19 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: Wolfgang spotted that the asynchronous notification

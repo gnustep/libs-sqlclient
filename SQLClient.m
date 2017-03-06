@@ -42,6 +42,7 @@
 #import	<Foundation/NSMapTable.h>
 #import	<Foundation/NSNotification.h>
 #import	<Foundation/NSNull.h>
+#import	<Foundation/NSObjCRuntime.h>
 #import	<Foundation/NSPathUtilities.h>
 #import	<Foundation/NSProcessInfo.h>
 #import	<Foundation/NSRunLoop.h>
@@ -84,6 +85,72 @@ static Class	NSArrayClass = Nil;
 static Class	NSDateClass = Nil;
 static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
+static Class	LitStringClass = Nil;
+static Class	SQLStringClass = Nil;
+
+static BOOL     autoquote = NO;
+
+/* This is the layout of the instance variables of the constant string class
+ * produced by the compiler.
+ * The pointer give us the start of a UTF8 string, so we can create our own
+ * subclass using all the methods of the original class as long as we set
+ * that pointer to a buffer of UTF8 data stored in the object after the
+ * instance variables.
+ */
+@interface SQLString: NSString
+{
+@public
+  char          *nxcsptr;
+  unsigned int  nxcslen;
+}
+@end
+
+static BOOL
+isLiteral(id obj)
+{
+  if (nil != obj)
+    {
+      Class c = object_getClass(obj);
+
+      if (c == LitStringClass || c == SQLStringClass)
+        {
+          return YES;
+        }
+    }
+  return NO;
+}
+
+static NSString *
+newLiteral(const char *str, unsigned len)
+{
+  SQLString     *s;
+
+  s = NSAllocateObject(SQLStringClass, len+1, NSDefaultMallocZone());
+  s->nxcsptr = (char*)&s[1];
+  s->nxcslen = len;
+  memcpy(s->nxcsptr, str, len);
+  s->nxcsptr[len] = '\0';
+  return s;
+}
+
+static NSString *
+literal(NSString *aString)
+{
+  if (nil != aString)
+    {
+      Class c = object_getClass(aString);
+
+      if (c != LitStringClass && c != SQLStringClass)
+        {
+          const char    *p = [aString UTF8String];
+          int           l = strlen(p);
+          NSString      *s = newLiteral(p, l);
+
+          aString = [s autorelease];
+        }
+    }
+  return aString;
+}
 
 @interface      SQLClientPool (Swallow)
 - (BOOL) _swallowClient: (SQLClient*)client explicit: (BOOL)swallowed;
@@ -94,7 +161,7 @@ static Class	SQLClientClass = Nil;
                                  stop: (BOOL)stopOnFailure;
 @end
 
-@implementation         SQLRecordKeys
+@implementation SQLRecordKeys
 
 - (NSUInteger) count
 {
@@ -923,6 +990,19 @@ static int	        poolConnections = 0;
     {
       static id	modes[1];
       
+      if (Nil == LitStringClass)
+        {
+          /* Find the literal string class used by the foundation library.
+           */
+          LitStringClass = object_getClass(@"test");
+
+          /* Create the SQLString class as a subclass of that one.
+           */
+          SQLStringClass = (Class)objc_allocateClassPair(
+            LitStringClass, "SQLString", 0);
+          objc_registerClassPair(SQLStringClass);
+        }
+
       if (nil == null)
         {
           null = [NSNull new];
@@ -954,6 +1034,11 @@ static int	        poolConnections = 0;
                                           repeats: YES];
         }
     }
+}
+
++ (NSString*) literal: (NSString*)aString
+{
+  return literal(aString);
 }
 
 + (unsigned int) maxConnections
@@ -1076,6 +1161,11 @@ static int	        poolConnections = 0;
 	}
       [AUTORELEASE(other) disconnect];
     }
+}
+
++ (void) setAutoquote: (BOOL)aFlag
+{
+  autoquote = aFlag;
 }
 
 + (void) setMaxConnections: (unsigned int)c
@@ -1332,14 +1422,6 @@ static int	        poolConnections = 0;
       [s appendFormat: @"  Connected   - %@\n", connected ? @"yes" : @"no"];
       [s appendFormat: @"  Transaction - %@\n",
         _inTransaction ? @"yes" : @"no"];
-      if (_cache == nil)
-        {
-          [s appendString: @"\n"];
-        }
-      else
-        {
-          [s appendFormat: @"  Cache -       %@\n", _cache];
-        }
     }
   NS_HANDLER
     {
@@ -1542,6 +1624,11 @@ static int	        poolConnections = 0;
   return nil;
 }
 
+- (NSString*) literal: (NSString*)aString
+{
+  return literal(aString);
+}
+
 - (BOOL) lockBeforeDate: (NSDate*)limit
 {
   if (nil == limit)
@@ -1618,26 +1705,46 @@ static int	        poolConnections = 0;
       /*
        * Append any values from the nil terminated varargs
        */ 
-      while (tmp != nil)
-	{
-	  if ([tmp isKindOfClass: NSStringClass] == NO)
-	    {
-	      if ([tmp isKindOfClass: [NSData class]] == YES)
-		{
-		  [ma addObject: tmp];
-		  [s appendString: @"'?'''?'"];	// Marker.
-		}
-	      else
-		{
-		  [s appendString: [self quote: tmp]];
-		}
-	    }
-	  else
-	    {
-	      [s appendString: tmp];
-	    }
-	  tmp = va_arg(args, NSString*);
-	}
+      if (YES == autoquote)
+        {
+          while (tmp != nil)
+            {
+              if ([tmp isKindOfClass: [NSData class]] == YES)
+                {
+                  [ma addObject: tmp];
+                  tmp = @"'?'''?'";	// Marker.
+                }
+              else if (NO == isLiteral(tmp))
+                {
+                  tmp = [self quote: tmp];
+                }
+              [s appendString: tmp];
+              tmp = va_arg(args, NSString*);
+            }
+        }
+      else
+        {
+          while (tmp != nil)
+            {
+              if ([tmp isKindOfClass: NSStringClass] == NO)
+                {
+                  if ([tmp isKindOfClass: [NSData class]] == YES)
+                    {
+                      [ma addObject: tmp];
+                      [s appendString: @"'?'''?'"];	// Marker.
+                    }
+                  else
+                    {
+                      [s appendString: [self quote: tmp]];
+                    }
+                }
+              else
+                {
+                  [s appendString: tmp];
+                }
+              tmp = va_arg(args, NSString*);
+            }
+        }
       stmt = s;
     }
   [ma insertObject: stmt atIndex: 0];
@@ -1769,6 +1876,18 @@ static int	        poolConnections = 0;
 	    {
 	      v = nil;		// Mo match found.
 	    }
+	  else if (YES == autoquote)
+            {
+              if ([o isKindOfClass: [NSData class]] == YES)
+                {
+                  [ma addObject: o];
+                  v = @"'?'''?'";
+                }
+              else
+                {
+                  v = [self quote: o];
+                }
+            }
 	  else
 	    {
 	      if ([o isKindOfClass: NSStringClass] == YES)
@@ -1863,7 +1982,7 @@ static int	        poolConnections = 0;
        */
       if ([obj isKindOfClass: [NSNumber class]] == YES)
 	{
-	  return [obj description];
+	  return literal([obj description]);
 	}
 
       /**
@@ -1872,8 +1991,8 @@ static int	        poolConnections = 0;
        */
       if ([obj isKindOfClass: NSDateClass] == YES)
 	{
-	  return [obj descriptionWithCalendarFormat:
-	    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil];
+	  return literal([obj descriptionWithCalendarFormat:
+	    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil]);
 	}
 
       /**
@@ -1917,7 +2036,7 @@ static int	        poolConnections = 0;
 	      [ms appendString: [self quote: value]];
 	    }
 	  [ms appendString: @")"];
-	  return ms;
+	  return literal(ms);
 	}
 
       /**
@@ -1960,7 +2079,13 @@ static int	        poolConnections = 0;
 
 - (NSString*) quoteBigInteger: (int64_t)i
 {
-  return [NSString stringWithFormat: @"%"PRId64, i];
+  char          buf[32];
+  unsigned      len;
+  NSString      *s;
+
+  len = sprintf(buf, "%"PRId64, i);
+  s = newLiteral(buf, len);
+  return [s autorelease];
 }
 
 - (NSString*) quoteCString: (const char *)s
@@ -1996,72 +2121,69 @@ static int	        poolConnections = 0;
 
 - (NSString*) quoteFloat: (float)f
 {
-  return [NSString stringWithFormat: @"%f", f];
+  char          buf[32];
+  unsigned      len;
+  NSString      *s;
+
+  len = sprintf(buf, "%f", f);
+  s = newLiteral(buf, len);
+  return [s autorelease];
 }
 
 - (NSString*) quoteInteger: (int)i
 {
-  return [NSString stringWithFormat: @"%d", i];
+  char          buf[32];
+  unsigned      len;
+  NSString      *s;
+
+  len = sprintf(buf, "%i", i);
+  s = newLiteral(buf, len);
+  return [s autorelease];
 }
 
 - (NSString*) quoteString: (NSString *)s
 {
-  static NSCharacterSet	*special = nil;
-  NSMutableString	*m;
-  NSRange		r;
-  unsigned		l;
+  NSData        *d = [s dataUsingEncoding: NSUTF8StringEncoding];
+  const char    *src = (const char*)[d bytes];
+  char          *dst;
+  unsigned      len = [d length];
+  unsigned      count = 2;
+  unsigned      i;
+  SQLString     *q;
 
-  if (special == nil)
+  for (i = 0; i < len; i++)
     {
-      NSString	*stemp;
+      char      c = src[i];
 
-      /*
-       * NB. length of C string is 2, so we include a nul character as a
-       * special.
-       */
-      stemp = [[NSString alloc] initWithBytes: "'"
-	 			       length: 2
-		 		     encoding: NSASCIIStringEncoding];
-      special = [NSCharacterSet characterSetWithCharactersInString: stemp];
-      [stemp release];
-      [special retain];
-    }
-
-  /*
-   * Step through string removing nul characters
-   * and escaping quote characters as required.
-   */
-  m = [[s mutableCopy] autorelease];
-  l = [m length];
-  r = NSMakeRange(0, l);
-  r = [m rangeOfCharacterFromSet: special options: NSLiteralSearch range: r];
-  while (r.length > 0)
-    {
-      unichar	c = [m characterAtIndex: r.location];
-
-      if (c == 0)
-	{
-	  r.length = 1;
-	  [m replaceCharactersInRange: r withString: @""];
-	  l--;
-	}
-      else
+      if ('\'' == c)
         {
-	  r.length = 0;
-	  [m replaceCharactersInRange: r withString: @"'"];
-	  l++;
-	  r.location += 2;
+          count++;      // A quote needs to be doubled
         }
-      r = NSMakeRange(r.location, l - r.location);
-      r = [m rangeOfCharacterFromSet: special
-			     options: NSLiteralSearch
-			       range: r];
+      if ('\0' != c)
+        {
+          count++;      // A nul needs to be ignored
+        }
     }
+  q = NSAllocateObject(SQLStringClass, count + 1, NSDefaultMallocZone());
+  q->nxcsptr = dst = (char*)&q[1];
+  q->nxcslen = count;
+  *dst++ = '\'';
+  for (i = 0; i < len; i++)
+    {
+      char      c = src[i];
 
-  /* Add quoting around it.  */
-  [m replaceCharactersInRange: NSMakeRange(0, 0) withString: @"'"];
-  [m appendString: @"'"];
-  return m;
+      if ('\'' == c)
+        {
+          *dst++ = '\'';
+        }
+      if ('\0' != c)
+        {
+          *dst++ = c;
+        }
+     }   
+  *dst++ = '\'';
+  *dst = '\0';
+  return [q autorelease];
 }
 
 - (oneway void) release
@@ -2957,6 +3079,7 @@ static int	        poolConnections = 0;
   if (nil == _cache)
     {
       _cache = [GSCache new];
+      [_cache setName: [self clientName]];
       if (_cacheThread != nil)
 	{
 	  [_cache setDelegate: self];
@@ -3749,6 +3872,11 @@ static int	        poolConnections = 0;
   [_info addObject: trn];
   _count += trn->_count;
   [trn release];
+}
+
+- (NSString*) literal: (NSString*)aString
+{
+  return literal(aString);
 }
 
 - (id) owner

@@ -177,6 +177,11 @@ static Class      cls = Nil;
   return self;
 }
 
+- (NSString*) literal: (NSString*)aString
+{
+  return [SQLClient literal: aString];
+}
+
 - (NSString*) longDescription
 {
   NSMutableString	*s = [[NSMutableString new] autorelease];

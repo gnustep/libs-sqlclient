@@ -488,6 +488,16 @@ SQLCLIENT_PRIVATE
  */
 + (SQLClient*) existingClient: (NSString*)reference;
 
+/** Returns a literal string version of aString.<br />
+ * A literal is an instance of the literal string class produced by the
+ * compiler or the SQLString class (which subclasses it).<br />
+ * All the quoting methods return literal strings.<br />
+ * If aString is already a literal string, this method returns it unchanged,
+ * otherwise the returned value is an autoreleased newly created copy of the
+ * argument.
+ */
++ (NSString*) literal: (NSString*)aString;
+
 /**
  * Returns the maximum number of simultaneous database connections
  * permitted (set by +setMaxConnections: and defaults to 8) for
@@ -513,6 +523,16 @@ SQLCLIENT_PRIVATE
  * </p>
  */
 + (void) purgeConnections: (NSDate*)since;
+
+/** Turns autoquote on/off for the process.<br />
+ * When autoquote is on, the arguments to the -prepare:args: method (and
+ * therefore all methods that use it) are automatically quoted unless they
+ * are literal strings (see the +literal: method).<br />
+ * The purpose of autoquoting is to help prevent SQL injection attacks on
+ * your software;  it helps ensure that only strings you really want to use
+ * literally are embedded in the SQL without quoting.
+ */
++ (void) setAutoquote: (BOOL)aFlag;
 
 /**
  * <p>Set the maximum number of simultaneous database connections
@@ -547,6 +567,10 @@ SQLCLIENT_PRIVATE
  * </p>
  */
 - (void) begin;
+
+/** Returns a literal string version of aString (like the +literal: method).
+ */
+- (NSString*) literal: (NSString*)aString;
 
 /** This grabs the receiver for use by the current thread.<br />
  * If limit is nil or in the past, makes a single immediate attempt.<br />
@@ -1643,6 +1667,10 @@ typedef struct {
                          max: (int)maxConnections
                          min: (int)minConnections;
 
+/** Returns a literal string version of aString (like the +literal: method).
+ */
+- (NSString*) literal: (NSString*)aString;
+
 /** Returns a long description of the pool including statistics, status,
  * and the description of a sample client.
  */
@@ -1958,6 +1986,10 @@ SQLCLIENT_PRIVATE
  * database client/pool as the receiver.
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
+
+/** Returns a literal string version of aString (like the +literal: method).
+ */
+- (NSString*) literal: (NSString*)aString;
 
 /**
  * Returns the database client with which this instance operates.<br />
