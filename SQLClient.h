@@ -852,7 +852,9 @@ SQLCLIENT_PRIVATE
  * </p>
  * <p>Most other field items are returned as NSString objects.
  * </p>
- * <p>Date and timestamp field items are returned as NSDate objects.
+ * <p>Timestamp field items (a date and time) are returned as NSDate objects.
+ * If the database contains no timezone information, the local timezone
+ * is used.
  * </p>
  */
 - (NSMutableArray*) query: (NSString*)stmt,...;
