@@ -964,8 +964,9 @@ static inline unsigned int trim(char *str, unsigned len)
 
   switch (t)
     {
-      case 1082:	// Date
-        return newDateFromBuffer(p, trim(p, s));
+      case 1082:	// Date (treat as string)
+	s = trim(p, s);
+        return newString(p, s, NSASCIIStringEncoding);
 
       case 1083:	// Time (treat as string)
 	s = trim(p, s);
@@ -997,7 +998,6 @@ static inline unsigned int trim(char *str, unsigned len)
 	s = trim(p, s);
         return newString(p, s, NSASCIIStringEncoding);
 
-      case 1182:	// DATE ARRAY
       case 1115:	// TS without TZ ARRAY
       case 1185:	// TS with TZ ARRAY
         if (0 == arrayType) arrayType = 'T';    // Timestamp
@@ -1014,6 +1014,8 @@ static inline unsigned int trim(char *str, unsigned len)
       case 1009:        // TEXT ARRAY
       case 1014:        // "char" ARRAY
       case 1015:        // VARCHAR ARRAY
+      case 1182:	// DATE ARRAY
+      case 1183:	// TIME ARRAY
       case 1263:        // CSTRING ARRAY
         if ('{' == *p)
           {
