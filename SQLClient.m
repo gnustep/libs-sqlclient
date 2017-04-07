@@ -992,6 +992,8 @@ static int	        poolConnections = 0;
       
       if (Nil == LitStringClass)
         {
+          Class root = [NSObject class];
+
           /* Find the literal string class used by the foundation library.
            */
           LitStringClass = object_getClass(@"test");
@@ -1001,6 +1003,22 @@ static int	        poolConnections = 0;
           SQLStringClass = (Class)objc_allocateClassPair(
             LitStringClass, "SQLString", 0);
           objc_registerClassPair(SQLStringClass);
+
+          /* The the NSObject memory management methods because the
+           * literal string doesn't get retained/released.
+           */
+          class_replaceMethod(SQLStringClass, @selector(retain),
+            class_getMethodImplementation(root, @selector(retain)),
+            "@@:");
+          class_replaceMethod(SQLStringClass, @selector(autorelease),
+            class_getMethodImplementation(root, @selector(autorelease)),
+            "@@:");
+          class_replaceMethod(SQLStringClass, @selector(release),
+            class_getMethodImplementation(root, @selector(release)),
+            "v@:");
+          class_replaceMethod(SQLStringClass, @selector(dealloc),
+            class_getMethodImplementation(root, @selector(dealloc)),
+            "v@:");
         }
 
       if (nil == null)

@@ -1,8 +1,14 @@
+2017-04-07 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m:
+	Fix leak of SQLString instances caused by inheriting memory management
+	methods from the literal string class.
+
 2017-03-06 Richard Frith-Macdonald  <rfm@gnu.org>
 
-	SQLClient.h:
-	SQLClient.m:
-	SQLClientPool.m:
+	* SQLClient.h:
+	* SQLClient.m:
+	* SQLClientPool.m:
 	Add new +literal: and -literal: methods to make a normal string into
 	one recognised as suitable for use literally (ie without quoting) in
 	an SQL query/statement.
