@@ -993,6 +993,7 @@ static int	        poolConnections = 0;
       if (Nil == LitStringClass)
         {
           Class root = [NSObject class];
+          SEL   sel;
 
           /* Find the literal string class used by the foundation library.
            */
@@ -1007,18 +1008,40 @@ static int	        poolConnections = 0;
           /* The the NSObject memory management methods because the
            * literal string doesn't get retained/released.
            */
-          class_replaceMethod(SQLStringClass, @selector(retain),
+
+          sel = @selector(retain);
+          class_replaceMethod(SQLStringClass, sel,
+            class_getMethodImplementation(root, sel),
+              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+
+          sel = @selector(release);
+          class_replaceMethod(SQLStringClass, sel,
+            class_getMethodImplementation(root, sel),
+              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+
+          sel = @selector(autorelease);
+          class_replaceMethod(SQLStringClass, sel,
+            class_getMethodImplementation(root, sel),
+              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+
+          sel = @selector(dealloc);
+          class_replaceMethod(SQLStringClass, sel,
+            class_getMethodImplementation(root, sel),
+              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+
+          /* The -copy and -copyWithZone: methods should simply retain
+           * the receiver.
+           */
+          sel = @selector(copy);
+          class_replaceMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, @selector(retain)),
-            "@@:");
-          class_replaceMethod(SQLStringClass, @selector(autorelease),
-            class_getMethodImplementation(root, @selector(autorelease)),
-            "@@:");
-          class_replaceMethod(SQLStringClass, @selector(release),
-            class_getMethodImplementation(root, @selector(release)),
-            "v@:");
-          class_replaceMethod(SQLStringClass, @selector(dealloc),
-            class_getMethodImplementation(root, @selector(dealloc)),
-            "v@:");
+              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+
+          sel = @selector(copyWithZone:);
+          class_replaceMethod(SQLStringClass, sel,
+            class_getMethodImplementation(root, @selector(retain)),
+              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+
         }
 
       if (nil == null)
