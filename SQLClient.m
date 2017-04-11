@@ -1010,22 +1010,22 @@ static int	        poolConnections = 0;
            */
 
           sel = @selector(retain);
-          class_replaceMethod(SQLStringClass, sel,
+          class_addMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, sel),
               method_getTypeEncoding(class_getInstanceMethod(root, sel)));
 
           sel = @selector(release);
-          class_replaceMethod(SQLStringClass, sel,
+          class_addMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, sel),
               method_getTypeEncoding(class_getInstanceMethod(root, sel)));
 
           sel = @selector(autorelease);
-          class_replaceMethod(SQLStringClass, sel,
+          class_addMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, sel),
               method_getTypeEncoding(class_getInstanceMethod(root, sel)));
 
           sel = @selector(dealloc);
-          class_replaceMethod(SQLStringClass, sel,
+          class_addMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, sel),
               method_getTypeEncoding(class_getInstanceMethod(root, sel)));
 
@@ -1033,12 +1033,12 @@ static int	        poolConnections = 0;
            * the receiver.
            */
           sel = @selector(copy);
-          class_replaceMethod(SQLStringClass, sel,
+          class_addMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, @selector(retain)),
               method_getTypeEncoding(class_getInstanceMethod(root, sel)));
 
           sel = @selector(copyWithZone:);
-          class_replaceMethod(SQLStringClass, sel,
+          class_addMethod(SQLStringClass, sel,
             class_getMethodImplementation(root, @selector(retain)),
               method_getTypeEncoding(class_getInstanceMethod(root, sel)));
 
