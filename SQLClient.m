@@ -993,6 +993,7 @@ static int	        poolConnections = 0;
       if (Nil == LitStringClass)
         {
           Class root = [NSObject class];
+          IMP   imp;
           SEL   sel;
 
           /* Find the literal string class used by the foundation library.
@@ -1009,39 +1010,45 @@ static int	        poolConnections = 0;
            * literal string doesn't get retained/released.
            */
 
-          sel = @selector(retain);
-          class_addMethod(SQLStringClass, sel,
-            class_getMethodImplementation(root, sel),
-              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+#define enc \
+  method_getTypeEncoding(class_getInstanceMethod(SQLStringClass, sel))
 
           sel = @selector(release);
-          class_addMethod(SQLStringClass, sel,
-            class_getMethodImplementation(root, sel),
-              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+          imp = class_getMethodImplementation(root, sel);
+          class_addMethod(SQLStringClass, sel, imp, enc);
+          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
+            NSInternalInconsistencyException);
 
           sel = @selector(autorelease);
-          class_addMethod(SQLStringClass, sel,
-            class_getMethodImplementation(root, sel),
-              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+          imp = class_getMethodImplementation(root, sel);
+          class_addMethod(SQLStringClass, sel, imp, enc);
+          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
+            NSInternalInconsistencyException);
 
           sel = @selector(dealloc);
-          class_addMethod(SQLStringClass, sel,
-            class_getMethodImplementation(root, sel),
-              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+          imp = class_getMethodImplementation(root, sel);
+          class_addMethod(SQLStringClass, sel, imp, enc);
+          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
+            NSInternalInconsistencyException);
+
+          sel = @selector(retain);
+          imp = class_getMethodImplementation(root, sel);
+          class_addMethod(SQLStringClass, sel, imp, enc);
+          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
+            NSInternalInconsistencyException);
 
           /* The -copy and -copyWithZone: methods should simply retain
            * the receiver.
            */
           sel = @selector(copy);
-          class_addMethod(SQLStringClass, sel,
-            class_getMethodImplementation(root, @selector(retain)),
-              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
+          class_addMethod(SQLStringClass, sel, imp, enc);
+          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
+            NSInternalInconsistencyException);
 
           sel = @selector(copyWithZone:);
-          class_addMethod(SQLStringClass, sel,
-            class_getMethodImplementation(root, @selector(retain)),
-              method_getTypeEncoding(class_getInstanceMethod(root, sel)));
-
+          class_addMethod(SQLStringClass, sel, imp, enc);
+          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
+            NSInternalInconsistencyException);
         }
 
       if (nil == null)
