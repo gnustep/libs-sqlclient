@@ -1650,60 +1650,6 @@ static inline unsigned int trim(char *str, unsigned len)
   return s;
 }
 
-- (NSString*) quoteString: (NSString *)s
-{
-  NSData	*d = [s dataUsingEncoding: NSUTF8StringEncoding];
-  unsigned	l = [d length];
-  unsigned char	*to = NSZoneMalloc(NSDefaultMallocZone(), (l * 2) + 3);
-
-#if 1
-  const char    *from = (const char*)[d bytes];
-  unsigned      i = 0;
-  unsigned      j = 0;
-
-  to[j++] = '\'';
-  while (i < l)
-    {
-      if ('\'' == (to[j++] = from[i++]))
-        {
-          to[j++] = '\'';
-        }
-    }
-  to[j++] = '\'';
-  l = j - 2;
-#else
-#ifdef	HAVE_PQESCAPESTRINGCONN
-  int		err;
-
-  [lock lock];
-  NS_DURING
-    {
-      [self connect];
-      l = PQescapeStringConn(connection,
-        (char*)(to + 1), [d bytes], l, &err);
-    }
-  NS_HANDLER
-    {
-      [lock unlock];
-      NSZoneFree(NSDefaultMallocZone(), to);
-      [localException raise];
-    }
-  NS_ENDHANDLER
-  [lock unlock];
-#else
-  l = PQescapeString(to + 1, [d bytes], l);
-#endif
-  to[0] = '\'';
-  to[l + 1] = '\'';
-#endif
-
-  s = [[NSString alloc] initWithBytesNoCopy: to
-				     length: l + 2
-				   encoding: NSUTF8StringEncoding
-			       freeWhenDone: YES];
-  return [s autorelease];
-}
-
 @end
 
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
