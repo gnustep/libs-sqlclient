@@ -73,7 +73,7 @@ main()
                                                 name: @"test"
                                                  max: 2
                                                  min: 1] autorelease];
-#if 1
+#if 0
 {
   NSAutoreleasePool     *p;
   NSAutoreleasePool     *q;
@@ -268,6 +268,7 @@ main()
   else
     {
       NSString	*oddChars;
+      NSString	*oddNoNul;
       NSString	*nonLatin;
       id	e1, e2, e3, e4, e5;
       id        d;
@@ -277,7 +278,8 @@ main()
       id	r0;
       id	r1;
 
-      oddChars = @"'a\\b'c\r\nd'\\ed\\";
+      oddChars = @"'a\\b'c\0\r\nd'\\ed\\";
+      oddNoNul = @"'a\\b'c\r\nd'\\ed\\";
       nonLatin = [[NSString stringWithCString: "\"\\U2A11\""] propertyList];
       for (i = 0; i < 256; i++)
 	{
@@ -310,7 +312,7 @@ main()
 	@")",
 	nil];
 
-      if (1 != [db execute: @"insert into xxx (id, k, char1, boolval, intval,"
+      if (1 != [db execute: @"INSERT into xxx (id, k, char1, boolval, intval,"
         @" when1, when2, b, extra1, extra2, extra3, extra4, extra5) "
 	@"values (1,"
 	@"'{hello', "
@@ -345,11 +347,11 @@ main()
           NSLog(@"Insert failed to return row count");
         }
 
-[db setDebugging: 9];
+[db setDebugging: 0];
 [db query: @"select * from xxx", nil];
 [db setDebugging: 0];
 
-      [db execute: @"insert into xxx "
+      [db execute: @"INSERT into xxx "
 	@"(id, k, char1, boolval, intval, when1, when2, b) "
 	@"values (2,"
 	@"'hello', "
@@ -361,7 +363,7 @@ main()
 	[NSData dataWithBytes: "" length: 0],
 	@")",
 	nil];
-      [db execute: @"insert into xxx "
+      [db execute: @"INSERT into xxx "
 	@"(id, k, char1, boolval, intval, when1, when2, b) "
 	@"values (3,",
 	[db quote: oddChars],
@@ -383,6 +385,8 @@ main()
       records = [db cache: 1 query: @"select * from xxx order by id", nil];
       NSCAssert([r0 lastObject] != [records lastObject], @"Lifetime failed");
 
+      db = [[[SQLClient alloc] initWithConfiguration: nil
+                                                name: @"test"] autorelease];
       [db addObserver: l 
              selector: @selector(notified:)
                  name: @"foo"];
@@ -416,10 +420,15 @@ main()
 	      NSLog(@"Retrieved non-latin does not match saved string");
 	    }
           id o = [[record objectForKey: @"k"] stringByTrimmingSpaces];
-	  if ([o isEqual: oddChars] == NO)
+	  if ([o isEqual: oddNoNul] == NO)
 	    {
-	      NSLog(@"Retrieved odd chars (%@) does not match saved string (%@)", o, oddChars);
+	      NSLog(@"Retrieved odd chars (%@) does not match oddNoNul (%@)",
+                o, oddNoNul);
 	    }
+          else
+            {
+              NSLog(@"Embedded nul correctly removed");
+            }
 	  record = [records objectAtIndex: 0];
           o = [record objectForKey: @"extra1"];
 	  if ([o isEqual: e1] == NO)
@@ -477,7 +486,7 @@ main()
 	@"when1 timestamp with time zone, "
 	@"when2 timestamp)",
 	nil];
-      [db execute: @"insert into xxx (id, when0, when1, when2) "
+      [db execute: @"INSERT into xxx (id, when0, when1, when2) "
 	@"values (99,",
 	d, @", ",
 	[NSDate distantPast], @", ",
