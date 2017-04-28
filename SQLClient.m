@@ -2441,10 +2441,23 @@ static int	        poolConnections = 0;
   [lock unlock];
 }
 
-- (NSInteger) simpleExecute: (NSArray*)info
+- (NSInteger) simpleExecute: (id)info
 {
   NSInteger     result;
   NSString      *debug = nil;
+
+  if ([info isKindOfClass: NSArrayClass] == NO)
+    {
+      if ([info isKindOfClass: NSStringClass] == NO)
+        {
+          [NSException raise: NSInvalidArgumentException
+                      format: @"[%@ -simpleExecute: %@ (class %@)]",
+            NSStringFromClass([self class]),
+            info,
+            NSStringFromClass([info class])];
+        }
+      info = [NSMutableArray arrayWithObject: info];
+    }
 
   [lock lock];
   NS_DURING

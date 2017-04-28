@@ -1016,9 +1016,11 @@ SQLCLIENT_PRIVATE
  * Calls -backendExecute: in a safe manner.<br />
  * Handles locking.<br />
  * Maintains -lastOperation date.<br />
- * Returns the result of -backendExecute:
+ * Returns the result of the -backendExecute: method call.<br />
+ * Accepts a mutable array argument (as produced by the prepare methods)
+ * or a simple SQL statement (a string), otherwise raises an exception.
  */
-- (NSInteger) simpleExecute: (NSArray*)info;
+- (NSInteger) simpleExecute: (id)info;
 
 /**
  * Calls -simpleQuery:recordType:listType: with the default record class
