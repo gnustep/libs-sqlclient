@@ -69,6 +69,7 @@ after-distclean::
 config.make:	config.make.in
 	if [ -x config.status ]; then \
 	  ./config.status --recheck; \
+          touch config.make; \
 	else \
 	  ./configure; \
 	fi
