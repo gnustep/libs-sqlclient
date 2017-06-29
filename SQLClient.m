@@ -128,7 +128,7 @@ copyLiteral(NSString *aString)
     {
       Class c = object_getClass(aString);
 
-      while (c == LitCastClass)
+      if (c == LitCastClass)
         {
           aString = ((SQLClientLit*)aString)->content;
           c = object_getClass(aString);
@@ -155,7 +155,7 @@ literal(NSString *aString)
     {
       Class c = object_getClass(aString);
 
-      while (c == LitCastClass)
+      if (c == LitCastClass)
         {
           aString = ((SQLClientLit*)aString)->content;
           c = object_getClass(aString);
@@ -1832,17 +1832,20 @@ static int	        poolConnections = 0;
             }
           else if ([tmp isKindOfClass: NSStringClass] == NO)
             {
-              tmp = [self quote: tmp];
+              if (object_getClass(tmp) == LitCastClass)
+                {
+                  tmp = ((SQLClientLit*)tmp)->content;
+                }
+              else
+                {
+                  tmp = [self quote: tmp];
+                }
             }
           else
             {
               Class c = object_getClass(tmp);
 
-              if (c == LitCastClass)
-                {
-                  tmp = ((SQLClientLit*)tmp)->content;
-                }
-              else if (c != LitStringClass && c != SQLStringClass)
+              if (c != LitStringClass && c != SQLStringClass)
                 {
                   if (nil == warn)
                     {
@@ -2011,18 +2014,21 @@ static int	        poolConnections = 0;
                 }
               else if ([o isKindOfClass: NSStringClass] == NO)
                 {
-                  v = [self quote: o];
+                  if (object_getClass(o) == LitCastClass)
+                    {
+                      v = ((SQLClientLit*)o)->content;
+                    }
+                  else
+                    {
+                      v = [self quote: o];
+                    }
                 }
               else
                 {
                   Class c = object_getClass(o);
 
                   v = o;
-                  if (c == LitCastClass)
-                    {
-                      v = ((SQLClientLit*)o)->content;
-                    }
-                  else if (c != LitStringClass && c != SQLStringClass)
+                  if (c != LitStringClass && c != SQLStringClass)
                     {
                       if (nil == warn)
                         {
