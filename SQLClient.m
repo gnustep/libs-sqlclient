@@ -87,8 +87,10 @@ static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
 static Class	LitStringClass = Nil;
 static Class	SQLStringClass = Nil;
+static unsigned SQLStringSize = 0;
 
 static BOOL     autoquote = NO;
+static BOOL     autoquoteWarning = NO;
 
 /* This is the layout of the instance variables of the constant string class
  * produced by the compiler.
@@ -105,28 +107,13 @@ static BOOL     autoquote = NO;
 }
 @end
 
-static BOOL
-isLiteral(id obj)
-{
-  if (nil != obj)
-    {
-      Class c = object_getClass(obj);
-
-      if (c == LitStringClass || c == SQLStringClass)
-        {
-          return YES;
-        }
-    }
-  return NO;
-}
-
 static NSString *
 newLiteral(const char *str, unsigned len)
 {
   SQLString     *s;
 
   s = NSAllocateObject(SQLStringClass, len+1, NSDefaultMallocZone());
-  s->nxcsptr = (char*)&s[1];
+  s->nxcsptr = ((char*)(void*)s) + SQLStringSize;
   s->nxcslen = len;
   memcpy(s->nxcsptr, str, len);
   s->nxcsptr[len] = '\0';
@@ -1049,6 +1036,8 @@ static int	        poolConnections = 0;
           class_addMethod(SQLStringClass, sel, imp, enc);
           NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
             NSInternalInconsistencyException);
+
+          SQLStringSize = class_getInstanceSize(SQLStringClass);
         }
 
       if (nil == null)
@@ -1214,6 +1203,11 @@ static int	        poolConnections = 0;
 + (void) setAutoquote: (BOOL)aFlag
 {
   autoquote = aFlag;
+}
+
++ (void) setAutoquoteWarning: (BOOL)aFlag
+{
+  autoquoteWarning = aFlag;
 }
 
 + (void) setMaxConnections: (unsigned int)c
@@ -1748,52 +1742,56 @@ static int	        poolConnections = 0;
   if (tmp != nil)
     {
       NSMutableString	*s = [NSMutableString stringWithCapacity: 1024];
+      NSString          *warn = nil;
 
       [s appendString: stmt];
       /*
        * Append any values from the nil terminated varargs
        */ 
-      if (YES == autoquote)
+      while (tmp != nil)
         {
-          while (tmp != nil)
+          if ([tmp isKindOfClass: [NSData class]] == YES)
             {
-              if ([tmp isKindOfClass: [NSData class]] == YES)
-                {
-                  [ma addObject: tmp];
-                  tmp = @"'?'''?'";	// Marker.
-                }
-              else if (NO == isLiteral(tmp))
-                {
-                  tmp = [self quote: tmp];
-                }
-              [s appendString: tmp];
-              tmp = va_arg(args, NSString*);
+              [ma addObject: tmp];
+              tmp = @"'?'''?'";	// Marker.
             }
-        }
-      else
-        {
-          while (tmp != nil)
+          else if ([tmp isKindOfClass: NSStringClass] == NO)
             {
-              if ([tmp isKindOfClass: NSStringClass] == NO)
+              tmp = [self quote: tmp];
+            }
+          else
+            {
+              Class c = object_getClass(tmp);
+
+              if (c != LitStringClass && c != SQLStringClass)
                 {
-                  if ([tmp isKindOfClass: [NSData class]] == YES)
+                  if (nil == warn)
                     {
-                      [ma addObject: tmp];
-                      [s appendString: @"'?'''?'"];	// Marker.
+                      warn = tmp;
                     }
-                  else
+                  if (YES == autoquote)
                     {
-                      [s appendString: [self quote: tmp]];
+                      tmp = [self quote: tmp];
                     }
                 }
-              else
-                {
-                  [s appendString: tmp];
-                }
-              tmp = va_arg(args, NSString*);
             }
+          [s appendString: tmp];
+          tmp = va_arg(args, NSString*);
         }
       stmt = s;
+      if (nil != warn && YES == autoquoteWarning)
+        {
+          if (YES == autoquote)
+            {
+              NSLog(@"SQLClient autoquote performed for \"%@\" in \"%@\"",
+                warn, stmt);
+            }
+          else
+            {
+              NSLog(@"SQLClient autoquote proposed for \"%@\" in \"%@\"",
+                warn, stmt);
+            }
+        }
     }
   [ma insertObject: stmt atIndex: 0];
   [arp release];
@@ -1833,6 +1831,7 @@ static int	        poolConnections = 0;
   else
     {
       NSMutableString	*mtext = [[stmt mutableCopy] autorelease];
+      NSString          *warn = nil;
 
       /*
        * Replace {FieldName} with the value of the field
@@ -1924,37 +1923,35 @@ static int	        poolConnections = 0;
 	    {
 	      v = nil;		// Mo match found.
 	    }
-	  else if (YES == autoquote)
+	  else
             {
               if ([o isKindOfClass: [NSData class]] == YES)
                 {
                   [ma addObject: o];
                   v = @"'?'''?'";
                 }
-              else
+              else if ([o isKindOfClass: NSStringClass] == NO)
                 {
                   v = [self quote: o];
                 }
+              else
+                {
+                  Class c = object_getClass(o);
+
+                  v = o;
+                  if (c != LitStringClass && c != SQLStringClass)
+                    {
+                      if (nil == warn)
+                        {
+                          warn = o;
+                        }
+                      if (YES == autoquote)
+                        {
+                          v = [self quote: o];
+                        }
+                    }
+                }
             }
-	  else
-	    {
-	      if ([o isKindOfClass: NSStringClass] == YES)
-		{
-		  v = (NSString*)o;
-		}
-	      else
-		{
-		  if ([o isKindOfClass: [NSData class]] == YES)
-		    {
-		      [ma addObject: o];
-		      v = @"'?'''?'";
-		    }
-		  else
-		    {
-		      v = [self quote: o];
-		    }
-		}
-	    }
 
 	  if ([v length] == 0)
 	    {
@@ -1981,6 +1978,19 @@ static int	        poolConnections = 0;
 			     range: r];
 	}
       [ma insertObject: mtext atIndex: 0];
+      if (nil != warn && YES == autoquoteWarning)
+        {
+          if (YES == autoquote)
+            {
+              NSLog(@"SQLClient autoquote performed for \"%@\" in \"%@\"",
+                warn, mtext);
+            }
+          else
+            {
+              NSLog(@"SQLClient autoquote proposed for \"%@\" in \"%@\"",
+                warn, mtext);
+            }
+        }
     }
   [arp release];
   return ma;
@@ -2213,7 +2223,7 @@ static int	        poolConnections = 0;
         }
     }
   q = NSAllocateObject(SQLStringClass, count + 1, NSDefaultMallocZone());
-  q->nxcsptr = dst = (char*)&q[1];
+  q->nxcsptr = dst = ((char*)(void*)q) + SQLStringSize;
   q->nxcslen = count;
   *dst++ = '\'';
   for (i = 0; i < len; i++)

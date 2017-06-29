@@ -534,6 +534,16 @@ SQLCLIENT_PRIVATE
  */
 + (void) setAutoquote: (BOOL)aFlag;
 
+/** Turns autoquote warning on/off for the process.<br />
+ * When autoquote warning is on, an NSLog() warning is generated whenever
+ * the arguments to the -prepare:args: method (and therefore all methods
+ * that use it) are automatically quoted (or woudl be if autoquote was
+ * turned on).<br />
+ * Turn this on when using software which you expect to migrate to using
+ * autoquote.
+ */
++ (void) setAutoquoteWarning: (BOOL)aFlag;
+
 /**
  * <p>Set the maximum number of simultaneous database connections
  * permitted (defaults to 8 and may not be set less than 1).
