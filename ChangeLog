@@ -1,3 +1,10 @@
+2017-06-29 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	New method to control warnings (on by default) about strings which
+	would automaticaly be quoted when autoquote is turned on.
+
 2017-04-07 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m:

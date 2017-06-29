@@ -90,7 +90,7 @@ static Class	SQLStringClass = Nil;
 static unsigned SQLStringSize = 0;
 
 static BOOL     autoquote = NO;
-static BOOL     autoquoteWarning = NO;
+static BOOL     autoquoteWarning = YES;
 
 /* This is the layout of the instance variables of the constant string class
  * produced by the compiler.
