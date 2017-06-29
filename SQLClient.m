@@ -107,8 +107,8 @@ static BOOL     autoquoteWarning = YES;
 }
 @end
 
-static NSString *
-newLiteral(const char *str, unsigned len)
+NSString *
+SQLClientNewLiteral(const char *str, unsigned len)
 {
   SQLString     *s;
 
@@ -118,6 +118,28 @@ newLiteral(const char *str, unsigned len)
   memcpy(s->nxcsptr, str, len);
   s->nxcsptr[len] = '\0';
   return s;
+}
+
+static NSString *
+copyLiteral(NSString *aString)
+{
+  if (nil != aString)
+    {
+      Class c = object_getClass(aString);
+
+      if (c != LitStringClass && c != SQLStringClass)
+        {
+          const char    *p = [aString UTF8String];
+          int           l = strlen(p);
+
+          aString = SQLClientNewLiteral(p, l);
+        }
+      else
+        {
+          aString = [aString copy];
+        }
+    }
+  return aString;
 }
 
 static NSString *
@@ -131,7 +153,7 @@ literal(NSString *aString)
         {
           const char    *p = [aString UTF8String];
           int           l = strlen(p);
-          NSString      *s = newLiteral(p, l);
+          NSString      *s = SQLClientNewLiteral(p, l);
 
           aString = [s autorelease];
         }
@@ -1073,6 +1095,11 @@ static int	        poolConnections = 0;
     }
 }
 
++ (NSString*) copyLiteral: (NSString*)aString
+{
+  return copyLiteral(aString);
+}
+
 + (NSString*) literal: (NSString*)aString
 {
   return literal(aString);
@@ -1390,6 +1417,11 @@ static int	        poolConnections = 0;
 - (BOOL) connected
 {
   return connected;
+}
+
+- (NSString*) copyLiteral: (NSString*)aString
+{
+  return copyLiteral(aString);
 }
 
 - (NSString*) database
@@ -2142,7 +2174,7 @@ static int	        poolConnections = 0;
   NSString      *s;
 
   len = sprintf(buf, "%"PRId64, i);
-  s = newLiteral(buf, len);
+  s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
 
@@ -2184,7 +2216,7 @@ static int	        poolConnections = 0;
   NSString      *s;
 
   len = sprintf(buf, "%f", f);
-  s = newLiteral(buf, len);
+  s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
 
@@ -2195,7 +2227,7 @@ static int	        poolConnections = 0;
   NSString      *s;
 
   len = sprintf(buf, "%i", i);
-  s = newLiteral(buf, len);
+  s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
 
@@ -3658,6 +3690,11 @@ static int	        poolConnections = 0;
           [other release];
         }
     }
+}
+
+- (NSString*) copyLiteral: (NSString*)aString
+{
+  return copyLiteral(aString);
 }
 
 - (id) copyWithZone: (NSZone*)z

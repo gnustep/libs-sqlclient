@@ -112,6 +112,11 @@ static Class      cls = Nil;
   return [_items[0].c cache];
 }
 
+- (NSString*) copyLiteral: (NSString*)aString
+{
+  return [SQLClient copyLiteral: aString];
+}
+
 - (void) dealloc
 {
   SQLClientPoolItem     *old;

@@ -204,6 +204,12 @@ extern NSString * const SQLClientDidConnectNotification;
  */
 extern NSString * const SQLClientDidDisconnectNotification;
 
+/** Function to create an SQL literal (string which won't be autoquoted)
+ * from a UTF8 or ASCII C string wouse length (not including any nul
+ * terminator) is count bytes.
+ */
+extern NSString * SQLClientNewLiteral(const char *ptr, unsigned count);
+
 #if     !defined(SQLCLIENT_PRIVATE)
 #define SQLCLIENT_PRIVATE       @private
 #endif
@@ -482,6 +488,11 @@ SQLCLIENT_PRIVATE
 + (SQLClient*) clientWithConfiguration: (NSDictionary*)config
 				  name: (NSString*)reference;
 
+/** Creates and returns a copy of aString as a literal (like +literal:),
+ * whether or not aString is already a literal string.
+ */
++ (NSString*) copyLiteral: (NSString*)aString;
+
 /**
  * Return an existing SQLClient instance for the specified name
  * if one exists, otherwise returns nil.
@@ -577,6 +588,11 @@ SQLCLIENT_PRIVATE
  * </p>
  */
 - (void) begin;
+
+/** Creates and returns a copy of aString as a literal (like -literal:),
+ * whether or not aString is already a literal string.
+ */
+- (NSString*) copyLiteral: (NSString*)aString;
 
 /** Returns a literal string version of aString (like the +literal: method).
  */
@@ -1681,6 +1697,11 @@ typedef struct {
                          max: (int)maxConnections
                          min: (int)minConnections;
 
+/** Creates and returns a copy of aString as a literal (like -literal:),
+ * whether or not aString is already a literal string.
+ */
+- (NSString*) copyLiteral: (NSString*)aString;
+
 /** Returns a literal string version of aString (like the +literal: method).
  */
 - (NSString*) literal: (NSString*)aString;
@@ -1923,6 +1944,11 @@ SQLCLIENT_PRIVATE
  * connection (SQLClient/SQLClientPool instance).
  */
 - (void) append: (SQLTransaction*)other;
+
+/** Creates and returns a copy of aString as a literal (like -literal:),
+ * whether or not aString is already a literal string.
+ */
+- (NSString*) copyLiteral: (NSString*)aString;
 
 /**
  * Make a copy of the receiver.
