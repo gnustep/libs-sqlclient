@@ -85,6 +85,7 @@ static Class	NSArrayClass = Nil;
 static Class	NSDateClass = Nil;
 static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
+static Class	LitCastClass = Nil;
 static Class	LitStringClass = Nil;
 static Class	SQLStringClass = Nil;
 static unsigned SQLStringSize = 0;
@@ -127,6 +128,11 @@ copyLiteral(NSString *aString)
     {
       Class c = object_getClass(aString);
 
+      while (c == LitCastClass)
+        {
+          aString = ((SQLClientLit*)aString)->content;
+          c = object_getClass(aString);
+        }
       if (c != LitStringClass && c != SQLStringClass)
         {
           const char    *p = [aString UTF8String];
@@ -149,6 +155,11 @@ literal(NSString *aString)
     {
       Class c = object_getClass(aString);
 
+      while (c == LitCastClass)
+        {
+          aString = ((SQLClientLit*)aString)->content;
+          c = object_getClass(aString);
+        }
       if (c != LitStringClass && c != SQLStringClass)
         {
           const char    *p = [aString UTF8String];
@@ -168,6 +179,24 @@ literal(NSString *aString)
 + (SQLTransaction*) _transactionUsing: (id)clientOrPool
                                 batch: (BOOL)isBatched
                                  stop: (BOOL)stopOnFailure;
+@end
+
+@implementation SQLClientLit
++ (SQLClientLit *) cast: (NSString*)str
+{
+  SQLClientLit  *l;
+
+  NSAssert([str isKindOfClass: NSStringClass], NSInvalidArgumentException);
+
+  l = (SQLClientLit*)NSAllocateObject(self, 0, NSDefaultMallocZone());
+  l->content = [str retain];
+  return [l autorelease];  
+}
+- (void) dealloc
+{
+  [content release];
+  [super dealloc];
+}
 @end
 
 @implementation SQLRecordKeys
@@ -1005,6 +1034,8 @@ static int	        poolConnections = 0;
           IMP   imp;
           SEL   sel;
 
+          LitCastClass = [SQLClientLit class];
+
           /* Find the literal string class used by the foundation library.
            */
           LitStringClass = object_getClass(@"test");
@@ -1765,6 +1796,18 @@ static int	        poolConnections = 0;
   return _password;
 }
 
+- (NSMutableArray*) prepare: (NSString*)stmt, ...
+{
+  va_list		ap;
+  NSMutableArray	*result;
+
+  va_start (ap, stmt);
+  result = [self prepare: stmt args: ap];
+  va_end (ap);
+
+  return result;
+}
+
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
 {
   NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
@@ -1795,7 +1838,11 @@ static int	        poolConnections = 0;
             {
               Class c = object_getClass(tmp);
 
-              if (c != LitStringClass && c != SQLStringClass)
+              if (c == LitCastClass)
+                {
+                  tmp = ((SQLClientLit*)tmp)->content;
+                }
+              else if (c != LitStringClass && c != SQLStringClass)
                 {
                   if (nil == warn)
                     {
@@ -1971,7 +2018,11 @@ static int	        poolConnections = 0;
                   Class c = object_getClass(o);
 
                   v = o;
-                  if (c != LitStringClass && c != SQLStringClass)
+                  if (c == LitCastClass)
+                    {
+                      v = ((SQLClientLit*)o)->content;
+                    }
+                  else if (c != LitStringClass && c != SQLStringClass)
                     {
                       if (nil == warn)
                         {

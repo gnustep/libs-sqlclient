@@ -225,6 +225,22 @@ extern NSString * SQLClientNewLiteral(const char *ptr, unsigned count);
 - (BOOL) isNull;
 @end
 
+/** Class to wrap an existing string object to tell the -prepare:args:
+ * and -prepare:with: methods that it is to be treated as a literal and
+ * not be quoted.
+ */
+@interface      SQLClientLit: NSObject
+{
+  @public
+  NSString      *content;
+}
+/** Creates and returns an autoreleased instance with str as its
+ * (retained) content.  If str is not an NSString subclass,
+ * raise an exception.
+ */
++ (SQLClientLit*) cast: (NSString*)str;
+@end
+
 /** This class is used to hold key information for a set of SQLRecord
  * objects produced by a single query.
  */
@@ -838,6 +854,11 @@ SQLCLIENT_PRIVATE
  * Return the database password for this instance (or nil).
  */
 - (NSString*) password;
+
+/** Calls -prepare:args: where them argument list needs to be a nil terminated
+ * list of objects.
+ */
+- (NSMutableArray*) prepare: (NSString*)stmt, ...;
 
 /**
  * This is the method used to convert a query or statement to a standard
@@ -1863,6 +1884,7 @@ typedef struct {
 - (NSInteger) execute: (NSString*)stmt,...;
 - (NSInteger) execute: (NSString*)stmt with: (NSDictionary*)values;
 - (SQLClientPool*) pool;
+- (NSMutableArray*) prepare: (NSString*)stmt, ...;
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
 - (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values;
 - (NSMutableArray*) query: (NSString*)stmt,...;

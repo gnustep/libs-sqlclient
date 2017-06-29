@@ -1176,6 +1176,18 @@ static Class      cls = Nil;
   return self;
 }
 
+- (NSMutableArray*) prepare: (NSString*)stmt, ...
+{
+  va_list		ap;
+  NSMutableArray	*result;
+
+  va_start (ap, stmt);
+  result = [_items[0].c prepare: stmt args: ap];
+  va_end (ap);
+
+  return result;
+}
+
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
 {
   return [_items[0].c prepare: stmt args: args];
