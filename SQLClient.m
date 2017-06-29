@@ -2161,28 +2161,12 @@ static int	        poolConnections = 0;
 	}
 
       /**
-       * For an NSArray or NSSet, we produce a bracketed list of the
+       * For collections, we produce a bracketed list of the
        * (quoted) objects in the array.
        */
-      if ([obj isKindOfClass: NSArrayClass] == YES ||
-	[obj isKindOfClass: NSSetClass] == YES)
+      if ([obj respondsToSelector: @selector(objectEnumerator)])
 	{
-	  NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
-	  NSEnumerator		*enumerator = [obj objectEnumerator];
-	  id			value = [enumerator nextObject];
-
-	  [ms appendString: @"("];
-	  if (value != nil)
-	    {
-	      [ms appendString: [self quote: value]];
-	    }
-	  while ((value = [enumerator nextObject]) != nil)
-	    {
-	      [ms appendString: @","];
-	      [ms appendString: [self quote: value]];
-	    }
-	  [ms appendString: @")"];
-	  return literal(ms);
+          return [self quoteSet: obj];
 	}
 
       /**
@@ -2330,6 +2314,26 @@ static int	        poolConnections = 0;
   *dst++ = '\"';
   *dst = '\0';
   return [q autorelease];
+}
+
+- (NSString*) quoteSet: (id)obj
+{
+  NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
+  NSEnumerator          *enumerator = [obj objectEnumerator];
+  id			value = [enumerator nextObject];
+
+  [ms appendString: @"("];
+  if (value != nil)
+    {
+      [ms appendString: [self quote: value]];
+    }
+  while ((value = [enumerator nextObject]) != nil)
+    {
+      [ms appendString: @","];
+      [ms appendString: [self quote: value]];
+    }
+  [ms appendString: @")"];
+  return literal(ms);
 }
 
 - (NSString*) quoteString: (NSString *)s

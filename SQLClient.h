@@ -939,8 +939,9 @@ SQLCLIENT_PRIVATE
  * NSData objects are not quoted ... they must not appear in queries, and
  * where used for insert/update operations, they need to be passed to the
  * -backendExecute: method unchanged.<br />
- * NSArray and NSSet objects are quoted as sets containing the quoted
- * elements from the array/set.  If you want to use SQL arrays (and your
+ * Collections such as NSArray and NSSet (responding to the -objectEnumerator
+ * method) are quoted as sets containing the quoted elements from
+ * the collection.  If you want to use SQL arrays (and your
  * database backend supports it) you must explicitly use the
  * -quoteArray:toString:quotingString: to convert an NSArray to a literal
  * database array representation.
@@ -999,6 +1000,12 @@ SQLCLIENT_PRIVATE
  * rather than single quotes.<br />
  */
 - (NSString*) quoteName: (NSString *)s;
+
+/**
+ * Quotes the values in any collection (responses to -objectEnumerator)
+ * as a set (bracketed list of values) for use in an SQL query.
+ */
+- (NSString*) quoteSet: (id)obj;
 
 /**
  * Convert a string to a form suitable for use as a string
@@ -1909,6 +1916,7 @@ typedef struct {
 - (NSString*) quoteFloat: (float)f;
 - (NSString*) quoteInteger: (int)i;
 - (NSString*) quoteName: (NSString *)s;
+- (NSString*) quoteSet: (id)obj;
 - (NSString*) quoteString: (NSString *)s;
 - (NSInteger) simpleExecute: (NSArray*)info;
 - (void) singletons: (NSMutableArray*)records;

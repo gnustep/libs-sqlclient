@@ -1387,6 +1387,13 @@ static Class      cls = Nil;
   return result;
 }
 
+- (NSString*) quoteSet: (id)obj
+{
+  NSString      *result = [_items[0].c quoteSet: obj];
+
+  return result;
+}
+
 - (NSString*) quoteString: (NSString *)s
 {
   NSString      *result = [_items[0].c quoteString: s];
