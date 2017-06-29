@@ -1416,8 +1416,7 @@ static int	        poolConnections = 0;
                   e = [_names objectEnumerator];
                   while (nil != (n = [e nextObject]))
                     {
-                      [self backendListen:
-                        [NSString stringWithFormat: @"\"%@\"", n]];
+                      [self backendListen: [self quoteName: n]];
                     }
                 }
 	      _lastConnect = GSTickerTimeNow();
@@ -2286,6 +2285,51 @@ static int	        poolConnections = 0;
   len = sprintf(buf, "%i", i);
   s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
+}
+
+- (NSString*) quoteName: (NSString *)s
+{
+  NSData        *d = [s dataUsingEncoding: NSUTF8StringEncoding];
+  const char    *src = (const char*)[d bytes];
+  char          *dst;
+  unsigned      len = [d length];
+  unsigned      count = 2;
+  unsigned      i;
+  SQLString     *q;
+
+  for (i = 0; i < len; i++)
+    {
+      char      c = src[i];
+
+      if ('\"' == c)
+        {
+          count++;      // A quote needs to be doubled
+        }
+      if ('\0' != c)
+        {
+          count++;      // A nul needs to be ignored
+        }
+    }
+  q = NSAllocateObject(SQLStringClass, count + 1, NSDefaultMallocZone());
+  q->nxcsptr = dst = ((char*)(void*)q) + SQLStringSize;
+  q->nxcslen = count;
+  *dst++ = '\"';
+  for (i = 0; i < len; i++)
+    {
+      char      c = src[i];
+
+      if ('\"' == c)
+        {
+          *dst++ = '\"';
+        }
+      if ('\0' != c)
+        {
+          *dst++ = c;
+        }
+     }   
+  *dst++ = '\"';
+  *dst = '\0';
+  return [q autorelease];
 }
 
 - (NSString*) quoteString: (NSString *)s
@@ -4190,8 +4234,7 @@ validName(NSString *name)
           [_names addObject: name];
           if (0 == count && YES == connected)
             {
-              [self backendListen:
-                [NSString stringWithFormat: @"\"%@\"", name]];
+              [self backendListen: [self quoteName: name]];
             }
         }
       [[NSNotificationCenter defaultCenter] addObserver: anObserver
@@ -4222,7 +4265,7 @@ validName(NSString *name)
   [lock lock];
   NS_DURING
     {
-      [self backendNotify: [NSString stringWithFormat: @"\"%@\"", name]
+      [self backendNotify: [self quoteName: name]
                   payload: more];
     }
   NS_HANDLER
@@ -4289,8 +4332,7 @@ validName(NSString *name)
                       if (YES == connected
                         && 0 == [_names countForObject: name])
                         {
-                          [self backendUnlisten:
-                            [NSString stringWithFormat: @"\"%@\"", name]];
+                          [self backendUnlisten: [self quoteName: name]];
                         }
                     }
                   name = [se nextObject];

@@ -994,6 +994,13 @@ SQLCLIENT_PRIVATE
 - (NSString*) quoteInteger: (int)i;
 
 /**
+ * Convert a string to a form suitable for use as a case sensitive table
+ * or column name in an SQL query.  This uses the double quotes character
+ * rather than single quotes.<br />
+ */
+- (NSString*) quoteName: (NSString *)s;
+
+/**
  * Convert a string to a form suitable for use as a string
  * literal in an SQL query.<br />
  * Subclasses may override this for non-standard literal string
@@ -1901,6 +1908,7 @@ typedef struct {
 - (NSString*) quoteChar: (char)c;
 - (NSString*) quoteFloat: (float)f;
 - (NSString*) quoteInteger: (int)i;
+- (NSString*) quoteName: (NSString *)s;
 - (NSString*) quoteString: (NSString *)s;
 - (NSInteger) simpleExecute: (NSArray*)info;
 - (void) singletons: (NSMutableArray*)records;

@@ -1380,6 +1380,13 @@ static Class      cls = Nil;
   return result;
 }
 
+- (NSString*) quoteName: (NSString *)s
+{
+  NSString      *result = [_items[0].c quoteName: s];
+
+  return result;
+}
+
 - (NSString*) quoteString: (NSString *)s
 {
   NSString      *result = [_items[0].c quoteString: s];
