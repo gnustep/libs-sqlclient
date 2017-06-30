@@ -86,7 +86,7 @@ static Class	NSArrayClass = Nil;
 static Class	NSDateClass = Nil;
 static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
-static Class	LitCastClass = Nil;
+static Class	LitProxyClass = Nil;
 static Class	LitStringClass = Nil;
 static Class	SQLStringClass = Nil;
 static unsigned SQLStringSize = 0;
@@ -109,7 +109,7 @@ static BOOL     autoquoteWarning = YES;
 }
 @end
 
-@interface SQLLiteralCast: SQLLiteral
+@interface SQLLiteralProxy: SQLLiteral
 {
 @public
   NSString      *content;
@@ -123,7 +123,7 @@ SQLClientIsLiteral(NSString *aString)
     {
       Class c = object_getClass(aString);
 
-      if (c == LitStringClass || c == SQLStringClass || c == LitCastClass)
+      if (c == LitStringClass || c == SQLStringClass || c == LitProxyClass)
         {
           return YES;
         }
@@ -151,9 +151,9 @@ SQLClientCopyLiteral(NSString *aString)
     {
       Class c = object_getClass(aString);
 
-      if (c == LitCastClass)
+      if (c == LitProxyClass)
         {
-          aString = ((SQLLiteralCast*)aString)->content;
+          aString = ((SQLLiteralProxy*)aString)->content;
           c = object_getClass(aString);
         }
       if (c != LitStringClass && c != SQLStringClass)
@@ -178,9 +178,9 @@ SQLClientMakeLiteral(NSString *aString)
     {
       Class c = object_getClass(aString);
 
-      if (c == LitCastClass)
+      if (c == LitProxyClass)
         {
-          aString = ((SQLLiteralCast*)aString)->content;
+          aString = ((SQLLiteralProxy*)aString)->content;
           c = object_getClass(aString);
         }
       if (c != LitStringClass && c != SQLStringClass)
@@ -214,10 +214,10 @@ SQLClientProxyLiteral(NSString *aString)
     }
   else
     {
-      SQLLiteralCast  *l;
+      SQLLiteralProxy  *l;
 
-      l = (SQLLiteralCast*)
-        NSAllocateObject(LitCastClass, 0, NSDefaultMallocZone());
+      l = (SQLLiteralProxy*)
+        NSAllocateObject(LitProxyClass, 0, NSDefaultMallocZone());
       l->content = [aString retain];
       return [l autorelease];  
     }
@@ -230,9 +230,9 @@ SQLClientUnProxyLiteral(SQLLiteral *aString)
     {
       return nil;
     }
-  else if (object_getClass(aString) == LitCastClass)
+  else if (object_getClass(aString) == LitProxyClass)
     {
-      return ((SQLLiteralCast*)aString)->content;
+      return ((SQLLiteralProxy*)aString)->content;
     }
   return (NSString*)aString;
 }
@@ -255,7 +255,7 @@ SQLClientUnProxyLiteral(SQLLiteral *aString)
 }
 @end
 
-@implementation SQLLiteralCast
+@implementation SQLLiteralProxy
 - (unichar) characterAtIndex: (NSUInteger)i
 {
   return [content characterAtIndex: i];
@@ -1106,7 +1106,7 @@ static int	        poolConnections = 0;
           IMP   imp;
           SEL   sel;
 
-          LitCastClass = [SQLLiteralCast class];
+          LitProxyClass = [SQLLiteralProxy class];
 
           /* Find the literal string class used by the foundation library.
            */
@@ -1873,9 +1873,9 @@ static int	        poolConnections = 0;
             }
           else if ([tmp isKindOfClass: NSStringClass] == NO)
             {
-              if (object_getClass(tmp) == LitCastClass)
+              if (object_getClass(tmp) == LitProxyClass)
                 {
-                  tmp = ((SQLLiteralCast*)tmp)->content;
+                  tmp = ((SQLLiteralProxy*)tmp)->content;
                 }
               else
                 {
@@ -2055,9 +2055,9 @@ static int	        poolConnections = 0;
                 }
               else if ([o isKindOfClass: NSStringClass] == NO)
                 {
-                  if (object_getClass(o) == LitCastClass)
+                  if (object_getClass(o) == LitProxyClass)
                     {
-                      v = ((SQLLiteralCast*)o)->content;
+                      v = ((SQLLiteralProxy*)o)->content;
                     }
                   else
                     {

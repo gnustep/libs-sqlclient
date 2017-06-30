@@ -1597,7 +1597,7 @@ static inline unsigned int trim(char *str, unsigned len)
   [super dealloc];
 }
 
-- (void) _quoteArray: (NSArray *)a to: (NSMutableArray*)s
+- (void) _quoteArray: (NSArray *)a to: (NSMutableString*)s
 {
   NSUInteger    count;
   NSUInteger    index;
@@ -1614,7 +1614,7 @@ static inline unsigned int trim(char *str, unsigned len)
         }
       if ([o isKindOfClass: [NSArray class]])
         {
-          [self quoteArray: (NSArray *)o toString: s];
+          [self _quoteArray: (NSArray *)o to: s];
         }
       else if ([o isKindOfClass: [NSString class]])
         {
@@ -1656,7 +1656,7 @@ static inline unsigned int trim(char *str, unsigned len)
   NSAssert([a isKindOfClass: [NSArray class]], NSInvalidArgumentException);
 
   [self _quoteArray: a to: s];
-  return [self castLiteral: s];
+  return SQLClientProxyLiteral(s);
 }
 
 - (NSMutableString*) quoteArray: (NSArray *)a
