@@ -180,13 +180,13 @@
 
 #import	<Foundation/NSArray.h>
 #import	<Foundation/NSObject.h>
+#import	<Foundation/NSString.h>
 
 @class	NSConditionLock;
 @class	NSCountedSet;
 @class	NSMapTable;
 @class	NSMutableDictionary;
 @class	NSMutableSet;
-@class	NSString;
 @class	NSThread;
 
 @class	GSCache;
