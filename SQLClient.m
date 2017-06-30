@@ -132,15 +132,15 @@ SQLClientIsLiteral(NSString *aString)
 }
 
 SQLLiteral *
-SQLClientNewLiteral(const char *str, unsigned len)
+SQLClientNewLiteral(const char *bytes, unsigned count)
 {
   SQLString     *s;
 
-  s = NSAllocateObject(SQLStringClass, len+1, NSDefaultMallocZone());
+  s = NSAllocateObject(SQLStringClass, count+1, NSDefaultMallocZone());
   s->nxcsptr = ((char*)(void*)s) + SQLStringSize;
-  s->nxcslen = len;
-  memcpy(s->nxcsptr, str, len);
-  s->nxcsptr[len] = '\0';
+  s->nxcslen = count;
+  memcpy(s->nxcsptr, bytes, count);
+  s->nxcsptr[count] = '\0';
   return s;
 }
 
@@ -265,9 +265,30 @@ SQLClientUnProxyLiteral(id aString)
   [content release];
   [super dealloc];
 }
+- (void) getCharacters: (unichar*)buffer
+{
+  [content getCharacters: buffer];
+}
+- (void) getCharacters: (unichar*)buffer
+                 range: (NSRange)aRange
+{
+  return [content getCharacters: buffer range: aRange];
+}
+- (NSUInteger) hash
+{
+  return [content hash];
+}
+- (BOOL) isEqual: (id)other
+{
+  return [content isEqual: other];
+}
 - (NSUInteger) length
 {
   return [content length];
+}
+- (const char *) UTF8String
+{
+  return [content UTF8String];
 }
 @end
 
@@ -2242,7 +2263,7 @@ static int	        poolConnections = 0;
   return quoted;
 }
 
-- (SQLLiteral*) quoteArray: (NSArray *)a;
+- (SQLLiteral*) quoteArray: (NSArray *)a
 {
   [NSException raise: NSGenericException
     format: @"%@ not supported for this database", NSStringFromSelector(_cmd)]; 
