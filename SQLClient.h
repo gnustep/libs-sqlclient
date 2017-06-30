@@ -192,6 +192,16 @@
 @class	GSCache;
 @class	SQLTransaction;
 
+/** Code including this header should define SQLCLIENT_COMPILE_TIME_QUOTE_CHECK
+ * to enable stricter compile time type checking to ensure that literal strings
+ * are used for sql queries/statements.
+ */
+#if defined(SQLCLIENT_COMPILE_TIME_QUOTE_CHECK)
+@class	SQLLiteral;
+#else
+#define SQLLiteral      NSString
+#endif
+
 /**
  * Notification sent when an instance becomes connected to the database
  * server.  The notification object is the instance connected.
@@ -203,12 +213,6 @@ extern NSString * const SQLClientDidConnectNotification;
  * server.  The notification object is the instance disconnected.
  */
 extern NSString * const SQLClientDidDisconnectNotification;
-
-/** Function to create an SQL literal (string which won't be autoquoted)
- * from a UTF8 or ASCII C string wouse length (not including any nul
- * terminator) is count bytes.
- */
-extern NSString * SQLClientNewLiteral(const char *ptr, unsigned count);
 
 #if     !defined(SQLCLIENT_PRIVATE)
 #define SQLCLIENT_PRIVATE       @private
@@ -223,22 +227,6 @@ extern NSString * SQLClientNewLiteral(const char *ptr, unsigned count);
  * (receiver == [NSNull null] ? YES : NO)<br />
  */
 - (BOOL) isNull;
-@end
-
-/** Class to wrap an existing string object to tell the -prepare:args:
- * and -prepare:with: methods that it is to be treated as a literal and
- * not be quoted.
- */
-@interface      SQLClientLit: NSObject
-{
-  @public
-  NSString      *content;
-}
-/** Creates and returns an autoreleased instance with str as its
- * (retained) content.  If str is not an NSString subclass,
- * raise an exception.
- */
-+ (SQLClientLit*) cast: (NSString*)str;
 @end
 
 /** This class is used to hold key information for a set of SQLRecord
@@ -504,26 +492,11 @@ SQLCLIENT_PRIVATE
 + (SQLClient*) clientWithConfiguration: (NSDictionary*)config
 				  name: (NSString*)reference;
 
-/** Creates and returns a copy of aString as a literal (like +literal:),
- * whether or not aString is already a literal string.
- */
-+ (NSString*) copyLiteral: (NSString*)aString;
-
 /**
  * Return an existing SQLClient instance for the specified name
  * if one exists, otherwise returns nil.
  */
 + (SQLClient*) existingClient: (NSString*)reference;
-
-/** Returns a literal string version of aString.<br />
- * A literal is an instance of the literal string class produced by the
- * compiler or the SQLString class (which subclasses it).<br />
- * All the quoting methods return literal strings.<br />
- * If aString is already a literal string, this method returns it unchanged,
- * otherwise the returned value is an autoreleased newly created copy of the
- * argument.
- */
-+ (NSString*) literal: (NSString*)aString;
 
 /**
  * Returns the maximum number of simultaneous database connections
@@ -550,26 +523,6 @@ SQLCLIENT_PRIVATE
  * </p>
  */
 + (void) purgeConnections: (NSDate*)since;
-
-/** Turns autoquote on/off for the process.<br />
- * When autoquote is on, the arguments to the -prepare:args: method (and
- * therefore all methods that use it) are automatically quoted unless they
- * are literal strings (see the +literal: method).<br />
- * The purpose of autoquoting is to help prevent SQL injection attacks on
- * your software;  it helps ensure that only strings you really want to use
- * literally are embedded in the SQL without quoting.
- */
-+ (void) setAutoquote: (BOOL)aFlag;
-
-/** Turns autoquote warning on/off for the process.<br />
- * When autoquote warning is on, an NSLog() warning is generated whenever
- * the arguments to the -prepare:args: method (and therefore all methods
- * that use it) are automatically quoted (or woudl be if autoquote was
- * turned on).<br />
- * Turn this on when using software which you expect to migrate to using
- * autoquote.
- */
-+ (void) setAutoquoteWarning: (BOOL)aFlag;
 
 /**
  * <p>Set the maximum number of simultaneous database connections
@@ -605,15 +558,6 @@ SQLCLIENT_PRIVATE
  */
 - (void) begin;
 
-/** Creates and returns a copy of aString as a literal (like -literal:),
- * whether or not aString is already a literal string.
- */
-- (NSString*) copyLiteral: (NSString*)aString;
-
-/** Returns a literal string version of aString (like the +literal: method).
- */
-- (NSString*) literal: (NSString*)aString;
-
 /** This grabs the receiver for use by the current thread.<br />
  * If limit is nil or in the past, makes a single immediate attempt.<br />
  * Returns NO if it fails to obtain a lock by the specified date.<br /> 
@@ -621,17 +565,17 @@ SQLCLIENT_PRIVATE
  */
 - (BOOL) lockBeforeDate: (NSDate*)limit;
 
-/**
- * <p>Build an sql query string using the supplied arguments.
+/** <p>Build an sql query string using the supplied arguments to call
+ * -prepare:args: to build a query and raises an exception if the result
+ * is not a simple query string.
  * </p>
  * <p>This method has at least one argument, the string starting the
  * query to be executed (which must have the prefix 'select ').
  * </p>
  * <p>Additional arguments are a nil terminated list which also be strings,
  * and these are appended to the statement.<br />
- * Any string arguments are assumed to have been quoted appropriately
- * already, but non-string arguments are automatically quoted using the
- * -quote: method.
+ * Arguments in the list are automatically quoted as necessary, with the
+ * behavior for string arguments being controlled by the autoquote setting.
  * </p>
  * <example>
  *   sql = [db buildQuery: @"SELECT Name FROM ", table, nil];
@@ -643,9 +587,11 @@ SQLCLIENT_PRIVATE
  * or -cache:simpleQuery:recordType:listType: methods.
  * </p>
  */
-- (NSString*) buildQuery: (NSString*)stmt,...;
+- (SQLLiteral*) buildQuery: (NSString*)stmt,...;
 
-/**
+/** <p>Build an sql query string using the supplied arguments to call
+ * -prepare:with: to build a query and raises an exception if the result
+ * is not a simple query string.<br />
  * Takes the query statement and substitutes in values from
  * the dictionary where markup of the format {key} is found.<br />
  * Returns the resulting query string.
@@ -653,8 +599,9 @@ SQLCLIENT_PRIVATE
  *   sql = [db buildQuery: @"SELECT Name FROM {Table} WHERE ID = {ID}"
  *                   with: values];
  * </example>
- * <p>Any non-string values in the dictionary will be replaced by
- * the results of the -quote: method.<br />
+ * <p>Arguments in the dictionary are automatically quoted as necessary,
+ * with the behavior for string arguments being controlled by the autoquote
+ * setting.<br />
  * The markup format may also be {key?default} where <em>default</em>
  * is a string to be used if there is no value for the <em>key</em>
  * in the dictionary.
@@ -664,7 +611,7 @@ SQLCLIENT_PRIVATE
  * or -cache:simpleQuery:recordType:listType: methods.
  * </p>
  */
-- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
+- (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
 
 /**
  * Return the client name for this instance.<br />
@@ -730,9 +677,8 @@ SQLCLIENT_PRIVATE
  * Perform arbitrary operation <em>which does not return any value.</em><br />
  * This arguments to this method are a nil terminated list which are
  * concatenated in the manner of the -query:,... method.<br />
- * Any string arguments are assumed to have been quoted appropriately
- * already, but non-string arguments are automatically quoted using the
- * -quote: method.
+ * Arguments in the list are automatically quoted as necessary, with the
+ * behavior for string arguments being controlled by the autoquote setting.
  * <example>
  *   [db execute: @"UPDATE ", table, @" SET Name = ",
  *     myName, " WHERE ID = ", myId, nil];
@@ -751,8 +697,9 @@ SQLCLIENT_PRIVATE
  *   [db execute: @"UPDATE {Table} SET Name = {Name} WHERE ID = {ID}"
  *          with: values];
  * </example>
- * Any non-string values in the dictionary will be replaced by
- * the results of the -quote: method.<br />
+ * Arguments in the dictionary are automatically quoted as necessary,
+ * with the behavior for string arguments being controlled by the autoquote
+ * setting.<br />
  * The markup format may also be {key?default} where <em>default</em>
  * is a string to be used if there is no value for the <em>key</em>
  * in the dictionary.<br />
@@ -855,7 +802,7 @@ SQLCLIENT_PRIVATE
  */
 - (NSString*) password;
 
-/** Calls -prepare:args: where them argument list needs to be a nil terminated
+/** Calls -prepare:args: where the argument list needs to be a nil terminated
  * list of objects.
  */
 - (NSMutableArray*) prepare: (NSString*)stmt, ...;
@@ -863,8 +810,9 @@ SQLCLIENT_PRIVATE
 /**
  * This is the method used to convert a query or statement to a standard
  * form used internally by other methods.<br />
- * This works to build an sql string by quoting any non-string objects
- * and concatenating the resulting strings in a nil terminated list.<br />
+ * This works to build an sql string by quoting any non-literal objects
+ * according to the autoquote setting, and concatenating the resulting
+ * strings in a nil terminated list.<br />
  * Returns an array containing the statement as the first object and
  * any NSData objects following.  The NSData objects appear in the
  * statement strings as the marker sequence - <code>'?'''?'</code><br />
@@ -926,10 +874,6 @@ SQLCLIENT_PRIVATE
  * Convert an object to a string suitable for use in an SQL query.<br />
  * Normally the -execute:,..., and -query:,... methods will call this
  * method automatically for everything apart from string objects.<br />
- * Strings have to be handled specially, because they are used both for
- * parts of the SQL command, and as values (where they need to be quoted).
- * So where you need to pass a string value which needs quoting,
- * you must call this method explicitly.<br />
  * Subclasses may override this method to provide appropriate quoting for
  * types of object which need database backend specific quoting conventions.
  * However, the defalt implementation should be OK for most cases.<br />
@@ -946,12 +890,17 @@ SQLCLIENT_PRIVATE
  * -quoteArray:toString:quotingString: to convert an NSArray to a literal
  * database array representation.
  */
-- (NSString*) quote: (id)obj;
+- (SQLLiteral*) quote: (id)obj;
 
 /**
  * Produce a quoted string from the supplied arguments (printf style).
  */
-- (NSString*) quotef: (NSString*)fmt, ...;
+- (SQLLiteral*) quotef: (NSString*)fmt, ...;
+
+/* Produce a quoted string from an array on databases where arrays are
+ * supported (currently only Postgres).
+ */
+- (SQLLiteral*) quoteArray: (NSArray*)a;
 
 /* Produce a quoted string from an array on databases where arrays are
  * supported (currently only Postgres).<br />
@@ -968,44 +917,44 @@ SQLCLIENT_PRIVATE
 /**
  * Convert a big (64 bit) integer to a string suitable for use in an SQL query.
  */
-- (NSString*) quoteBigInteger: (int64_t)i;
+- (SQLLiteral*) quoteBigInteger: (int64_t)i;
 
 /**
  * Convert a 'C' string to a string suitable for use in an SQL query
  * by using -quoteString: to convert it to a literal string format.<br />
  * NB. a null pointer is treated as an empty string.
  */
-- (NSString*) quoteCString: (const char *)s;
+- (SQLLiteral*) quoteCString: (const char *)s;
 
 /**
  * Convert a single character to a string suitable for use in an SQL query
  * by using -quoteString: to convert it to a literal string format.<br />
  * NB. a nul character is not allowed and will cause an exception.
  */
-- (NSString*) quoteChar: (char)c;
+- (SQLLiteral*) quoteChar: (char)c;
 
 /**
  * Convert a float to a string suitable for use in an SQL query.
  */
-- (NSString*) quoteFloat: (float)f;
+- (SQLLiteral*) quoteFloat: (float)f;
 
 /**
  * Convert an integer to a string suitable for use in an SQL query.
  */
-- (NSString*) quoteInteger: (int)i;
+- (SQLLiteral*) quoteInteger: (int)i;
 
 /**
  * Convert a string to a form suitable for use as a case sensitive table
  * or column name in an SQL query.  This uses the double quotes character
  * rather than single quotes.<br />
  */
-- (NSString*) quoteName: (NSString *)s;
+- (SQLLiteral*) quoteName: (NSString *)s;
 
 /**
  * Quotes the values in any collection (responses to -objectEnumerator)
  * as a set (bracketed list of values) for use in an SQL query.
  */
-- (NSString*) quoteSet: (id)obj;
+- (SQLLiteral*) quoteSet: (id)obj;
 
 /**
  * Convert a string to a form suitable for use as a string
@@ -1013,7 +962,7 @@ SQLCLIENT_PRIVATE
  * Subclasses may override this for non-standard literal string
  * quoting conventions.
  */
-- (NSString*) quoteString: (NSString *)s;
+- (SQLLiteral*) quoteString: (NSString *)s;
 
 /**
  * Revert a transaction for this database client.<br />
@@ -1087,7 +1036,7 @@ SQLCLIENT_PRIVATE
  * Calls -simpleQuery:recordType:listType: with the default record class
  * and default array class.
  */
-- (NSMutableArray*) simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt;
 
 /**
  * Calls -backendQuery:recordType:listType: in a safe manner.<br />
@@ -1104,7 +1053,7 @@ SQLCLIENT_PRIVATE
  * This library provides a few helper classes to provide alternative
  * values for rtype and ltype.
  */
-- (NSMutableArray*) simpleQuery: (NSString*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype;
 
@@ -1586,7 +1535,7 @@ SQLCLIENT_PRIVATE
  * Calls -cache:simpleQuery:recordType:listType: with the default
  * record class and array class.
  */
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLiteral*)stmt;
 
 /**
  * If the result of the query is already cached and has not expired,
@@ -1620,7 +1569,7 @@ SQLCLIENT_PRIVATE
  * executed as soon as possible in the cache thread.
  */
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (NSString*)stmt
+	      simpleQuery: (SQLLiteral*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype;
 
@@ -1731,15 +1680,6 @@ typedef struct {
 			name: (NSString*)reference
                          max: (int)maxConnections
                          min: (int)minConnections;
-
-/** Creates and returns a copy of aString as a literal (like -literal:),
- * whether or not aString is already a literal string.
- */
-- (NSString*) copyLiteral: (NSString*)aString;
-
-/** Returns a literal string version of aString (like the +literal: method).
- */
-- (NSString*) literal: (NSString*)aString;
 
 /** Returns a long description of the pool including statistics, status,
  * and the description of a sample client.
@@ -1889,9 +1829,9 @@ typedef struct {
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values;
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLiteral*)stmt;
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (NSString*)stmt
+	      simpleQuery: (SQLLiteral*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype;
 - (NSMutableArray*) columns: (NSMutableArray*)records;
@@ -1905,23 +1845,24 @@ typedef struct {
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values;
 - (SQLRecord*) queryRecord: (NSString*)stmt,...;
 - (NSString*) queryString: (NSString*)stmt,...;
-- (NSString*) quote: (id)obj;
+- (SQLLiteral*) quote: (id)obj;
+- (SQLLiteral*) quoteArray: (NSArray *)a;
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
                  quotingStrings: (BOOL)_q;
-- (NSString*) quotef: (NSString*)fmt, ...;
-- (NSString*) quoteBigInteger: (int64_t)i;
-- (NSString*) quoteCString: (const char *)s;
-- (NSString*) quoteChar: (char)c;
-- (NSString*) quoteFloat: (float)f;
-- (NSString*) quoteInteger: (int)i;
-- (NSString*) quoteName: (NSString *)s;
-- (NSString*) quoteSet: (id)obj;
-- (NSString*) quoteString: (NSString *)s;
+- (SQLLiteral*) quotef: (NSString*)fmt, ...;
+- (SQLLiteral*) quoteBigInteger: (int64_t)i;
+- (SQLLiteral*) quoteCString: (const char *)s;
+- (SQLLiteral*) quoteChar: (char)c;
+- (SQLLiteral*) quoteFloat: (float)f;
+- (SQLLiteral*) quoteInteger: (int)i;
+- (SQLLiteral*) quoteName: (NSString *)s;
+- (SQLLiteral*) quoteSet: (id)obj;
+- (SQLLiteral*) quoteString: (NSString *)s;
 - (NSInteger) simpleExecute: (NSArray*)info;
 - (void) singletons: (NSMutableArray*)records;
-- (NSMutableArray*) simpleQuery: (NSString*)stmt;
-- (NSMutableArray*) simpleQuery: (NSString*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt;
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype;
 @end
@@ -1982,11 +1923,6 @@ SQLCLIENT_PRIVATE
  * connection (SQLClient/SQLClientPool instance).
  */
 - (void) append: (SQLTransaction*)other;
-
-/** Creates and returns a copy of aString as a literal (like -literal:),
- * whether or not aString is already a literal string.
- */
-- (NSString*) copyLiteral: (NSString*)aString;
 
 /**
  * Make a copy of the receiver.
@@ -2065,10 +2001,6 @@ SQLCLIENT_PRIVATE
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
 
-/** Returns a literal string version of aString (like the +literal: method).
- */
-- (NSString*) literal: (NSString*)aString;
-
 /**
  * Returns the database client with which this instance operates.<br />
  * This client is retained by the transaction.<br />
@@ -2109,6 +2041,99 @@ SQLCLIENT_PRIVATE
  */
 - (SQLTransaction*) transactionAtIndex: (unsigned)index;
 @end
+
+
+
+#if defined(SQLLiteral)
+#undef  SQLLiteral
+#endif
+
+/** The SQLLiteral subclass of NSString is used to tell -prepare:args:
+ * and -prepare:with: methods that a string is to be treated as a literal
+ * which should not be quoted when it is used as part of an SQL query or
+ * statement.
+ */
+@interface      SQLLiteral: NSString
+@end
+
+/** This category encapsulates methods used to control automatic quoting
+ * of non-literal strings.
+ */ 
+@interface      SQLClient (Quote)
+
+/** Returns a BOOL saying whether autoquote is on or off.
+ */
++ (BOOL) autoquote;
+
+/** Returns a BOOL saying whether autoquote warnings are on or off.
+ */
++ (BOOL) autoquoteWarning;
+
+/** Turns autoquote on/off for the process.<br />
+ * When autoquote is on, the arguments to the -prepare:args: method (and
+ * therefore all methods that use it) are automatically quoted unless they
+ * are literal strings (see the +literal: method).<br />
+ * The purpose of autoquoting is to help prevent SQL injection attacks on
+ * your software;  it helps ensure that only strings you really want to use
+ * literally are embedded in the SQL without quoting.
+ */
++ (void) setAutoquote: (BOOL)aFlag;
+
+/** Turns autoquote warning on/off for the process.<br />
+ * When autoquote warning is on, an NSLog() warning is generated whenever
+ * the arguments to the -prepare:args: method (and therefore all methods
+ * that use it) are automatically quoted (or woudl be if autoquote was
+ * turned on).<br />
+ * Turn this on when using software which you expect to migrate to using
+ * autoquote.
+ */
++ (void) setAutoquoteWarning: (BOOL)aFlag;
+
+@end
+
+/** Creates and returns a copy of aString as a literal,
+ * whether or not aString is already a literal string.
+ */
+extern SQLLiteral * SQLClientCopyLiteral(NSString *aString);
+
+/** Function to test an object to see if it is considered to be a literal
+ * string by SQLClient.  Use this rather than trying to chewck the class
+ * hierarchy (which is not reliable).
+ */
+extern BOOL SQLClientIsLiteral(NSString *aString);
+
+/** Returns a literal string version of aString.<br />
+ * A literal is an instance of the literal string class produced by the
+ * compiler or the SQLString class (which subclasses it).<br />
+ * If aString is already a literal string, this method returns it unchanged,
+ * otherwise the returned value is an autoreleased newly created copy of the
+ * argument.
+ */
+extern SQLLiteral * SQLClientMakeLiteral(NSString *aString);
+
+/** Function to create an SQL literal (string which won't be autoquoted)
+ * from a UTF8 or ASCII C string wouse length (not including any nul
+ * terminator) is count bytes.
+ */
+extern SQLLiteral * SQLClientNewLiteral(const char *ptr, unsigned count);
+
+/** Creates and returns an autoreleased proxy to aString, recording the
+ * fact that the programmer considers the string to be a valid literal
+ * (ie one that doesn't need to be quoted when used as part of an SQL
+ * statement or query).  The original string is retained by the object
+ * returned.<br />
+ * Use this when aString is large and the overheads of the
+ * SQLClientCopyLiteral() or SQLClientMakeLiteral() functions
+ * would be too high.
+ */
+extern SQLLiteral * SQLClientProxyLiteral(NSString *aString);
+
+/** Returns the original string which was previously wrapped by a call
+ * to SQLClientProxyLiteral().  If aString is not a proxy, this retruns
+ * aString.
+ */
+extern NSString * SQLClientUnProxyLiteral(SQLLiteral *aString);
+
 
 
 

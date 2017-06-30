@@ -112,11 +112,6 @@ static Class      cls = Nil;
   return [_items[0].c cache];
 }
 
-- (NSString*) copyLiteral: (NSString*)aString
-{
-  return [SQLClient copyLiteral: aString];
-}
-
 - (void) dealloc
 {
   SQLClientPoolItem     *old;
@@ -180,11 +175,6 @@ static Class      cls = Nil;
       [self setMax: maxConnections min: minConnections];
     }
   return self;
-}
-
-- (NSString*) literal: (NSString*)aString
-{
-  return [SQLClient literal: aString];
 }
 
 - (NSString*) longDescription
@@ -1018,9 +1008,9 @@ static Class      cls = Nil;
 
 @implementation SQLClientPool (ConvenienceMethods)
 
-- (NSString*) buildQuery: (NSString*)stmt, ...
+- (SQLLiteral*) buildQuery: (NSString*)stmt, ...
 {
-  NSString	*sql;
+  SQLLiteral	*sql;
   va_list	ap;
 
   /*
@@ -1033,11 +1023,9 @@ static Class      cls = Nil;
   return sql;
 }
 
-- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
+- (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  NSString      *result = [_items[0].c buildQuery: stmt with: values];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c buildQuery: stmt with: values];
 }
 
 - (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt
@@ -1056,15 +1044,16 @@ static Class      cls = Nil;
 {
   SQLClient             *db;
   NSMutableArray        *result;
+  SQLLiteral            *query;
   va_list	        ap;
 
   va_start (ap, stmt);
-  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
   NS_DURING
-    result = [db cache: seconds simpleQuery: stmt];
+    result = [db cache: seconds simpleQuery: query];
   NS_HANDLER
     [self swallowClient: db];
     [localException raise];
@@ -1091,7 +1080,7 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (NSString*)stmt;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLiteral*)stmt;
 {
   SQLClient             *db;
   NSMutableArray        *result;
@@ -1108,7 +1097,7 @@ static Class      cls = Nil;
 }
 
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (NSString*)stmt
+	      simpleQuery: (SQLLiteral*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype
 {
@@ -1202,18 +1191,19 @@ static Class      cls = Nil;
 {
   SQLClient             *db;
   NSMutableArray	*result;
+  SQLLiteral            *query;
   va_list		ap;
 
   /*
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
   NS_DURING
-    result = [db simpleQuery: stmt];
+    result = [db simpleQuery: query];
   NS_HANDLER
     [self swallowClient: db];
     [localException raise];
@@ -1244,15 +1234,16 @@ static Class      cls = Nil;
   SQLClient     *db;
   NSArray	*result;
   SQLRecord	*record;
+  SQLLiteral    *query;
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
   NS_DURING
-    result = [db simpleQuery: stmt];
+    result = [db simpleQuery: query];
   NS_HANDLER
     [self swallowClient: db];
     [localException raise];
@@ -1278,15 +1269,16 @@ static Class      cls = Nil;
   SQLClient     *db;
   NSArray	*result;
   SQLRecord	*record;
+  SQLLiteral    *query;
   va_list	ap;
 
   va_start (ap, stmt);
-  stmt = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
   db = [self provideClient];
   NS_DURING
-    result = [db simpleQuery: stmt];
+    result = [db simpleQuery: query];
   NS_HANDLER
     [self swallowClient: db];
     [localException raise];
@@ -1312,11 +1304,14 @@ static Class      cls = Nil;
   return [[record lastObject] description];
 }
 
-- (NSString*) quote: (id)obj
+- (SQLLiteral*) quote: (id)obj
 {
-  NSString      *result = [_items[0].c quote: obj];
+  return (SQLLiteral*)[_items[0].c quote: obj];
+}
 
-  return result;
+- (SQLLiteral*) quoteArray: (NSArray*)a
+{
+  return (SQLLiteral*)[_items[0].c quoteArray: a];
 }
 
 - (NSMutableString*) quoteArray: (NSArray *)a
@@ -1330,75 +1325,59 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSString*) quotef: (NSString*)fmt, ...
+- (SQLLiteral*) quotef: (NSString*)fmt, ...
 {
   va_list	ap;
   NSString	*str;
-  NSString	*quoted;
+  SQLLiteral	*quoted;
 
   va_start(ap, fmt);
   str = [[NSString allocWithZone: NSDefaultMallocZone()]
     initWithFormat: fmt arguments: ap];
   va_end(ap);
-  quoted = [_items[0].c quoteString: str];
+  quoted = (SQLLiteral*)[_items[0].c quoteString: str];
   [str release];
-  return quoted;
+  return (SQLLiteral*)quoted;
 }
 
-- (NSString*) quoteBigInteger: (int64_t)i
+- (SQLLiteral*) quoteBigInteger: (int64_t)i
 {
-  NSString      *result = [_items[0].c quoteBigInteger: i];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteBigInteger: i];
 }
 
-- (NSString*) quoteCString: (const char *)s
+- (SQLLiteral*) quoteCString: (const char *)s
 {
-  NSString      *result = [_items[0].c quoteCString: s];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteCString: s];
 }
 
-- (NSString*) quoteChar: (char)chr
+- (SQLLiteral*) quoteChar: (char)chr
 {
-  NSString      *result = [_items[0].c quoteChar: chr];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteChar: chr];
 }
 
-- (NSString*) quoteFloat: (float)f
+- (SQLLiteral*) quoteFloat: (float)f
 {
-  NSString      *result = [_items[0].c quoteFloat: f];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteFloat: f];
 }
 
-- (NSString*) quoteInteger: (int)i
+- (SQLLiteral*) quoteInteger: (int)i
 {
-  NSString      *result = [_items[0].c quoteInteger: i];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteInteger: i];
 }
 
-- (NSString*) quoteName: (NSString *)s
+- (SQLLiteral*) quoteName: (NSString *)s
 {
-  NSString      *result = [_items[0].c quoteName: s];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteName: s];
 }
 
-- (NSString*) quoteSet: (id)obj
+- (SQLLiteral*) quoteSet: (id)obj
 {
-  NSString      *result = [_items[0].c quoteSet: obj];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteSet: obj];
 }
 
-- (NSString*) quoteString: (NSString *)s
+- (SQLLiteral*) quoteString: (NSString *)s
 {
-  NSString      *result = [_items[0].c quoteString: s];
-
-  return result;
+  return (SQLLiteral*)[_items[0].c quoteString: s];
 }
 
 - (NSInteger) simpleExecute: (NSArray*)info
@@ -1417,7 +1396,7 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSMutableArray*) simpleQuery: (NSString*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
 {
   SQLClient             *db;
   NSMutableArray        *result;
@@ -1433,7 +1412,7 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSMutableArray*) simpleQuery: (NSString*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype
 {

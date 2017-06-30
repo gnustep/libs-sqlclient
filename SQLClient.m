@@ -56,7 +56,8 @@
 #import	<Performance/GSCache.h>
 #import	<Performance/GSTicker.h>
 
-#define SQLCLIENT_PRIVATE       @public
+#define SQLCLIENT_PRIVATE                       @public
+#define SQLCLIENT_COMPILE_TIME_QUOTE_CHECK      1
 
 #include	<memory.h>
 
@@ -100,7 +101,7 @@ static BOOL     autoquoteWarning = YES;
  * that pointer to a buffer of UTF8 data stored in the object after the
  * instance variables.
  */
-@interface SQLString: NSString
+@interface SQLString: SQLLiteral
 {
 @public
   char          *nxcsptr;
@@ -108,7 +109,29 @@ static BOOL     autoquoteWarning = YES;
 }
 @end
 
-NSString *
+@interface SQLLiteralCast: SQLLiteral
+{
+@public
+  NSString      *content;
+}
+@end
+
+BOOL
+SQLClientIsLiteral(NSString *aString)
+{
+  if (nil != aString)
+    {
+      Class c = object_getClass(aString);
+
+      if (c == LitStringClass || c == SQLStringClass || c == LitCastClass)
+        {
+          return YES;
+        }
+    }
+  return NO;
+}
+
+SQLLiteral *
 SQLClientNewLiteral(const char *str, unsigned len)
 {
   SQLString     *s;
@@ -121,8 +144,8 @@ SQLClientNewLiteral(const char *str, unsigned len)
   return s;
 }
 
-static NSString *
-copyLiteral(NSString *aString)
+SQLLiteral *
+SQLClientCopyLiteral(NSString *aString)
 {
   if (nil != aString)
     {
@@ -130,7 +153,7 @@ copyLiteral(NSString *aString)
 
       if (c == LitCastClass)
         {
-          aString = ((SQLClientLit*)aString)->content;
+          aString = ((SQLLiteralCast*)aString)->content;
           c = object_getClass(aString);
         }
       if (c != LitStringClass && c != SQLStringClass)
@@ -145,11 +168,11 @@ copyLiteral(NSString *aString)
           aString = [aString copy];
         }
     }
-  return aString;
+  return (SQLLiteral*)aString;
 }
 
-static NSString *
-literal(NSString *aString)
+SQLLiteral *
+SQLClientMakeLiteral(NSString *aString)
 {
   if (nil != aString)
     {
@@ -157,7 +180,7 @@ literal(NSString *aString)
 
       if (c == LitCastClass)
         {
-          aString = ((SQLClientLit*)aString)->content;
+          aString = ((SQLLiteralCast*)aString)->content;
           c = object_getClass(aString);
         }
       if (c != LitStringClass && c != SQLStringClass)
@@ -169,7 +192,49 @@ literal(NSString *aString)
           aString = [s autorelease];
         }
     }
-  return aString;
+  return (SQLLiteral*)aString;
+}
+
+SQLLiteral *
+SQLClientProxyLiteral(NSString *aString)
+{
+  if (nil == aString)
+    {
+      return nil;
+    }
+  else if (SQLClientIsLiteral(aString))
+    {
+      return (SQLLiteral*)[[aString retain] autorelease];
+    }
+  else if (NO == [aString isKindOfClass: NSStringClass])
+    {
+      [NSException raise: NSInvalidArgumentException
+                  format: @"Attempt to cast non-string to SQLLiteral"];
+      return nil;
+    }
+  else
+    {
+      SQLLiteralCast  *l;
+
+      l = (SQLLiteralCast*)
+        NSAllocateObject(LitCastClass, 0, NSDefaultMallocZone());
+      l->content = [aString retain];
+      return [l autorelease];  
+    }
+}
+
+NSString *
+SQLClientUnProxyLiteral(SQLLiteral *aString)
+{
+  if (nil == aString)
+    {
+      return nil;
+    }
+  else if (object_getClass(aString) == LitCastClass)
+    {
+      return ((SQLLiteralCast*)aString)->content;
+    }
+  return (NSString*)aString;
 }
 
 @interface      SQLClientPool (Swallow)
@@ -181,21 +246,28 @@ literal(NSString *aString)
                                  stop: (BOOL)stopOnFailure;
 @end
 
-@implementation SQLClientLit
-+ (SQLClientLit *) cast: (NSString*)str
+@implementation SQLLiteral
++ (id) allocWithZone: (NSZone*)z
 {
-  SQLClientLit  *l;
+  [NSException raise: NSInternalInconsistencyException
+              format: @"Illegal attempt to allocate instance of SQLLiteral"];
+  return nil;
+}
+@end
 
-  NSAssert([str isKindOfClass: NSStringClass], NSInvalidArgumentException);
-
-  l = (SQLClientLit*)NSAllocateObject(self, 0, NSDefaultMallocZone());
-  l->content = [str retain];
-  return [l autorelease];  
+@implementation SQLLiteralCast
+- (unichar) characterAtIndex: (NSUInteger)i
+{
+  return [content characterAtIndex: i];
 }
 - (void) dealloc
 {
   [content release];
   [super dealloc];
+}
+- (NSUInteger) length
+{
+  return [content length];
 }
 @end
 
@@ -294,7 +366,7 @@ literal(NSString *aString)
 @interface	CacheQuery : NSObject
 {
 @public
-  NSString	*query;
+  SQLLiteral	*query;
   id		recordType;
   id		listType;
   unsigned	lifetime;
@@ -1034,7 +1106,7 @@ static int	        poolConnections = 0;
           IMP   imp;
           SEL   sel;
 
-          LitCastClass = [SQLClientLit class];
+          LitCastClass = [SQLLiteralCast class];
 
           /* Find the literal string class used by the foundation library.
            */
@@ -1124,16 +1196,6 @@ static int	        poolConnections = 0;
                                           repeats: YES];
         }
     }
-}
-
-+ (NSString*) copyLiteral: (NSString*)aString
-{
-  return copyLiteral(aString);
-}
-
-+ (NSString*) literal: (NSString*)aString
-{
-  return literal(aString);
 }
 
 + (unsigned int) maxConnections
@@ -1256,16 +1318,6 @@ static int	        poolConnections = 0;
 	}
       [AUTORELEASE(other) disconnect];
     }
-}
-
-+ (void) setAutoquote: (BOOL)aFlag
-{
-  autoquote = aFlag;
-}
-
-+ (void) setAutoquoteWarning: (BOOL)aFlag
-{
-  autoquoteWarning = aFlag;
 }
 
 + (void) setMaxConnections: (unsigned int)c
@@ -1447,11 +1499,6 @@ static int	        poolConnections = 0;
 - (BOOL) connected
 {
   return connected;
-}
-
-- (NSString*) copyLiteral: (NSString*)aString
-{
-  return copyLiteral(aString);
 }
 
 - (NSString*) database
@@ -1728,11 +1775,6 @@ static int	        poolConnections = 0;
   return nil;
 }
 
-- (NSString*) literal: (NSString*)aString
-{
-  return literal(aString);
-}
-
 - (BOOL) lockBeforeDate: (NSDate*)limit
 {
   if (nil == limit)
@@ -1833,7 +1875,7 @@ static int	        poolConnections = 0;
             {
               if (object_getClass(tmp) == LitCastClass)
                 {
-                  tmp = ((SQLClientLit*)tmp)->content;
+                  tmp = ((SQLLiteralCast*)tmp)->content;
                 }
               else
                 {
@@ -2015,7 +2057,7 @@ static int	        poolConnections = 0;
                 {
                   if (object_getClass(o) == LitCastClass)
                     {
-                      v = ((SQLClientLit*)o)->content;
+                      v = ((SQLLiteralCast*)o)->content;
                     }
                   else
                     {
@@ -2088,15 +2130,16 @@ static int	        poolConnections = 0;
 {
   va_list		ap;
   NSMutableArray	*result = nil;
+  SQLLiteral            *query;
 
   /*
    * First check validity and concatenate parts of the query.
    */
   va_start (ap, stmt);
-  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  result = [self simpleQuery: stmt];
+  result = [self simpleQuery: query];
 
   return result;
 }
@@ -2104,22 +2147,23 @@ static int	        poolConnections = 0;
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values
 {
   NSMutableArray	*result = nil;
+  SQLLiteral            *query;
 
-  stmt = [[self prepare: stmt with: values] objectAtIndex: 0];
+  query = [[self prepare: stmt with: values] objectAtIndex: 0];
 
-  result = [self simpleQuery: stmt];
+  result = [self simpleQuery: query];
 
   return result;
 }
 
-- (NSString*) quote: (id)obj
+- (SQLLiteral*) quote: (id)obj
 {
   /**
    * For a nil object, we return NULL.
    */
   if (obj == nil || obj == null)
     {
-      return @"NULL";
+      return (SQLLiteral*)@"NULL";
     }
   else if ([obj isKindOfClass: NSStringClass] == NO)
     {
@@ -2128,7 +2172,7 @@ static int	        poolConnections = 0;
        */
       if ([obj isKindOfClass: [NSNumber class]] == YES)
 	{
-	  return literal([obj description]);
+	  return SQLClientMakeLiteral([obj description]);
 	}
 
       /**
@@ -2137,7 +2181,7 @@ static int	        poolConnections = 0;
        */
       if ([obj isKindOfClass: NSDateClass] == YES)
 	{
-	  return literal([obj descriptionWithCalendarFormat:
+	  return SQLClientMakeLiteral([obj descriptionWithCalendarFormat:
 	    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil]);
 	}
 
@@ -2157,7 +2201,7 @@ static int	        poolConnections = 0;
        */
       if ([obj isKindOfClass: [NSNull class]] == YES)
 	{
-	  return @"NULL";
+	  return (SQLLiteral*)@"NULL";
 	}
 
       /**
@@ -2182,11 +2226,11 @@ static int	        poolConnections = 0;
   return obj;
 }
 
-- (NSString*) quotef: (NSString*)fmt, ...
+- (SQLLiteral*) quotef: (NSString*)fmt, ...
 {
   va_list	ap;
   NSString	*str;
-  NSString	*quoted;
+  SQLLiteral	*quoted;
 
   va_start(ap, fmt);
   str = [[NSString allocWithZone: NSDefaultMallocZone()]
@@ -2198,6 +2242,13 @@ static int	        poolConnections = 0;
   return quoted;
 }
 
+- (SQLLiteral*) quoteArray: (NSArray *)a;
+{
+  [NSException raise: NSGenericException
+    format: @"%@ not supported for this database", NSStringFromSelector(_cmd)]; 
+  return nil;
+}
+
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
                  quotingStrings: (BOOL)q
@@ -2207,21 +2258,21 @@ static int	        poolConnections = 0;
   return nil;
 }
 
-- (NSString*) quoteBigInteger: (int64_t)i
+- (SQLLiteral*) quoteBigInteger: (int64_t)i
 {
   char          buf[32];
   unsigned      len;
-  NSString      *s;
+  SQLLiteral    *s;
 
   len = sprintf(buf, "%"PRId64, i);
   s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
 
-- (NSString*) quoteCString: (const char *)s
+- (SQLLiteral*) quoteCString: (const char *)s
 {
   NSString	*str;
-  NSString	*quoted;
+  SQLLiteral	*quoted;
 
   if (s == 0)
     {
@@ -2233,10 +2284,10 @@ static int	        poolConnections = 0;
   return quoted;
 }
 
-- (NSString*) quoteChar: (char)c
+- (SQLLiteral*) quoteChar: (char)c
 {
   NSString	*str;
-  NSString	*quoted;
+  SQLLiteral	*quoted;
 
   if (c == 0)
     {
@@ -2249,29 +2300,29 @@ static int	        poolConnections = 0;
   return quoted;
 }
 
-- (NSString*) quoteFloat: (float)f
+- (SQLLiteral*) quoteFloat: (float)f
 {
   char          buf[32];
   unsigned      len;
-  NSString      *s;
+  SQLLiteral    *s;
 
   len = sprintf(buf, "%f", f);
   s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
 
-- (NSString*) quoteInteger: (int)i
+- (SQLLiteral*) quoteInteger: (int)i
 {
   char          buf[32];
   unsigned      len;
-  NSString      *s;
+  SQLLiteral    *s;
 
   len = sprintf(buf, "%i", i);
   s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
 
-- (NSString*) quoteName: (NSString *)s
+- (SQLLiteral*) quoteName: (NSString *)s
 {
   NSData        *d = [s dataUsingEncoding: NSUTF8StringEncoding];
   const char    *src = (const char*)[d bytes];
@@ -2316,7 +2367,7 @@ static int	        poolConnections = 0;
   return [q autorelease];
 }
 
-- (NSString*) quoteSet: (id)obj
+- (SQLLiteral*) quoteSet: (id)obj
 {
   NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
   NSEnumerator          *enumerator = [obj objectEnumerator];
@@ -2333,10 +2384,10 @@ static int	        poolConnections = 0;
       [ms appendString: [self quote: value]];
     }
   [ms appendString: @")"];
-  return literal(ms);
+  return SQLClientMakeLiteral(ms);
 }
 
-- (NSString*) quoteString: (NSString *)s
+- (SQLLiteral*) quoteString: (NSString *)s
 {
   NSData        *d = [s dataUsingEncoding: NSUTF8StringEncoding];
   const char    *src = (const char*)[d bytes];
@@ -2696,12 +2747,12 @@ static int	        poolConnections = 0;
   return result;
 }
 
-- (NSMutableArray*) simpleQuery: (NSString*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
 {
   return [self simpleQuery: stmt recordType: rClass listType: aClass];
 }
 
-- (NSMutableArray*) simpleQuery: (NSString*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype
 {
@@ -3181,23 +3232,24 @@ static int	        poolConnections = 0;
   va_list	ap;
   NSArray	*result = nil;
   SQLRecord	*record;
+  SQLLiteral    *query;
 
   va_start (ap, stmt);
-  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  result = [self simpleQuery: stmt];
+  result = [self simpleQuery: query];
 
   if ([result count] > 1)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"Query returns more than one record -\n%@\n", stmt];
+		  format: @"Query returns more than one record -\n%@\n", query];
     }
   record = [result lastObject];
   if (record == nil)
     {
       [NSException raise: SQLEmptyException
-		  format: @"Query returns no data -\n%@\n", stmt];
+		  format: @"Query returns no data -\n%@\n", query];
     }
   return record;
 }
@@ -3207,28 +3259,29 @@ static int	        poolConnections = 0;
   va_list	ap;
   NSArray	*result = nil;
   SQLRecord	*record;
+  SQLLiteral    *query;
 
   va_start (ap, stmt);
-  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  result = [self simpleQuery: stmt];
+  result = [self simpleQuery: query];
 
   if ([result count] > 1)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"Query returns more than one record -\n%@\n", stmt];
+		  format: @"Query returns more than one record -\n%@\n", query];
     }
   record = [result lastObject];
   if (record == nil)
     {
       [NSException raise: SQLEmptyException
-		  format: @"Query returns no data -\n%@\n", stmt];
+		  format: @"Query returns no data -\n%@\n", query];
     }
   if ([record count] > 1)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"Query returns multiple fields -\n%@\n", stmt];
+		  format: @"Query returns multiple fields -\n%@\n", query];
     }
   return [[record lastObject] description];
 }
@@ -3312,25 +3365,28 @@ static int	        poolConnections = 0;
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...
 {
-  va_list		ap;
+  va_list	ap;
+  SQLLiteral    *query;
 
   va_start (ap, stmt);
-  stmt = [[self prepare: stmt args: ap] objectAtIndex: 0];
+  query = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  return [self cache: seconds simpleQuery: stmt];
+  return [self cache: seconds simpleQuery: query];
 }
 
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values
 {
-  stmt = [[self prepare: stmt with: values] objectAtIndex: 0];
-  return [self cache: seconds simpleQuery: stmt];
+  SQLLiteral    *query;
+
+  query = [[self prepare: stmt with: values] objectAtIndex: 0];
+  return [self cache: seconds simpleQuery: query];
 }
 
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (NSString*)stmt
+	      simpleQuery: (SQLLiteral*)stmt
 {
   return [self cache: seconds
 	 simpleQuery: stmt
@@ -3339,7 +3395,7 @@ static int	        poolConnections = 0;
 }
 
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (NSString*)stmt
+	      simpleQuery: (SQLLiteral*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype
 {
@@ -3797,11 +3853,6 @@ static int	        poolConnections = 0;
     }
 }
 
-- (NSString*) copyLiteral: (NSString*)aString
-{
-  return copyLiteral(aString);
-}
-
 - (id) copyWithZone: (NSZone*)z
 {
   SQLTransaction        *c;
@@ -4085,11 +4136,6 @@ static int	        poolConnections = 0;
   [_info addObject: trn];
   _count += trn->_count;
   [trn release];
-}
-
-- (NSString*) literal: (NSString*)aString
-{
-  return literal(aString);
 }
 
 - (id) owner
@@ -4517,3 +4563,26 @@ validName(NSString *name)
 }
 @end
 
+@implementation SQLClient (Quote)
+
++ (BOOL) autoquote
+{
+  return autoquote;
+}
+
++ (BOOL) autoquoteWarning
+{
+  return autoquoteWarning;
+}
+
++ (void) setAutoquote: (BOOL)aFlag
+{
+  autoquote = (aFlag ? YES : NO);
+}
+
++ (void) setAutoquoteWarning: (BOOL)aFlag
+{
+  autoquoteWarning = (aFlag ? YES : NO);
+}
+
+@end

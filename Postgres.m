@@ -1597,6 +1597,68 @@ static inline unsigned int trim(char *str, unsigned len)
   [super dealloc];
 }
 
+- (void) _quoteArray: (NSArray *)a to: (NSMutableArray*)s
+{
+  NSUInteger    count;
+  NSUInteger    index;
+
+  [s appendString: @"ARRAY["];
+  count = [a count];
+  for (index = 0; index < count; index++)
+    {
+      id        o = [a objectAtIndex: index];
+
+      if (index > 0)
+        {
+          [s appendString: @","];
+        }
+      if ([o isKindOfClass: [NSArray class]])
+        {
+          [self quoteArray: (NSArray *)o toString: s];
+        }
+      else if ([o isKindOfClass: [NSString class]])
+        {
+          if (NO == SQLClientIsLiteral(o))
+            {
+              o = [self quoteString: o];
+            }
+          [s appendString: (NSString*)o];
+        }
+      else if ([o isKindOfClass: [NSDate class]])
+        {
+          [s appendString: [self quote: (NSString*)o]];
+          [s appendString: @"::timestamp with time zone"];
+        }
+      else if ([o isKindOfClass: [NSData class]])
+        {
+          unsigned      len = [self lengthOfEscapedBLOB: o];
+          uint8_t       *buf;
+
+          buf = malloc(len+1);
+          [self copyEscapedBLOB: o into: buf];
+          buf[len] = '\0';
+          [s appendFormat: @"%s::bytea", buf];
+          free(buf);
+        }
+      else
+        {
+          o = [self quote: (NSString*)o];
+          [s appendString: (NSString*)o];
+        }
+    }
+  [s appendString: @"]"];
+}
+
+- (SQLLiteral*) quoteArray: (NSArray *)a
+{
+  NSMutableString       *s = [NSMutableString stringWithCapacity: 1000];
+
+  NSAssert([a isKindOfClass: [NSArray class]], NSInvalidArgumentException);
+
+  [self _quoteArray: a to: s];
+  return [self castLiteral: s];
+}
+
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
                  quotingStrings: (BOOL)q
