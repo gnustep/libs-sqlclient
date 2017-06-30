@@ -2129,10 +2129,10 @@ extern SQLLiteral * SQLClientNewLiteral(const char *ptr, unsigned count);
 extern SQLLiteral * SQLClientProxyLiteral(NSString *aString);
 
 /** Returns the original string which was previously wrapped by a call
- * to SQLClientProxyLiteral().  If aString is not a proxy, this retruns
- * aString.
+ * to SQLClientProxyLiteral().  If aString is not an SQLLiteral proxy,
+ * this returns aString.
  */
-extern NSString * SQLClientUnProxyLiteral(SQLLiteral *aString);
+extern NSString * SQLClientUnProxyLiteral(id aString);
 
 
 
