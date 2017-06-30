@@ -646,7 +646,7 @@ connectQuote(NSString *str)
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSInteger     rowCount = -1;
   PGresult	*result = 0;
-  NSString	*stmt = [info objectAtIndex: 0];
+  NSString	*stmt = SQLClientUnProxyLiteral([info objectAtIndex: 0]);
 
   if ([stmt length] == 0)
     {
@@ -1055,6 +1055,7 @@ static inline unsigned int trim(char *str, unsigned len)
   PGresult		*result = 0;
   NSMutableArray	*records = nil;
 
+  stmt = SQLClientUnProxyLiteral(stmt);
   if ([stmt length] == 0)
     {
       [arp release];

@@ -224,7 +224,7 @@ SQLClientProxyLiteral(NSString *aString)
 }
 
 NSString *
-SQLClientUnProxyLiteral(SQLLiteral *aString)
+SQLClientUnProxyLiteral(id aString)
 {
   if (nil == aString)
     {
@@ -2758,6 +2758,7 @@ static int	        poolConnections = 0;
 {
   NSMutableArray	*result = nil;
   NSString              *debug = nil;
+  NSString              *query = SQLClientUnProxyLiteral(stmt);
 
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
@@ -2765,7 +2766,7 @@ static int	        poolConnections = 0;
   NS_DURING
     {
       _lastStart = GSTickerTimeNow();
-      result = [self backendQuery: stmt recordType: rtype listType: ltype];
+      result = [self backendQuery: query recordType: rtype listType: ltype];
       _lastOperation = GSTickerTimeNow();
       if (_duration >= 0)
 	{
@@ -2775,7 +2776,7 @@ static int	        poolConnections = 0;
 	  if (d >= _duration)
 	    {
 	      debug = [NSString stringWithFormat:
-                @"Duration %g for query %@", d, stmt];
+                @"Duration %g for query %@", d, query];
 	    }
 	}
     }
