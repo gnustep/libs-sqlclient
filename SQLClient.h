@@ -194,7 +194,11 @@
 
 /** Code including this header should define SQLCLIENT_COMPILE_TIME_QUOTE_CHECK
  * to enable stricter compile time type checking to ensure that literal strings
- * are used for sql queries/statements.
+ * are used for sql queries/statements.<br />
+ * NB. The runtime checking for literal strings actually uses different classes
+ * not the SQLLiteral class.  In fact this class declaration is only used for
+ * compile time checking and you should not expect runtime checks to actually
+ * ever see an instance of this class.
  */
 #if defined(SQLCLIENT_COMPILE_TIME_QUOTE_CHECK)
 @class	SQLLiteral;

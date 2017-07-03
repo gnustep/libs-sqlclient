@@ -109,7 +109,7 @@ static BOOL     autoquoteWarning = YES;
 }
 @end
 
-@interface SQLLiteralProxy: SQLLiteral
+@interface SQLLiteralProxy: NSString
 {
 @public
   NSString      *content;
@@ -219,7 +219,7 @@ SQLClientProxyLiteral(NSString *aString)
       l = (SQLLiteralProxy*)
         NSAllocateObject(LitProxyClass, 0, NSDefaultMallocZone());
       l->content = [aString retain];
-      return [l autorelease];  
+      return (SQLLiteral*)[l autorelease];  
     }
 }
 
