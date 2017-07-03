@@ -937,7 +937,7 @@ static inline unsigned int trim(char *str, unsigned len)
               else
                 v = @"NO";
             }
-          else if ('I' == t)
+          else if ('I' == t || 'F' == t)
             {
               v = SQLClientNewLiteral(start, p - start);
             }
@@ -1004,6 +1004,11 @@ static inline unsigned int trim(char *str, unsigned len)
 	s = trim(p, s);
         return SQLClientNewLiteral(p, s);
 
+      case 700:          // FLOAT4
+      case 701:          // FLOAT8
+	s = trim(p, s);
+        return SQLClientNewLiteral(p, s);
+
       case 1115:	// TS without TZ ARRAY
       case 1185:	// TS with TZ ARRAY
         if (0 == arrayType) arrayType = 'T';    // Timestamp
@@ -1017,6 +1022,7 @@ static inline unsigned int trim(char *str, unsigned len)
         if (0 == arrayType) arrayType = 'I';    // Integer
       case 1021:        // FLOAT ARRAY
       case 1022:        // DOUBLE ARRAY
+        if (0 == arrayType) arrayType = 'F';    // Float
       case 1002:        // CHAR ARRAY
       case 1009:        // TEXT ARRAY
       case 1014:        // "char" ARRAY

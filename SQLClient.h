@@ -2066,6 +2066,10 @@ SQLCLIENT_PRIVATE
 
 /** This category encapsulates methods used to control automatic quoting
  * of non-literal strings.<br />
+ * The point of this feature is to help prevent SQL injection attacks on
+ * your software (where you read in something from some UI, and use that
+ * data in creating a database query/statement, and an attacker might try
+ * to fool your code into doing something bad to the database).<br />
  * When autoquote is turned on, the methods to build queries/statements
  * (-prepare:args: and -prepare:with: and other methods based on those)
  * will perform a runtime check for strings in the arguments list they
@@ -2088,6 +2092,10 @@ SQLCLIENT_PRIVATE
  *   only be used as a performance tweak when a programmer has built a very
  *   large SQL statement, and copying it would hurt performance.</desc>
  * </deflist>
+ * NB. column values in the results of a database query are not returned as
+ * literals unless they are NULL or come from a column whose actual type is
+ * a form of number or boolean (since booleans and numbers do not need any
+ * form of quoting in an SQL query/statement).
  */ 
 @interface      SQLClient (Quote)
 
