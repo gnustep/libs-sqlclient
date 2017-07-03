@@ -109,7 +109,7 @@ static BOOL     autoquoteWarning = YES;
 }
 @end
 
-@interface SQLLiteralProxy: NSString
+@interface SQLLiteralProxy: SQLLiteral
 {
 @public
   NSString      *content;
@@ -1880,6 +1880,7 @@ static int	        poolConnections = 0;
     {
       NSMutableString	*s = [NSMutableString stringWithCapacity: 1024];
       NSString          *warn = nil;
+      unsigned          index = 0;
 
       [s appendString: stmt];
       /*
@@ -1887,6 +1888,7 @@ static int	        poolConnections = 0;
        */ 
       while (tmp != nil)
         {
+          index++;
           if ([tmp isKindOfClass: [NSData class]] == YES)
             {
               [ma addObject: tmp];
@@ -1908,7 +1910,8 @@ static int	        poolConnections = 0;
                 {
                   if (nil == warn)
                     {
-                      warn = tmp;
+                      warn = [NSString stringWithFormat:
+                        @"\"%@\" (argument %u)", tmp, index];
                     }
                   if (YES == autoquote)
                     {
@@ -1924,12 +1927,12 @@ static int	        poolConnections = 0;
         {
           if (YES == autoquote)
             {
-              NSLog(@"SQLClient autoquote performed for \"%@\" in \"%@\"",
+              NSLog(@"SQLClient autoquote performed for %@ in \"%@\"",
                 warn, stmt);
             }
           else
             {
-              NSLog(@"SQLClient autoquote proposed for \"%@\" in \"%@\"",
+              NSLog(@"SQLClient autoquote proposed for %@ in \"%@\"",
                 warn, stmt);
             }
         }
@@ -1984,6 +1987,7 @@ static int	        poolConnections = 0;
 	  unsigned	vLength;
 	  NSArray	*a;
 	  NSRange	s;
+	  NSString	*k;
 	  NSString	*v;
 	  NSString	*alt;
 	  id		o;
@@ -2025,7 +2029,7 @@ static int	        poolConnections = 0;
 	  r = NSMakeRange(pos, nxt - pos);
 	  s.location = r.location + 1;
 	  s.length = r.length - 2;
-	  v = [mtext substringWithRange: s];
+	  k = v = [mtext substringWithRange: s];
 
 	  /*
 	   * If the value contains a '?', it is actually in two parts,
@@ -2088,7 +2092,8 @@ static int	        poolConnections = 0;
                     {
                       if (nil == warn)
                         {
-                          warn = o;
+                          warn = [NSString stringWithFormat:
+                            @"\"%@\" (value for \"%@\")", o, k];
                         }
                       if (YES == autoquote)
                         {
@@ -2127,12 +2132,12 @@ static int	        poolConnections = 0;
         {
           if (YES == autoquote)
             {
-              NSLog(@"SQLClient autoquote performed for \"%@\" in \"%@\"",
+              NSLog(@"SQLClient autoquote performed for %@ in \"%@\"",
                 warn, mtext);
             }
           else
             {
-              NSLog(@"SQLClient autoquote proposed for \"%@\" in \"%@\"",
+              NSLog(@"SQLClient autoquote proposed for %@ in \"%@\"",
                 warn, mtext);
             }
         }
