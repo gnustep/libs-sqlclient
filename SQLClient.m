@@ -1894,20 +1894,17 @@ static int	        poolConnections = 0;
             }
           else if ([tmp isKindOfClass: NSStringClass] == NO)
             {
-              if (object_getClass(tmp) == LitProxyClass)
-                {
-                  tmp = ((SQLLiteralProxy*)tmp)->content;
-                }
-              else
-                {
-                  tmp = [self quote: tmp];
-                }
+              tmp = [self quote: tmp];
             }
           else
             {
               Class c = object_getClass(tmp);
 
-              if (c != LitStringClass && c != SQLStringClass)
+              if (c == LitProxyClass)
+                {
+                  tmp = ((SQLLiteralProxy*)tmp)->content;
+                }
+              else if (c != LitStringClass && c != SQLStringClass)
                 {
                   if (nil == warn)
                     {
@@ -2076,21 +2073,18 @@ static int	        poolConnections = 0;
                 }
               else if ([o isKindOfClass: NSStringClass] == NO)
                 {
-                  if (object_getClass(o) == LitProxyClass)
-                    {
-                      v = ((SQLLiteralProxy*)o)->content;
-                    }
-                  else
-                    {
-                      v = [self quote: o];
-                    }
+                  v = [self quote: o];
                 }
               else
                 {
                   Class c = object_getClass(o);
 
                   v = o;
-                  if (c != LitStringClass && c != SQLStringClass)
+                  if (c == LitProxyClass)
+                    {
+                      v = ((SQLLiteralProxy*)o)->content;
+                    }
+                  else if (c != LitStringClass && c != SQLStringClass)
                     {
                       if (nil == warn)
                         {
