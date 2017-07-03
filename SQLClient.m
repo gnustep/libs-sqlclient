@@ -2178,8 +2178,7 @@ static int	        poolConnections = 0;
 
 - (SQLLiteral*) quote: (id)obj
 {
-  /**
-   * For a nil object, we return NULL.
+  /* For a nil object, we return NULL.
    */
   if (obj == nil || obj == null)
     {
@@ -2187,16 +2186,14 @@ static int	        poolConnections = 0;
     }
   else if ([obj isKindOfClass: NSStringClass] == NO)
     {
-      /**
-       * For a number, we simply convert directly to a string.
+      /* For a number, we simply convert directly to a string.
        */
       if ([obj isKindOfClass: [NSNumber class]] == YES)
 	{
 	  return SQLClientMakeLiteral([obj description]);
 	}
 
-      /**
-       * For a date, we convert to the text format used by the database,
+      /* For a date, we convert to the text format used by the database,
        * and add leading and trailing quotes.
        */
       if ([obj isKindOfClass: NSDateClass] == YES)
@@ -2205,8 +2202,7 @@ static int	        poolConnections = 0;
 	    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil]);
 	}
 
-      /**
-       * For a data object, we don't quote ... the other parts of the code
+      /* For a data object, we don't quote ... the other parts of the code
        * need to know they have an NSData object and pass it on unchanged
        * to the -backendExecute: method.
        */
@@ -2215,8 +2211,7 @@ static int	        poolConnections = 0;
 	  return obj;
 	}
 
-      /**
-       * Just in case an NSNull subclass has been created by someone.
+      /* Just in case an NSNull subclass has been created by someone.
        * The normal NSNull instance should have been handled earlier.
        */
       if ([obj isKindOfClass: [NSNull class]] == YES)
@@ -2224,8 +2219,7 @@ static int	        poolConnections = 0;
 	  return (SQLLiteral*)@"NULL";
 	}
 
-      /**
-       * For collections, we produce a bracketed list of the
+      /* For collections, we produce a bracketed list of the
        * (quoted) objects in the array.
        */
       if ([obj respondsToSelector: @selector(objectEnumerator)])
@@ -2233,11 +2227,15 @@ static int	        poolConnections = 0;
           return [self quoteSet: obj];
 	}
 
-      /**
-       * For any other type of data, we just produce a quoted string
+      /* For any other type of data, we just produce a quoted string
        * representation of the objects description.
        */
       obj = [obj description];
+      if (YES == autoquoteWarning)
+        {
+          NSLog(@"SQLClient autoquote handling for class %@ undefined: \"%@\"",
+            NSStringFromClass([obj class]), obj);
+        }
     }
 
   /* Get a string description of the object.  */

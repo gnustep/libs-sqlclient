@@ -195,10 +195,6 @@
 /** Code including this header should define SQLCLIENT_COMPILE_TIME_QUOTE_CHECK
  * to enable stricter compile time type checking to ensure that literal strings
  * are used for sql queries/statements.<br />
- * NB. The runtime checking for literal strings actually uses different classes
- * not the SQLLiteral class.  In fact this class declaration is only used for
- * compile time checking and you should not expect runtime checks to actually
- * ever see an instance of this class.
  */
 #if defined(SQLCLIENT_COMPILE_TIME_QUOTE_CHECK)
 @class	SQLLiteral;
@@ -881,10 +877,11 @@ SQLCLIENT_PRIVATE
  * method automatically for everything apart from string objects.<br />
  * Subclasses may override this method to provide appropriate quoting for
  * types of object which need database backend specific quoting conventions.
- * However, the defalt implementation should be OK for most cases.<br />
- * This method makes use of -quoteString: to quote literal strings.<br />
- * The base class implementation formats NSDate objects as<br />
- * YYYY-MM-DD hh:mm:ss.mmm ?ZZZZ<br />
+ * However, the default implementation should be OK for most cases:<br />
+ * This method makes use of -quoteString: to quote strings.<br />
+ * It formats NSDate objects as YYYY-MM-DD hh:mm:ss.mmm ?ZZZZ.<br />
+ * For NSNumber objects it simply uses their string descriptions.<br /> 
+ * For NSNull and nil the method returns NULL.<br />
  * NSData objects are not quoted ... they must not appear in queries, and
  * where used for insert/update operations, they need to be passed to the
  * -backendExecute: method unchanged.<br />
@@ -892,7 +889,7 @@ SQLCLIENT_PRIVATE
  * method) are quoted as sets containing the quoted elements from
  * the collection.  If you want to use SQL arrays (and your
  * database backend supports it) you must explicitly use the
- * -quoteArray:toString:quotingString: to convert an NSArray to a literal
+ * -quoteArray: method to convert an NSArray to a literal
  * database array representation.
  */
 - (SQLLiteral*) quote: (id)obj;
@@ -2063,9 +2060,13 @@ SQLCLIENT_PRIVATE
  * expect a query or statement to be provided as a single string will be
  * declared as taking an SQLLiteral argument rather than an NSString.
  * The compiler will then complain about passing arguments of the wrong
- * type.
+ * type.<br />
+ * NB. The runtime checking for literal strings actually uses different classes
+ * not the SQLLiteral class.  In fact this class declaration is only used for
+ * compile time checking and you should not expect runtime checks to actually
+ * ever see an instance of this class.
  */
-@interface      SQLLiteral: NSString
+@interface      SQLLiteral : NSString
 @end
 
 /** This category encapsulates methods used to control automatic quoting
