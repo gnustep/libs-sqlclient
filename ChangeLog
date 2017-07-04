@@ -1,3 +1,16 @@
+2017-07-04 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* SQLClientPool.m:
+	* Postgres.m:
+	Lots of changes introducing new concept of a 'literal' as a string
+	which does not need to be quoted (and must not be autoquoted).
+	Quoting via the -quote: method now raises an exception if the
+	argument is not supported, but we have a new method to allow
+	classes to provide a mechanism for quoting themselves (ie to add
+	support for them being using in SQL queries/statements).
+
 2017-06-29 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

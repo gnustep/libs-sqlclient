@@ -190,6 +190,7 @@
 @class	NSThread;
 
 @class	GSCache;
+@class	SQLClient;
 @class	SQLTransaction;
 
 /** Code including this header should define SQLCLIENT_COMPILE_TIME_QUOTE_CHECK
@@ -227,6 +228,18 @@ extern NSString * const SQLClientDidDisconnectNotification;
  * (receiver == [NSNull null] ? YES : NO)<br />
  */
 - (BOOL) isNull;
+
+/** Classes may override this method to provide a value for use as part of
+ * an SQL query or statement.  The method is used internally when quoting
+ * objects.<br />
+ * The db argument may be examined to enable a class to support different
+ * quoting for different database backends, but an implementation must at
+ * least support quoting appropriate for standard SQL.<br />
+ * The default NSObject implementation simply returns nil, which means that
+ * the object may not be used in an SQL query/statement.
+ */
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db;
+
 @end
 
 /** This class is used to hold key information for a set of SQLRecord
@@ -885,12 +898,15 @@ SQLCLIENT_PRIVATE
  * NSData objects are not quoted ... they must not appear in queries, and
  * where used for insert/update operations, they need to be passed to the
  * -backendExecute: method unchanged.<br />
- * Collections such as NSArray and NSSet (responding to the -objectEnumerator
- * method) are quoted as sets containing the quoted elements from
- * the collection.  If you want to use SQL arrays (and your
+ * NSArray and NSSet objects are quoted as sets containing the quoted
+ * elements from the collection.  If you want to use SQL arrays (and your
  * database backend supports it) you must explicitly use the
- * -quoteArray: method to convert an NSArray to a literal
- * database array representation.
+ * -quoteArray: method to convert an NSArray to a literal database array
+ * representation.<br />
+ * Other classes are not supported unless they implement the
+ * -quoteForSQLClient: method to return a non-nil literal string value.<br />
+ * Attempts to quote an object of an unsupported class (one where the
+ * method returns nil) will cause an NSInvalidArgumentException.
  */
 - (SQLLiteral*) quote: (id)obj;
 
@@ -953,7 +969,7 @@ SQLCLIENT_PRIVATE
 - (SQLLiteral*) quoteName: (NSString *)s;
 
 /**
- * Quotes the values in any collection (responses to -objectEnumerator)
+ * Quotes the values in any collection (responds to -objectEnumerator)
  * as a set (bracketed list of values) for use in an SQL query.
  */
 - (SQLLiteral*) quoteSet: (id)obj;

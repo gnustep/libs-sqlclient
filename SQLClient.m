@@ -2186,22 +2186,6 @@ static int	        poolConnections = 0;
     }
   else if ([obj isKindOfClass: NSStringClass] == NO)
     {
-      /* For a number, we simply convert directly to a string.
-       */
-      if ([obj isKindOfClass: [NSNumber class]] == YES)
-	{
-	  return SQLClientMakeLiteral([obj description]);
-	}
-
-      /* For a date, we convert to the text format used by the database,
-       * and add leading and trailing quotes.
-       */
-      if ([obj isKindOfClass: NSDateClass] == YES)
-	{
-	  return SQLClientMakeLiteral([obj descriptionWithCalendarFormat:
-	    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil]);
-	}
-
       /* For a data object, we don't quote ... the other parts of the code
        * need to know they have an NSData object and pass it on unchanged
        * to the -backendExecute: method.
@@ -2211,31 +2195,14 @@ static int	        poolConnections = 0;
 	  return obj;
 	}
 
-      /* Just in case an NSNull subclass has been created by someone.
-       * The normal NSNull instance should have been handled earlier.
-       */
-      if ([obj isKindOfClass: [NSNull class]] == YES)
-	{
-	  return (SQLLiteral*)@"NULL";
-	}
-
-      /* For collections, we produce a bracketed list of the
-       * (quoted) objects in the array.
-       */
-      if ([obj respondsToSelector: @selector(objectEnumerator)])
-	{
-          return [self quoteSet: obj];
-	}
-
-      /* For any other type of data, we just produce a quoted string
-       * representation of the objects description.
-       */
-      obj = [obj description];
-      if (YES == autoquoteWarning)
+      SQLLiteral        *tmp = [obj quoteForSQLClient: self];
+      if (nil == tmp)
         {
-          NSLog(@"SQLClient autoquote handling for class %@ undefined: \"%@\"",
-            NSStringFromClass([obj class]), obj);
+          [NSException raise: NSInvalidArgumentException
+            format: @"Attempt to SQL quote instance of unsupported class: %@",
+            obj];
         }
+      return tmp;
     }
 
   /* Get a string description of the object.  */
@@ -2387,8 +2354,8 @@ static int	        poolConnections = 0;
 
 - (SQLLiteral*) quoteSet: (id)obj
 {
-  NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
   NSEnumerator          *enumerator = [obj objectEnumerator];
+  NSMutableString	*ms = [NSMutableString stringWithCapacity: 100];
   id			value = [enumerator nextObject];
 
   [ms appendString: @"("];
@@ -4572,6 +4539,7 @@ validName(NSString *name)
 @end
 
 @implementation NSObject (SQLClient)
+
 - (BOOL) isNull
 {
   if (nil == null)
@@ -4580,6 +4548,12 @@ validName(NSString *name)
     }
   return (self == null ? YES : NO);
 }
+
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
+{
+  return nil;
+}
+
 @end
 
 @implementation SQLClient (Quote)
@@ -4605,3 +4579,40 @@ validName(NSString *name)
 }
 
 @end
+
+@implementation NSArray (Quote)
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
+{
+  return [db quoteSet: self];
+}
+@end
+
+@implementation NSDate (Quote)
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
+{
+  return SQLClientMakeLiteral([self descriptionWithCalendarFormat:
+    @"'%Y-%m-%d %H:%M:%S.%F %z'" timeZone: nil locale: nil]);
+}
+@end
+
+@implementation NSNull (Quote)
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
+{
+  return (SQLLiteral*)@"NULL";
+}
+@end
+
+@implementation NSNumber (Quote)
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
+{
+  return SQLClientMakeLiteral([self description]);
+}
+@end
+
+@implementation NSSet (Quote)
+- (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
+{
+  return [db quoteSet: self];
+}
+@end
+
