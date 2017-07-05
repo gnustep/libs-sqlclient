@@ -1380,7 +1380,7 @@ static int	        poolConnections = 0;
     }
 }
 
-- (NSString*) buildQuery: (NSString*)stmt, ...
+- (SQLLiteral*) buildQuery: (NSString*)stmt, ...
 {
   va_list	ap;
   NSString	*sql = nil;
@@ -1392,16 +1392,24 @@ static int	        poolConnections = 0;
   sql = [[self prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  return sql;
+  if ([sql length] < 1000)
+    {
+      return SQLClientMakeLiteral(sql);
+    }
+  return SQLClientProxyLiteral(sql);
 }
 
-- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
+- (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
   NSString	*sql = nil;
 
   sql = [[self prepare: stmt with: values] objectAtIndex: 0];
 
-  return sql;
+  if ([sql length] < 1000)
+    {
+      return SQLClientMakeLiteral(sql);
+    }
+  return SQLClientProxyLiteral(sql);
 }
 
 - (NSString*) clientName

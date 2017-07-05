@@ -1010,7 +1010,7 @@ static Class      cls = Nil;
 
 - (SQLLiteral*) buildQuery: (NSString*)stmt, ...
 {
-  SQLLiteral	*sql;
+  NSString	*sql;
   va_list	ap;
 
   /*
@@ -1020,12 +1020,24 @@ static Class      cls = Nil;
   sql = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  return sql;
+  if ([sql length] < 1000)
+    {
+      return SQLClientMakeLiteral(sql);
+    }
+  return SQLClientProxyLiteral(sql);
 }
 
 - (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  return (SQLLiteral*)[_items[0].c buildQuery: stmt with: values];
+  NSString	*sql;
+
+  sql = [_items[0].c buildQuery: stmt with: values];
+
+  if ([sql length] < 1000)
+    {
+      return SQLClientMakeLiteral(sql);
+    }
+  return SQLClientProxyLiteral(sql);
 }
 
 - (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt

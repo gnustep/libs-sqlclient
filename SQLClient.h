@@ -1841,8 +1841,8 @@ typedef struct {
  * of the [SQLClient] class.
  */
 @interface      SQLClientPool (Convenience)
-- (NSString*) buildQuery: (NSString*)stmt,...;
-- (NSString*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
+- (SQLLiteral*) buildQuery: (NSString*)stmt,...;
+- (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
 - (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt;
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...;
