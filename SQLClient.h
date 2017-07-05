@@ -471,7 +471,7 @@ SQLCLIENT_PRIVATE
   /**
    * Timestamp of completion of last operation.<br />
    * Maintained by -simpleExecute: -simpleQuery:recordType:listType:
-   * and -cache:simpleQuery:recordType:listType:
+   * and [SQLClient(Caching)-cache:simpleQuery:recordType:listType:]
    * Also set for a failed connection attempt, but not reported by the
    * -lastOperation method in that case.
    */
@@ -581,8 +581,8 @@ SQLCLIENT_PRIVATE
 - (BOOL) lockBeforeDate: (NSDate*)limit;
 
 /** <p>Build an sql query string using the supplied arguments to call
- * -prepare:args: to build a query and raises an exception if the result
- * is not a simple query string.
+ * [SQLClient-prepare:args:] to build a query and raises an exception
+ * if the result is not a simple query string.
  * </p>
  * <p>This method has at least one argument, the string starting the
  * query to be executed (which must have the prefix 'select ').
@@ -599,14 +599,14 @@ SQLCLIENT_PRIVATE
  * </p>
  * <p>The method returns a string containing sql suitable for passing to
  * the -simpleQuery:recordType:listType:
- * or -cache:simpleQuery:recordType:listType: methods.
+ * or [SQLClient(Caching)-cache:simpleQuery:recordType:listType:] methods.
  * </p>
  */
 - (SQLLiteral*) buildQuery: (NSString*)stmt,...;
 
 /** <p>Build an sql query string using the supplied arguments to call
- * -prepare:with: to build a query and raises an exception if the result
- * is not a simple query string.<br />
+ * [SQLClient-prepare:with:] to build a query and raises an exception
+ * if the result is not a simple query string.<br />
  * Takes the query statement and substitutes in values from
  * the dictionary where markup of the format {key} is found.<br />
  * Returns the resulting query string.
@@ -624,7 +624,7 @@ SQLCLIENT_PRIVATE
  * </p>
  * <p>The method returns a string containing sql suitable for passing to
  * the -simpleQuery:recordType:listType:
- * or -cache:simpleQuery:recordType:listType: methods.
+ * or [SQLClient(Caching)-cache:simpleQuery:recordType:listType:] methods.
  * </p>
  */
 - (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values;
@@ -818,8 +818,8 @@ SQLCLIENT_PRIVATE
  */
 - (NSString*) password;
 
-/** Calls -prepare:args: where the argument list needs to be a nil terminated
- * list of objects.
+/** Calls [SQLClient-prepare:args:] where the argument list needs to be
+ * a nil terminated list of objects.
  */
 - (NSMutableArray*) prepare: (NSString*)stmt, ...;
 
@@ -837,7 +837,7 @@ SQLCLIENT_PRIVATE
  */
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
 
-/** This method is like -prepare:args:  but takes a dictionary of
+/** This method is like [SQLClient-prepare:args:]  but takes a dictionary of
  * values to be substituted into the sql string.
  */
 - (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values;
@@ -1413,7 +1413,7 @@ SQLCLIENT_PRIVATE
  */
 - (SQLTransaction*) batch: (BOOL)stopOnFailure;
 
-/** The same as the [SQLClient+columns:] method.
+/** The same as the [SQLClient(Convenience)+columns:] method.
  */
 - (NSMutableArray*) columns: (NSMutableArray*)records;
 
@@ -1432,7 +1432,7 @@ SQLCLIENT_PRIVATE
  */
 - (NSString*) queryString: (NSString*)stmt,...;
 
-/** The same as the [SQLClient+singletons:] method.
+/** The same as the [SQLClient(Convenience)+singletons:] method.
  */
 - (void) singletons: (NSMutableArray*)records;
 
@@ -1535,25 +1535,25 @@ SQLCLIENT_PRIVATE
 - (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt;
 
 /**
- * Calls -cache:simpleQuery:recordType:listType: with the default
- * record class, array class, and with a query string formed from
+ * Calls [SQLClient(Caching)-cache:simpleQuery:recordType:listType:] with
+ * the default record class, array class, and with a query string formed from
  * stmt and the following values (if any).
  */
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt,...;
 
 /**
- * Calls -cache:simpleQuery:recordType:listType: with the default
- * record class array class and with a query string formed from stmt
- * and values.
+ * Calls [SQLClient(Caching)-cache:simpleQuery:recordType:listType:] with
+ * the default record class array class and with a query string formed
+ * from stmt and values.
  */
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values;
 
 /**
- * Calls -cache:simpleQuery:recordType:listType: with the default
- * record class and array class.
+ * Calls [SQLClient(Caching)-cache:simpleQuery:recordType:listType:] with
+ * the default record class and array class.
  */
 - (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLitArg*)stmt;
 
@@ -1578,11 +1578,11 @@ SQLCLIENT_PRIVATE
  * The list produced by this argument is used as the return value of
  * this method.<br /> 
  * NB. cache lookups for the instance created from ltype will be provided
- * by sending -mutableCopy and -autorelease messages to the original
+ * by sending -mutableCopy and autorelease messages to the original
  * instance.<br />
  * If a cache thread has been set using the -setCacheThread: method, and the
- * -cache:simpleQuery:recordType:listType: method is called from a
- * thread other than the cache thread, then any query to retrieve
+ * [SQLClient(Caching)-cache:simpleQuery:recordType:listType:] method is
+ * called from a thread other than the cache thread, then any query to retrieve
  * uncached data will be performed in the cache thread, and for cached
  * (but expired) data, the old (expired) results may be returned ...
  * in which case an asynchronous query to update the cache will be
@@ -1892,9 +1892,9 @@ typedef struct {
  * for grouping together a series of SQL statements to be executed as a
  * single transaction.  It avoids the need for handling begin/commit,
  * and should be as efficient as reasonably possible.<br />
- * You obtain an instance by calling [SQLClient-transaction], add SQL
- * statements to it using the -add:,... and/or -add:with: methods, and
- * then use the -execute method to perform all the statements as a
+ * You obtain an instance by calling [SQLClient(Convenience)-transaction],
+ * add SQL statements to it using the -add:,... and/or -add:with: methods,
+ * and then use the -execute method to perform all the statements as a
  * single operation.<br />
  * Any exception is caught and re-raised in the -execute method after any
  * tidying up to leave the database in a consistent state.<br />
@@ -1985,8 +1985,9 @@ SQLCLIENT_PRIVATE
  * <p>This is similar to the -execute method, but may allow partial
  * execution of the transaction if appropriate:
  * </p>
- * <p>If the transaction was created using the [SQLClient-batch:] method and
- * the transaction as a whole fails, individual statements are retried.<br />
+ * <p>If the transaction was created using the [SQLClient(Convenience)-batch:]
+ * method and the transaction as a whole fails, individual statements are
+ * retried.<br />
  * The stopOnFailure flag for the batch creation indicates whether the
  * retries are stopped at the first statement to fail, or continue (skipping
  * any failed statements).
@@ -1995,8 +1996,8 @@ SQLCLIENT_PRIVATE
  * subsidiary transactions may succeed or fail atomically depending
  * on their individual attributes.
  * </p>
- * <p>If the transaction was not created using [SQLClient-batch:], then
- * calling this method is equivalent to calling the -execute method.
+ * <p>If the transaction was not created using [SQLClient(Convenience)-batch:],
+ * then calling this method is equivalent to calling the -execute method.
  * </p>
  * <p>If any statements/transactions in the batch fail, they are added to
  * the transaction supplied in the failures parameter (if it's not nil)
@@ -2006,8 +2007,9 @@ SQLCLIENT_PRIVATE
  * the failures transaction. 
  * </p>
  * <p>If the log argument is YES, then any exceptions encountered when
- * executing the batch are logged using the [SQLClient-debug:,...] method,
- * even if debug logging is not enabled with [SQLClient-setDebugging:].
+ * executing the batch are logged using the [SQLClient(Logging)-debug:,...]
+ * method, even if debug logging is not enabled with
+ * [SQLClient(Logging)-setDebugging:].
  * </p>
  * The method returns the number of statements which actually succeeded.
  */
@@ -2064,10 +2066,10 @@ SQLCLIENT_PRIVATE
 
 
 
-/** The SQLLiteral subclass of NSString is used to tell -prepare:args:
- * and -prepare:with: methods that a string is to be treated as a literal
- * which should not be quoted when it is used as part of an SQL query or
- * statement.<br />
+/** The SQLLiteral subclass of NSString is used to tell
+ * [SQLClient-prepare:args:] and [SQLClient-prepare:with:] methods that
+ * a string is to be treated as a literal which should not be quoted when
+ * it is used as part of an SQL query or statement.<br />
  * You should enable compile time checking of string types by defining the
  * SQLCLIENT_COMPILE_TIME_QUOTE_CHECK preprocessor macro before including
  * this header.  When compile time checking is in place, the methods which
@@ -2090,10 +2092,10 @@ SQLCLIENT_PRIVATE
  * data in creating a database query/statement, and an attacker might try
  * to fool your code into doing something bad to the database).<br />
  * When autoquote is turned on, the methods to build queries/statements
- * (-prepare:args: and -prepare:with: and other methods based on those)
- * will perform a runtime check for strings in the arguments list they
- * are given, and will automatically quote any string which is not considered
- * a literal.<br />
+ * ([SQLClient-prepare:args:] and [SQLClient-prepare:with:] and other
+ * methods based on those) will perform a runtime check for strings in the
+ * arguments list they are given, and will automatically quote any string
+ * which is not considered a literal.<br />
  * The types of literal string are:
  * <deflist>
  *   <term>compiler literal</term><desc>A string literal in your source code
@@ -2127,9 +2129,9 @@ SQLCLIENT_PRIVATE
 + (BOOL) autoquoteWarning;
 
 /** Turns autoquote on/off for the process.<br />
- * When autoquote is on, the arguments to the -prepare:args: method (and
- * therefore all methods that use it) are automatically quoted unless they
- * are literal strings (see the +literal: method).<br />
+ * When autoquote is on, the arguments to the [SQLClient-prepare:args:]
+ * method (and therefore all methods that use it) are automatically quoted
+ * unless they are literal strings.<br />
  * The purpose of autoquoting is to help prevent SQL injection attacks on
  * your software;  it helps ensure that only strings you really want to use
  * literally are embedded in the SQL without quoting.
@@ -2138,9 +2140,9 @@ SQLCLIENT_PRIVATE
 
 /** Turns autoquote warning on/off for the process.<br />
  * When autoquote warning is on, an NSLog() warning is generated whenever
- * the arguments to the -prepare:args: method (and therefore all methods
- * that use it) are automatically quoted (or woudl be if autoquote was
- * turned on).<br />
+ * the arguments to the [SQLClient-prepare:args:] method (and therefore
+ * all methods that use it) are automatically quoted (or woudl be if
+ * autoquote was turned on).<br />
  * Turn this on when using software which you expect to migrate to using
  * autoquote.
  */

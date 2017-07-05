@@ -2732,12 +2732,12 @@ static int	        poolConnections = 0;
   return result;
 }
 
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 {
   return [self simpleQuery: stmt recordType: rClass listType: aClass];
 }
 
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype
 {
@@ -3372,7 +3372,7 @@ static int	        poolConnections = 0;
 }
 
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (SQLLiteral*)stmt
+	      simpleQuery: (SQLLitArg*)stmt
 {
   return [self cache: seconds
 	 simpleQuery: stmt
@@ -3381,7 +3381,7 @@ static int	        poolConnections = 0;
 }
 
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (SQLLiteral*)stmt
+	      simpleQuery: (SQLLitArg*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype
 {
