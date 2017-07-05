@@ -191,16 +191,18 @@
 
 @class	GSCache;
 @class	SQLClient;
+@class	SQLLiteral;
 @class	SQLTransaction;
 
 /** Code including this header should define SQLCLIENT_COMPILE_TIME_QUOTE_CHECK
  * to enable stricter compile time type checking to ensure that literal strings
  * are used for sql queries/statements.<br />
+ * This makes arguments be expected to be SQLLiteral rather than NSString.
  */
 #if defined(SQLCLIENT_COMPILE_TIME_QUOTE_CHECK)
-@class	SQLLiteral;
+#define SQLLitArg  SQLLiteral
 #else
-#define SQLLiteral      NSString
+#define SQLLitArg  NSString
 #endif
 
 /**
@@ -1054,7 +1056,7 @@ SQLCLIENT_PRIVATE
  * Calls -simpleQuery:recordType:listType: with the default record class
  * and default array class.
  */
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt;
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt;
 
 /**
  * Calls -backendQuery:recordType:listType: in a safe manner.<br />
@@ -1071,7 +1073,7 @@ SQLCLIENT_PRIVATE
  * This library provides a few helper classes to provide alternative
  * values for rtype and ltype.
  */
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype;
 
@@ -1553,7 +1555,7 @@ SQLCLIENT_PRIVATE
  * Calls -cache:simpleQuery:recordType:listType: with the default
  * record class and array class.
  */
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLiteral*)stmt;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLitArg*)stmt;
 
 /**
  * If the result of the query is already cached and has not expired,
@@ -1587,7 +1589,7 @@ SQLCLIENT_PRIVATE
  * executed as soon as possible in the cache thread.
  */
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (SQLLiteral*)stmt
+	      simpleQuery: (SQLLitArg*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype;
 
@@ -1847,9 +1849,9 @@ typedef struct {
 - (NSMutableArray*) cache: (int)seconds
 		    query: (NSString*)stmt
 		     with: (NSDictionary*)values;
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLiteral*)stmt;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLitArg*)stmt;
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (SQLLiteral*)stmt
+	      simpleQuery: (SQLLitArg*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype;
 - (NSMutableArray*) columns: (NSMutableArray*)records;
@@ -1879,8 +1881,8 @@ typedef struct {
 - (SQLLiteral*) quoteString: (NSString *)s;
 - (NSInteger) simpleExecute: (NSArray*)info;
 - (void) singletons: (NSMutableArray*)records;
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt;
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt;
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype;
 @end
@@ -2061,10 +2063,6 @@ SQLCLIENT_PRIVATE
 @end
 
 
-
-#if defined(SQLLiteral)
-#undef  SQLLiteral
-#endif
 
 /** The SQLLiteral subclass of NSString is used to tell -prepare:args:
  * and -prepare:with: methods that a string is to be treated as a literal
