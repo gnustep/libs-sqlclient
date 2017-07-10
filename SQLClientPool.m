@@ -1092,7 +1092,7 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLiteral*)stmt;
+- (NSMutableArray*) cache: (int)seconds simpleQuery: (SQLLitArg*)stmt;
 {
   SQLClient             *db;
   NSMutableArray        *result;
@@ -1109,7 +1109,7 @@ static Class      cls = Nil;
 }
 
 - (NSMutableArray*) cache: (int)seconds
-	      simpleQuery: (SQLLiteral*)stmt
+	      simpleQuery: (SQLLitArg*)stmt
 	       recordType: (id)rtype
 	         listType: (id)ltype
 {
@@ -1408,7 +1408,7 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 {
   SQLClient             *db;
   NSMutableArray        *result;
@@ -1424,7 +1424,7 @@ static Class      cls = Nil;
   return result;
 }
 
-- (NSMutableArray*) simpleQuery: (SQLLiteral*)stmt
+- (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype
 {
