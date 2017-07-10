@@ -237,6 +237,18 @@ SQLClientUnProxyLiteral(id aString)
   return (NSString*)aString;
 }
 
+static SQLLiteral *
+quoteBigInteger(int64_t i)
+{
+  char          buf[32];
+  unsigned      len;
+  SQLLiteral    *s;
+
+  len = sprintf(buf, "%"PRId64, i);
+  s = SQLClientNewLiteral(buf, len);
+  return [s autorelease];
+}
+
 @interface      SQLClientPool (Swallow)
 - (BOOL) _swallowClient: (SQLClient*)client explicit: (BOOL)swallowed;
 @end
@@ -4557,9 +4569,86 @@ validName(NSString *name)
   return (self == null ? YES : NO);
 }
 
+- (SQLLiteral*) quoteBigInteger
+{
+  int64_t       v = (int64_t)[[self description] longLongValue];
+
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteBigNatural
+{
+  int64_t       v = (int64_t)[[self description] longLongValue];
+
+  if (v < 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a natural number", self];
+    }
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteBigPositive
+{
+  int64_t       v = (int64_t)[[self description] longLongValue];
+
+  if (v <= 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a positive number", self];
+    }
+  return quoteBigInteger(v);
+}
+
 - (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
 {
   return nil;
+}
+
+- (SQLLiteral*) quoteInteger
+{
+  int64_t       v = (int64_t)[[self description] longLongValue];
+
+  if ((v & 0xffffffff) != v)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a 32bit number", self];
+    }
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteNatural
+{
+  int64_t       v = (int64_t)[[self description] longLongValue];
+
+  if ((v & 0xffffffff) != v)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a 32bit number", self];
+    }
+  if (v < 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a natural number", self];
+    }
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quotePositive
+{
+  int64_t       v = (int64_t)[[self description] longLongValue];
+
+  if ((v & 0xffffffff) != v)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a 32bit number", self];
+    }
+  if (v <= 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a positive number", self];
+    }
+  return quoteBigInteger(v);
 }
 
 @end
@@ -4611,10 +4700,88 @@ validName(NSString *name)
 @end
 
 @implementation NSNumber (Quote)
+- (SQLLiteral*) quoteBigInteger
+{
+  int64_t       v = (int64_t)[self longLongValue];
+
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteBigNatural
+{
+  int64_t       v = (int64_t)[self longLongValue];
+
+  if (v < 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a natural number", self];
+    }
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteBigPositive
+{
+  int64_t       v = (int64_t)[self longLongValue];
+
+  if (v <= 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a positive number", self];
+    }
+  return quoteBigInteger(v);
+}
+
 - (SQLLiteral*) quoteForSQLClient: (SQLClient*)db
 {
   return SQLClientMakeLiteral([self description]);
 }
+
+- (SQLLiteral*) quoteInteger
+{
+  int64_t       v = (int64_t)[self longLongValue];
+
+  if ((v & 0xffffffff) != v)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a 32bit number", self];
+    }
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteNatural
+{
+  int64_t       v = (int64_t)[self longLongValue];
+
+  if ((v & 0xffffffff) != v)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a 32bit number", self];
+    }
+  if (v < 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a natural number", self];
+    }
+  return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quotePositive
+{
+  int64_t       v = (int64_t)[self longLongValue];
+
+  if ((v & 0xffffffff) != v)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a 32bit number", self];
+    }
+  if (v <= 0)
+    {
+      [NSException raise: NSInternalInconsistencyException
+                  format: @"Object (%@) is not a positive number", self];
+    }
+  return quoteBigInteger(v);
+}
+
 @end
 
 @implementation NSSet (Quote)

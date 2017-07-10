@@ -231,6 +231,24 @@ extern NSString * const SQLClientDidDisconnectNotification;
  */
 - (BOOL) isNull;
 
+/** If the receiver can be represented as a 64bit integer,
+ * return the string literal representation as used in SQL,
+ * otherwise raise exception.
+ */
+- (SQLLiteral*) quoteBigInteger;
+
+/** If the receiver can be represented as a 64bit non-negative integer,
+ * return the string literal representation as used in SQL,
+ * otherwise raise exception.
+ */
+- (SQLLiteral*) quoteBigNatural;
+
+/** If the receiver can be represented as a 64bit positive (not zero) integer,
+ * return the string literal representation as used in SQL,
+ * otherwise raise exception.
+ */
+- (SQLLiteral*) quoteBigPositive;
+
 /** Classes may override this method to provide a value for use as part of
  * an SQL query or statement.  The method is used internally when quoting
  * objects.<br />
@@ -241,6 +259,24 @@ extern NSString * const SQLClientDidDisconnectNotification;
  * the object may not be used in an SQL query/statement.
  */
 - (SQLLiteral*) quoteForSQLClient: (SQLClient*)db;
+
+/** If the receiver can be represented as a 32bit integer,
+ * return the string literal representation as used in SQL,
+ * otherwise raise exception.
+ */
+- (SQLLiteral*) quoteInteger;
+
+/** If the receiver can be represented as a 32bit non-negative integer,
+ * return the string literal representation as used in SQL,
+ * otherwise raise exception.
+ */
+- (SQLLiteral*) quoteNatural;
+
+/** If the receiver can be represented as a 32bit positive (not zero) integer,
+ * return the string literal representation as used in SQL,
+ * otherwise raise exception.
+ */
+- (SQLLiteral*) quotePositive;
 
 @end
 
