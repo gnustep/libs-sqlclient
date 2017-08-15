@@ -334,6 +334,34 @@ connectQuote(NSString *str)
   return [m autorelease];
 }
 
+/* Encapsulates cleanup to be done when the database connection is lost
+ * or should be dropped by us (eg due to an unrecoverable error).
+ */
+- (void) _backendDisconnected
+{
+  if (extra != 0)
+    {
+#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
+      if (runLoop != nil)
+        {
+          if (connection != 0)
+            {
+              int       descriptor = PQsocket(connection);
+
+              [runLoop removeEvent: (void*)(uintptr_t)descriptor
+                              type: ET_RDESC
+                           forMode: NSDefaultRunLoopMode
+                               all: YES];
+            }
+          DESTROY(runLoop);
+        }
+#endif
+      PQfinish(connection);
+      connection = 0;
+      connected = NO;
+    }
+}
+
 - (BOOL) backendConnect
 {
   if (extra == 0)
@@ -421,15 +449,13 @@ connectQuote(NSString *str)
 	    {
 	      [self debug: @"Error connecting to '%@' (%@) - %s",
 		[self name], m, PQerrorMessage(connection)];
-	      PQfinish(connection);
-	      connection = 0;
+	      [self _backendDisconnected];
 	    }
 	  else if (PQsetClientEncoding(connection, "UTF-8") < 0)
 	    {
 	      [self debug: @"Error setting UTF-8 with '%@' (%@) - %s",
 		[self name], m, PQerrorMessage(connection)];
-	      PQfinish(connection);
-	      connection = 0;
+	      [self _backendDisconnected];
 	    }
 	  else
 	    {
@@ -469,16 +495,12 @@ connectQuote(NSString *str)
                         {
                           PQclear(result);
                         }
-                      PQfinish(connection);
-                      connection = 0;
-                      connected = NO;
+                      [self _backendDisconnected];
                     }
                 }
               else
                 {
-                  PQfinish(connection);
-                  connection = 0;
-                  connected = NO;
+                  [self _backendDisconnected];
 		  [self debug: @"Postgres without standard conforming strings"];
                 }
 
@@ -509,34 +531,17 @@ connectQuote(NSString *str)
 {
   if (extra != 0 && connection != 0)
     {
-#if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
-      if (extra != 0 && runLoop != nil)
-        {
-          if (connection != 0)
-            {
-              int       descriptor = PQsocket(connection);
-
-              [runLoop removeEvent: (void*)(uintptr_t)descriptor
-                              type: ET_RDESC
-                           forMode: NSDefaultRunLoopMode
-                               all: YES];
-            }
-          DESTROY(runLoop);
-        }
-#endif
       NS_DURING
 	{
 	  if ([self isInTransaction] == YES)
 	    {
 	      [self rollback];
 	    }
-
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Disconnecting client %@", [self clientName]];
 	    }
-	  PQfinish(connection);
-	  connection = 0;
+          [self _backendDisconnected];
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Disconnected client %@", [self clientName]];
