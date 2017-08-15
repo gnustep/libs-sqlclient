@@ -1741,8 +1741,26 @@ static inline unsigned int trim(char *str, unsigned len)
   [lock lock];
   if (0 != connection)
     {
-      PQconsumeInput(connection);
-      [self _checkNotifications: YES];
+      if (0 == PQconsumeInput(connection))
+        {
+          NSString      *nam = [[[self name] copy] autorelease];
+          char          msg[1000];
+
+          strncpy(msg, PQerrorMessage(connection), sizeof(msg)-1);
+          msg[sizeof(msg)-1] = '\0';
+          if (PQstatus(connection) != CONNECTION_OK)
+            {
+              /* The connection has been lost, so we must disconnect,
+               * which will stop us receiving events on the descriptor.
+               */
+              [self backendDisconnect];
+            }
+          [self debug: @"Error consuming input for '%@' - %s", nam, msg];
+        }
+      else
+        {
+          [self _checkNotifications: YES];
+        }
     }
   [lock unlock];
 }
