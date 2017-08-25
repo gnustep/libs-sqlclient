@@ -367,7 +367,7 @@ connectQuote(NSString *str)
     {
       extra = NSZoneMalloc(NSDefaultMallocZone(), sizeof(ConnectionInfo));
       memset(extra, '\0', sizeof(ConnectionInfo));
-      cInfo->descriptor = -1;
+      cInfo->_descriptor = -1;
     }
   if (connection == 0)
     {
@@ -779,7 +779,7 @@ connectQuote(NSString *str)
               [NSException raise: NSInternalInconsistencyException
                 format: @"Observer can't be set up ... bad file descriptor"];
             }
-          cInfo->descriptor = descriptor;
+          cInfo->_descriptor = descriptor;
         }
       [cInfo->_runLoop addEvent: (void*)(uintptr_t)cInfo->_descriptor
                    type: ET_RDESC
