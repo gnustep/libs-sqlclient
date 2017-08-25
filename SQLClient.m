@@ -1497,23 +1497,25 @@ static int	        poolConnections = 0;
                 }
 
 	      _lastStart = GSTickerTimeNow();
-	      [self backendConnect];
-              /* On establishng a new connection, we must restore any
-               * listen instructions in the backend.
-               */
-              if (nil != _names)
+	      if (YES == [self backendConnect])
                 {
-                  NSEnumerator  *e;
-                  NSString      *n;
-
-                  e = [_names objectEnumerator];
-                  while (nil != (n = [e nextObject]))
+                  /* On establishng a new connection, we must restore any
+                   * listen instructions in the backend.
+                   */
+                  if (nil != _names)
                     {
-                      [self backendListen: [self quoteName: n]];
+                      NSEnumerator  *e;
+                      NSString      *n;
+
+                      e = [_names objectEnumerator];
+                      while (nil != (n = [e nextObject]))
+                        {
+                          [self backendListen: [self quoteName: n]];
+                        }
                     }
+                  _lastConnect = GSTickerTimeNow();
+                  _connectFails = 0;
                 }
-	      _lastConnect = GSTickerTimeNow();
-	      _connectFails = 0;
 	    }
 	  NS_HANDLER
 	    {
