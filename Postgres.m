@@ -1287,7 +1287,7 @@ static inline unsigned int trim(char *str, unsigned len)
       if (YES == all)
         {
           cInfo->_descriptor = -1;
-          DESTROY(cInfo->_loop);
+          DESTROY(cInfo->_runLoop);
         }
     }
 #endif
