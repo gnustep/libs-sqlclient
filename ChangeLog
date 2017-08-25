@@ -1,3 +1,10 @@
+2017-08-25 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m:  Cache the file descriptor to fix problem in cleanup
+	when postgres returns -1 from PQsocket() as we are trying to remove
+	descriptor from run loop. Also fix error in unlisten where we would
+	stop monitoring the descriptor prematurely.
+
 2017-08-15 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m:  Add code so that if the database connection is lost

@@ -74,13 +74,13 @@
 typedef struct	{
   PGconn	*_connection;
   int           _backendPID;
-  NSRunLoop     *_runLoop;
+  int           _descriptor;    // For monitoring in run loop
+  NSRunLoop     *_runLoop;      // For listen/unlisten monitoring
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
 #define	backendPID		(cInfo->_backendPID)
 #define	connection		(cInfo->_connection)
-#define	runLoop		        (cInfo->_runLoop)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -339,21 +339,20 @@ connectQuote(NSString *str)
  */
 - (void) _backendDisconnected
 {
-  if (extra != 0)
+  if (extra != 0 && connection != 0)
     {
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
-      if (runLoop != nil)
+      if (cInfo->_runLoop != nil)
         {
-          if (connection != 0)
+          if (cInfo->_descriptor >= 0)
             {
-              int       descriptor = PQsocket(connection);
-
-              [runLoop removeEvent: (void*)(uintptr_t)descriptor
-                              type: ET_RDESC
-                           forMode: NSDefaultRunLoopMode
-                               all: YES];
+              [cInfo->_runLoop removeEvent: (void*)(uintptr_t)cInfo->_descriptor
+                                      type: ET_RDESC
+                                   forMode: NSDefaultRunLoopMode
+                                       all: YES];
+              cInfo->_descriptor = -1;
             }
-          DESTROY(runLoop);
+          DESTROY(cInfo->_runLoop);
         }
 #endif
       PQfinish(connection);
@@ -368,6 +367,7 @@ connectQuote(NSString *str)
     {
       extra = NSZoneMalloc(NSDefaultMallocZone(), sizeof(ConnectionInfo));
       memset(extra, '\0', sizeof(ConnectionInfo));
+      cInfo->descriptor = -1;
     }
   if (connection == 0)
     {
@@ -755,28 +755,33 @@ connectQuote(NSString *str)
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
   if (extra != 0 && connection != 0)
     {
-      int       descriptor = PQsocket(connection);
-
-      if (nil == runLoop)
+      if (nil == cInfo->_runLoop)
         {
-          ASSIGN(runLoop, [NSRunLoop currentRunLoop]);
-          if (nil == runLoop)
+          ASSIGN(cInfo->_runLoop, [NSRunLoop currentRunLoop]);
+          if (nil == cInfo->_runLoop)
             {
               [NSException raise: NSInternalInconsistencyException
                 format: @"Observer can't be set up ... no runloop in thread"];
             }
         }
-      else if ([NSRunLoop currentRunLoop] != runLoop)
+      else if ([NSRunLoop currentRunLoop] != cInfo->_runLoop)
         {
           [NSException raise: NSInternalInconsistencyException
             format: @"Observer added to the same client from another runloop"];
         }
-      if (descriptor < 0)
+      if (cInfo->_descriptor < 0)
         {
-          [NSException raise: NSInternalInconsistencyException
-            format: @"Observer can't be set up ... bad file descriptor"];
+          int   descriptor = PQsocket(connection);
+
+          if (descriptor < 0)
+            {
+              DESTROY(cInfo->_runLoop);
+              [NSException raise: NSInternalInconsistencyException
+                format: @"Observer can't be set up ... bad file descriptor"];
+            }
+          cInfo->descriptor = descriptor;
         }
-      [runLoop addEvent: (void*)(uintptr_t)descriptor
+      [cInfo->_runLoop addEvent: (void*)(uintptr_t)cInfo->_descriptor
                    type: ET_RDESC
                 watcher: self
                 forMode: NSDefaultRunLoopMode];
@@ -1268,18 +1273,22 @@ static inline unsigned int trim(char *str, unsigned len)
 - (void) backendUnlisten: (NSString*)name
 {
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)
-  if (extra != 0 && runLoop != nil)
+  if (extra != 0 && cInfo->_runLoop != nil && cInfo->_descriptor >= 0)
     {
-      if (connection != 0)
-        {
-          int   descriptor = PQsocket(connection);
+      BOOL      all = ([_names count] == 0) ? YES : NO;
 
-          [runLoop removeEvent: (void*)(uintptr_t)descriptor
-                          type: ET_RDESC
-                       forMode: NSDefaultRunLoopMode
-                           all: YES];
+      /* Remove the event added to listen for this name.
+       * If there are no remaining names listened for, cleanup.
+       */
+      [cInfo->_runLoop removeEvent: (void*)(uintptr_t)cInfo->_descriptor
+                              type: ET_RDESC
+                           forMode: NSDefaultRunLoopMode
+                               all: all];
+      if (YES == all)
+        {
+          cInfo->_descriptor = -1;
+          DESTROY(cInfo->_loop);
         }
-      DESTROY(runLoop);
     }
 #endif
   [self execute: @"UNLISTEN ", name, nil];
@@ -1744,7 +1753,18 @@ static inline unsigned int trim(char *str, unsigned len)
    * be using the database connection while we use it.
    */
   [lock lock];
-  if (0 != connection)
+  if (0 == connection)
+    {
+      /* The connection has gone, so we must remove the descriptor from
+       * the current run loop as we can no longer handle events.
+       */
+      [[NSRunLoop currentRunLoop] removeEvent: data
+                                         type: ET_RDESC
+                                      forMode: NSDefaultRunLoopMode
+                                          all: YES];
+      [self debug: @"Listen event on disconnected client, desc: %d", (int)data];
+    }
+  else
     {
       if (0 == PQconsumeInput(connection))
         {
@@ -1753,7 +1773,8 @@ static inline unsigned int trim(char *str, unsigned len)
 
           strncpy(msg, PQerrorMessage(connection), sizeof(msg)-1);
           msg[sizeof(msg)-1] = '\0';
-          if (PQstatus(connection) != CONNECTION_OK)
+          if (PQstatus(connection) != CONNECTION_OK
+            || PQsocket(connection) != (int)data)
             {
               /* The connection has been lost, so we must disconnect,
                * which will stop us receiving events on the descriptor.
@@ -1766,6 +1787,12 @@ static inline unsigned int trim(char *str, unsigned len)
         {
           [self _checkNotifications: YES];
         }
+    }
+  /* If we are listening, try to reconnect.
+   */
+  if (NO == [self connected] && [_names count] > 0)
+    {
+      [self connect];
     }
   [lock unlock];
 }
