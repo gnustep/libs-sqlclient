@@ -2672,6 +2672,7 @@ static int	        poolConnections = 0;
 {
   NSInteger     result;
   NSString      *debug = nil;
+  BOOL          done = NO;
 
   if ([info isKindOfClass: NSArrayClass] == NO)
     {
@@ -2687,87 +2688,105 @@ static int	        poolConnections = 0;
     }
 
   [lock lock];
-  NS_DURING
+  while (NO == done)
     {
-      NSString	        *statement;
-      BOOL              isCommit = NO;
-      BOOL              isRollback = NO;
-
-      statement = [info objectAtIndex: 0];
-
-      if ([statement isEqualToString: commitString])
+      done = YES;
+      NS_DURING
         {
-          isCommit = YES;
+          NSString      *statement;
+          BOOL          isCommit = NO;
+          BOOL          isRollback = NO;
+
+          statement = [info objectAtIndex: 0];
+
+          if ([statement isEqualToString: commitString])
+            {
+              isCommit = YES;
+            }
+          if ([statement isEqualToString: rollbackString])
+            {
+              isRollback = YES;
+            }
+
+          _lastStart = GSTickerTimeNow();
+          result = [self backendExecute: info];
+          _lastOperation = GSTickerTimeNow();
+          [_statements addObject: statement];
+          if (_duration >= 0)
+            {
+              NSTimeInterval	d;
+
+              d = _lastOperation - _lastStart;
+              if (d >= _duration)
+                {
+                  if (isCommit || isRollback)
+                    {
+                      NSEnumerator	        *e = [_statements objectEnumerator];
+                      NSMutableString       *m;
+
+                      if (isCommit)
+                        {
+                          m = [NSMutableString stringWithFormat:
+                            @"Duration %g for transaction commit ...\n", d];
+                        }
+                      else 
+                        {
+                          m = [NSMutableString stringWithFormat:
+                            @"Duration %g for transaction rollback ...\n", d];
+                        }
+                      while ((statement = [e nextObject]) != nil)
+                        {
+                          [m appendFormat: @"  %@;\n", statement];
+                        }
+                      debug = m;
+                    }
+                  else if ([self debugging] > 1)
+                    {
+                      /*
+                       * For higher debug levels, we log data objects as well
+                       * as the query string, otherwise we omit them.
+                       */
+                      debug = [NSString stringWithFormat:
+                        @"Duration %g for statement %@", d, info];
+                    }
+                  else
+                    {
+                      debug = [NSString stringWithFormat:
+                        @"Duration %g for statement %@", d, statement];
+                    }
+                }
+            }
+          if (_inTransaction == NO)
+            {
+              [_statements removeAllObjects];
+            }
         }
-      if ([statement isEqualToString: rollbackString])
+      NS_HANDLER
         {
-          isRollback = YES;
+          result = -1;
+          if (_inTransaction == NO)
+            {
+              [_statements removeAllObjects];
+              if ([[localException reason] isEqual: SQLConnectionException])
+                {
+                  /* A connection failure while not in a transaction ...
+                   * we can and should retry.
+                   */
+                  done = NO;
+                  if (nil != debug)
+                    {
+                      [self debug: @"Retry after: %@", localException];
+                    }
+                }
+            }
+          if (done == YES)
+            {
+              [lock unlock];
+              [localException raise];
+            }
         }
-
-      _lastStart = GSTickerTimeNow();
-      result = [self backendExecute: info];
-      _lastOperation = GSTickerTimeNow();
-      [_statements addObject: statement];
-      if (_duration >= 0)
-	{
-	  NSTimeInterval	d;
-
-	  d = _lastOperation - _lastStart;
-	  if (d >= _duration)
-	    {
-	      if (isCommit || isRollback)
-		{
-		  NSEnumerator	        *e = [_statements objectEnumerator];
-                  NSMutableString       *m;
-
-		  if (isCommit)
-		    {
-                      m = [NSMutableString stringWithFormat:
-			@"Duration %g for transaction commit ...\n", d];
-		    }
-		  else 
-		    {
-                      m = [NSMutableString stringWithFormat:
-			@"Duration %g for transaction rollback ...\n", d];
-		    }
-		  while ((statement = [e nextObject]) != nil)
-		    {
-                      [m appendFormat: @"  %@;\n", statement];
-		    }
-                  debug = m;
-		}
-	      else if ([self debugging] > 1)
-		{
-		  /*
-		   * For higher debug levels, we log data objects as well
-		   * as the query string, otherwise we omit them.
-		   */
-                  debug = [NSString stringWithFormat:
-                    @"Duration %g for statement %@", d, info];
-		}
-	      else
-		{
-                  debug = [NSString stringWithFormat:
-		    @"Duration %g for statement %@", d, statement];
-		}
-	    }
-	}
-      if (_inTransaction == NO)
-	{
-	  [_statements removeAllObjects];
-	}
+      NS_ENDHANDLER
     }
-  NS_HANDLER
-    {
-      result = -1;
-      if (_inTransaction == NO)
-	{
-	  [_statements removeAllObjects];
-	}
-      [lock unlock];
-      [localException raise];
-    }
-  NS_ENDHANDLER
   [lock unlock];
   if (nil != debug)
     {
@@ -2788,33 +2807,55 @@ static int	        poolConnections = 0;
   NSMutableArray	*result = nil;
   NSString              *debug = nil;
   NSString              *query = SQLClientUnProxyLiteral(stmt);
+  BOOL                  done = NO;
 
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
   [lock lock];
-  NS_DURING
+  while (NO == done)
     {
-      _lastStart = GSTickerTimeNow();
-      result = [self backendQuery: query recordType: rtype listType: ltype];
-      _lastOperation = GSTickerTimeNow();
-      if (_duration >= 0)
-	{
-	  NSTimeInterval	d;
+      done = YES;
+      NS_DURING
+        {
+          _lastStart = GSTickerTimeNow();
+          result = [self backendQuery: query recordType: rtype listType: ltype];
+          _lastOperation = GSTickerTimeNow();
+          if (_duration >= 0)
+            {
+              NSTimeInterval	d;
 
-	  d = _lastOperation - _lastStart;
-	  if (d >= _duration)
-	    {
-	      debug = [NSString stringWithFormat:
-                @"Duration %g for query %@", d, query];
-	    }
-	}
+              d = _lastOperation - _lastStart;
+              if (d >= _duration)
+                {
+                  debug = [NSString stringWithFormat:
+                    @"Duration %g for query %@", d, query];
+                }
+            }
+        }
+      NS_HANDLER
+        {
+          if (NO == _inTransaction)
+            {
+              if ([[localException reason] isEqual: SQLConnectionException])
+                {
+                  /* A connection failure while not in a transaction ...
+                   * we can and should retry.
+                   */
+                  done = NO;
+                  if (nil != debug)
+                    {
+                      [self debug: @"Retry after: %@", localException];
+                    }
+                }
+            }
+          if (YES == done)
+            {
+              [lock unlock];
+              [localException raise];
+            }
+        }
+      NS_ENDHANDLER
     }
-  NS_HANDLER
-    {
-      [lock unlock];
-      [localException raise];
-    }
-  NS_ENDHANDLER
   [lock unlock];
   if (nil != debug)
     {
@@ -2871,11 +2912,6 @@ static int	        poolConnections = 0;
 	      format: @"Called -%@ without backend bundle implementation",
     NSStringFromSelector(_cmd)];
   return;
-}
-
-- (NSMutableArray*) backendQuery: (NSString*)stmt
-{
-  return [self backendQuery: stmt recordType: rClass listType: aClass];
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt
