@@ -671,7 +671,7 @@ connectQuote(NSString *str)
        */
       if ([self connect] == NO)
 	{
-	  [NSException raise: SQLException
+	  [NSException raise: SQLConnectionException
 	    format: @"Unable to connect to '%@' to execute statement %@",
 	    [self name], stmt];
 	} 
@@ -1093,7 +1093,7 @@ static inline unsigned int trim(char *str, unsigned len)
        */
       if ([self connect] == NO)
 	{
-	  [NSException raise: SQLException
+	  [NSException raise: SQLConnectionException
 	    format: @"Unable to connect to '%@' to run query %@",
 	    [self name], stmt];
 	} 

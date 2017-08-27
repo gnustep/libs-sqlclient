@@ -2721,8 +2721,8 @@ static int	        poolConnections = 0;
                 {
                   if (isCommit || isRollback)
                     {
-                      NSEnumerator	        *e = [_statements objectEnumerator];
-                      NSMutableString       *m;
+                      NSEnumerator      *e = [_statements objectEnumerator];
+                      NSMutableString   *m;
 
                       if (isCommit)
                         {
@@ -2775,7 +2775,7 @@ static int	        poolConnections = 0;
                   done = NO;
                   if (nil != debug)
                     {
-                      [self debug: @"Retry after: %@", localException];
+                      NSLog(@"Will retry after: %@", localException);
                     }
                 }
             }
@@ -2844,7 +2844,7 @@ static int	        poolConnections = 0;
                   done = NO;
                   if (nil != debug)
                     {
-                      [self debug: @"Retry after: %@", localException];
+                      NSLog(@"Will retry after: %@", localException);
                     }
                 }
             }
