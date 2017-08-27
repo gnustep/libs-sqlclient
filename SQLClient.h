@@ -575,6 +575,12 @@ SQLCLIENT_PRIVATE
  */
 + (void) purgeConnections: (NSDate*)since;
 
+/** Sets the retry period after which connection attempts are abandoned.
+ * a delay less than or equal to zero (the default) means that reties are
+ * never abandoned.
+ */
++ (void) setAbandonFailedConnectionsAfter: (NSTimeInterval)delay;
+
 /**
  * <p>Set the maximum number of simultaneous database connections
  * permitted (defaults to 8 and may not be set less than 1).
@@ -701,7 +707,10 @@ SQLCLIENT_PRIVATE
  * that applications which fail to deal with connection failures, and
  * just keep trying to reconnect, will not overload the system/server.<br />
  * The maximum delay is 30 seconds, so when the database server is restarted,
- * the application can reconnect reasonably quickly.
+ * the application can reconnect reasonably quickly.<br />
+ * If the connection attempt fails it is repeated until it succeds or until
+ * the time interval specified by +setAbandonFailedConnectionsAfter: has
+ * passed.
  */
 - (BOOL) connect;
 
@@ -1264,12 +1273,6 @@ SQLCLIENT_PRIVATE
 - (NSMutableArray*) backendQuery: (NSString*)stmt
 		      recordType: (id)rtype
 		        listType: (id)ltype;
-
-/**
- * Calls -backendQuery:recordType:listType: with the default record class
- * and array class.
- */
-- (NSMutableArray*) backendQuery: (NSString*)stmt;
 
 /** <override-subclass />
  * Called to enable asynchronous notification of database events using the
