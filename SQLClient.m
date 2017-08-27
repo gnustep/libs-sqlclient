@@ -2673,6 +2673,9 @@ static int	        poolConnections = 0;
   NSInteger     result;
   NSString      *debug = nil;
   BOOL          done = NO;
+  BOOL          isCommit = NO;
+  BOOL          isRollback = NO;
+  NSString      *statement;
 
   if ([info isKindOfClass: NSArrayClass] == NO)
     {
@@ -2688,27 +2691,24 @@ static int	        poolConnections = 0;
     }
 
   [lock lock];
+
+  statement = [info objectAtIndex: 0];
+  if ([statement isEqualToString: commitString])
+    {
+      isCommit = YES;
+    }
+  if ([statement isEqualToString: rollbackString])
+    {
+      isRollback = YES;
+    }
+  _lastStart = GSTickerTimeNow();
+
   while (NO == done)
     {
+      debug = nil;
       done = YES;
       NS_DURING
         {
-          NSString      *statement;
-          BOOL          isCommit = NO;
-          BOOL          isRollback = NO;
-
-          statement = [info objectAtIndex: 0];
-
-          if ([statement isEqualToString: commitString])
-            {
-              isCommit = YES;
-            }
-          if ([statement isEqualToString: rollbackString])
-            {
-              isRollback = YES;
-            }
-
-          _lastStart = GSTickerTimeNow();
           result = [self backendExecute: info];
           _lastOperation = GSTickerTimeNow();
           [_statements addObject: statement];
@@ -2763,26 +2763,39 @@ static int	        poolConnections = 0;
         }
       NS_HANDLER
         {
-          result = -1;
-          if (_inTransaction == NO)
+          if (YES == isRollback
+            && [[localException reason] isEqual: SQLConnectionException])
             {
+              /* Loss of connection when rolling back a transaction is
+               * equivalent to rollback success.
+               */
+              result = 0;
+              _inTransaction = NO;
               [_statements removeAllObjects];
-              if ([[localException reason] isEqual: SQLConnectionException])
+            }
+          else
+            {
+              result = -1;
+              if (NO == _inTransaction)
                 {
-                  /* A connection failure while not in a transaction ...
-                   * we can and should retry.
-                   */
-                  done = NO;
-                  if (nil != debug)
+                  [_statements removeAllObjects];
+                  if ([[localException reason] isEqual: SQLConnectionException])
                     {
-                      NSLog(@"Will retry after: %@", localException);
+                      /* A connection failure while not in a transaction ...
+                       * we can and should retry.
+                       */
+                      done = NO;
+                      if (nil != debug)
+                        {
+                          NSLog(@"Will retry after: %@", localException);
+                        }
                     }
                 }
-            }
-          if (done == YES)
-            {
-              [lock unlock];
-              [localException raise];
+              if (done == YES)
+                {
+                  [lock unlock];
+                  [localException raise];
+                }
             }
         }
       NS_ENDHANDLER
