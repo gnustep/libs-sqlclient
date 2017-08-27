@@ -1058,6 +1058,7 @@ static NSArray		*rollbackStatement = nil;
 
 @implementation	SQLClient
 
+static NSTimeInterval   abandonAfter = 0.0;
 static unsigned int	maxConnections = 8;
 static int	        poolConnections = 0;
 
@@ -1353,6 +1354,11 @@ static int	        poolConnections = 0;
     }
 }
 
++ (void) setAbandonFailedConnectionsAfter: (NSTimeInterval)delay
+{
+  abandonAfter = delay;
+}
+
 + (void) setMaxConnections: (unsigned int)c
 {
   if (c > 0)
@@ -1473,8 +1479,19 @@ static int	        poolConnections = 0;
 {
   if (NO == connected)
     {
+      NSTimeInterval    end;
+
+      if (abandonAfter > 0.0)
+        {
+          end = [NSDate timeIntervalSinceReferenceDate] + abandonAfter;
+        }
+      else
+        {
+          end = 0.0;
+        }
       [lock lock];
-      if (NO == connected)
+      while (NO == connected
+        && (0.0 == end || [NSDate timeIntervalSinceReferenceDate] < end))
 	{
 	  NS_DURING
 	    {
@@ -1515,6 +1532,11 @@ static int	        poolConnections = 0;
                     }
                   _lastConnect = GSTickerTimeNow();
                   _connectFails = 0;
+                }
+              else
+                {
+                  _lastOperation = GSTickerTimeNow();
+                  _connectFails++;
                 }
 	    }
 	  NS_HANDLER

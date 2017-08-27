@@ -714,9 +714,14 @@ connectQuote(NSString *str)
           if (PQstatus(connection) != CONNECTION_OK)
             {
               [self backendDisconnect];
+              [NSException raise: SQLConnectionException
+                          format: @"Error executing %@: %@", stmt, str];
             }
-	  [NSException raise: SQLException format: @"Error executing %@: %@",
-	    stmt, str];
+          else
+            {
+              [NSException raise: SQLException
+                          format: @"Error executing %@: %@", stmt, str];
+            }
 	}
       tuples = PQcmdTuples(result);
       if (0 != tuples)
@@ -1123,9 +1128,14 @@ static inline unsigned int trim(char *str, unsigned len)
           if (PQstatus(connection) != CONNECTION_OK)
             {
               [self backendDisconnect];
+              [NSException raise: SQLConnectionException
+                          format: @"Error executing %@: %@", stmt, str];
             }
-	  [NSException raise: SQLException format: @"Error executing %@: %@",
-	    stmt, str];
+          else
+            {
+              [NSException raise: SQLException
+                          format: @"Error executing %@: %@", stmt, str];
+            }
 	}
       if (PQresultStatus(result) == PGRES_TUPLES_OK)
 	{
@@ -1749,10 +1759,13 @@ static inline unsigned int trim(char *str, unsigned len)
                  extra: (void*)extra
                forMode: (NSString*)mode
 {
+  BOOL  wasConnected;
+
   /* Ensure that the receiver is locked so that no other thread can
    * be using the database connection while we use it.
    */
   [lock lock];
+  wasConnected = [self connected];
   if (0 == connection)
     {
       /* The connection has gone, so we must remove the descriptor from
@@ -1790,7 +1803,7 @@ static inline unsigned int trim(char *str, unsigned len)
     }
   /* If we are listening, try to reconnect.
    */
-  if (NO == [self connected] && [_names count] > 0)
+  if (YES == wasConnected && NO == [self connected] && [_names count] > 0)
     {
       [self connect];
     }
