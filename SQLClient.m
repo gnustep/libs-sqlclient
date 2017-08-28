@@ -2764,7 +2764,7 @@ static int	        poolConnections = 0;
       NS_HANDLER
         {
           if (YES == isRollback
-            && [[localException reason] isEqual: SQLConnectionException])
+            && [[localException name] isEqual: SQLConnectionException])
             {
               /* Loss of connection when rolling back a transaction is
                * equivalent to rollback success.
@@ -2779,7 +2779,7 @@ static int	        poolConnections = 0;
               if (NO == _inTransaction)
                 {
                   [_statements removeAllObjects];
-                  if ([[localException reason] isEqual: SQLConnectionException])
+                  if ([[localException name] isEqual: SQLConnectionException])
                     {
                       /* A connection failure while not in a transaction ...
                        * we can and should retry.
@@ -2849,7 +2849,7 @@ static int	        poolConnections = 0;
         {
           if (NO == _inTransaction)
             {
-              if ([[localException reason] isEqual: SQLConnectionException])
+              if ([[localException name] isEqual: SQLConnectionException])
                 {
                   /* A connection failure while not in a transaction ...
                    * we can and should retry.
