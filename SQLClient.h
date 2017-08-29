@@ -1122,6 +1122,12 @@ SQLCLIENT_PRIVATE
 		     recordType: (id)rtype
 		       listType: (id)ltype;
 
+/** If there is no database connection, attempts to establish one.<br />
+ * This does not do automatic retries on connection failure.<br />
+ * Returns the current connection status.
+ */
+- (BOOL) tryConnect;
+
 /** Releases a lock previously obtained using -lockBeforeDate:
  */
 - (void) unlock;

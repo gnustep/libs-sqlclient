@@ -1489,74 +1489,11 @@ static int	        poolConnections = 0;
         {
           end = 0.0;
         }
-      [lock lock];
       while (NO == connected
         && (0.0 == end || [NSDate timeIntervalSinceReferenceDate] < end))
 	{
-	  NS_DURING
-	    {
-              if (_connectFails > 1)
-                {
-                  NSTimeInterval	delay;
-                  NSTimeInterval	elapsed;
-
-                  /* If we have repeated connection failures, we enforce a
-                   * delay of up to 30 seconds between connection attempts
-                   * to avoid overloading the system with too frequent
-                   * connection attempts.
-                   */
-                  delay = (_connectFails < 30) ? _connectFails : 30;
-                  elapsed = GSTickerTimeNow() - _lastOperation;
-                  if (elapsed < delay)
-                    {
-                      [NSThread sleepForTimeInterval: delay - elapsed];
-                    }
-                }
-
-	      _lastStart = GSTickerTimeNow();
-	      if (YES == [self backendConnect])
-                {
-                  /* On establishng a new connection, we must restore any
-                   * listen instructions in the backend.
-                   */
-                  if (nil != _names)
-                    {
-                      NSEnumerator  *e;
-                      NSString      *n;
-
-                      e = [_names objectEnumerator];
-                      while (nil != (n = [e nextObject]))
-                        {
-                          [self backendListen: [self quoteName: n]];
-                        }
-                    }
-                  _lastConnect = GSTickerTimeNow();
-                  _connectFails = 0;
-                }
-              else
-                {
-                  _lastOperation = GSTickerTimeNow();
-                  _connectFails++;
-                }
-	    }
-	  NS_HANDLER
-	    {
-	      _lastOperation = GSTickerTimeNow();
-	      _connectFails++;
-	      [lock unlock];
-	      [localException raise];
-	    }
-	  NS_ENDHANDLER
+          [self tryConnect];
 	}
-      [lock unlock];
-      if (YES == connected)
-        {
-          NSNotificationCenter  *nc;
-
-          nc = [NSNotificationCenter defaultCenter];
-          [nc postNotificationName: SQLClientDidConnectNotification
-                            object: self];
-        }
     }
   return connected;
 }
@@ -2513,7 +2450,13 @@ static int	        poolConnections = 0;
   _inTransaction = NO;
   NS_DURING
     {
-      [self simpleExecute: rollbackStatement];
+      /* If the connection was lost, the transaction has implicitly
+       * rolled back anyway, so we should skip the rollback statement.
+       */
+      if (YES == [self connected])
+        {
+          [self simpleExecute: rollbackStatement];
+        }
       [_statements removeAllObjects];
       [lock unlock];		// Locked by -begin
     }
@@ -2763,39 +2706,26 @@ static int	        poolConnections = 0;
         }
       NS_HANDLER
         {
-          if (YES == isRollback
-            && [[localException name] isEqual: SQLConnectionException])
+          result = -1;
+          if (NO == _inTransaction)
             {
-              /* Loss of connection when rolling back a transaction is
-               * equivalent to rollback success.
-               */
-              result = 0;
-              _inTransaction = NO;
               [_statements removeAllObjects];
-            }
-          else
-            {
-              result = -1;
-              if (NO == _inTransaction)
+              if ([[localException name] isEqual: SQLConnectionException])
                 {
-                  [_statements removeAllObjects];
-                  if ([[localException name] isEqual: SQLConnectionException])
+                  /* A connection failure while not in a transaction ...
+                   * we can and should retry.
+                   */
+                  done = NO;
+                  if (nil != debug)
                     {
-                      /* A connection failure while not in a transaction ...
-                       * we can and should retry.
-                       */
-                      done = NO;
-                      if (nil != debug)
-                        {
-                          NSLog(@"Will retry after: %@", localException);
-                        }
+                      NSLog(@"Will retry after: %@", localException);
                     }
                 }
-              if (done == YES)
-                {
-                  [lock unlock];
-                  [localException raise];
-                }
+            }
+          if (done == YES)
+            {
+              [lock unlock];
+              [localException raise];
             }
         }
       NS_ENDHANDLER
@@ -2875,6 +2805,81 @@ static int	        poolConnections = 0;
       [self debug: @"%@", debug];
     }
   return result;
+}
+
+- (BOOL) tryConnect
+{
+  if (NO == connected)
+    {
+      [lock lock];
+      if (NO == connected)
+	{
+	  NS_DURING
+	    {
+              if (_connectFails > 1)
+                {
+                  NSTimeInterval	delay;
+                  NSTimeInterval	elapsed;
+
+                  /* If we have repeated connection failures, we enforce a
+                   * delay of up to 30 seconds between connection attempts
+                   * to avoid overloading the system with too frequent
+                   * connection attempts.
+                   */
+                  delay = (_connectFails < 30) ? _connectFails : 30;
+                  elapsed = GSTickerTimeNow() - _lastOperation;
+                  if (elapsed < delay)
+                    {
+                      [NSThread sleepForTimeInterval: delay - elapsed];
+                    }
+                }
+
+	      _lastStart = GSTickerTimeNow();
+	      if (YES == [self backendConnect])
+                {
+                  /* On establishng a new connection, we must restore any
+                   * listen instructions in the backend.
+                   */
+                  if (nil != _names)
+                    {
+                      NSEnumerator  *e;
+                      NSString      *n;
+
+                      e = [_names objectEnumerator];
+                      while (nil != (n = [e nextObject]))
+                        {
+                          [self backendListen: [self quoteName: n]];
+                        }
+                    }
+                  _lastConnect = GSTickerTimeNow();
+                  _connectFails = 0;
+                }
+              else
+                {
+                  _lastOperation = GSTickerTimeNow();
+                  _connectFails++;
+                }
+	    }
+	  NS_HANDLER
+	    {
+	      _lastOperation = GSTickerTimeNow();
+	      _connectFails++;
+	      [lock unlock];
+	      [localException raise];
+	    }
+	  NS_ENDHANDLER
+	}
+      [lock unlock];
+      if (YES == connected)
+        {
+          NSNotificationCenter  *nc;
+
+          nc = [NSNotificationCenter defaultCenter];
+          [nc postNotificationName: SQLClientDidConnectNotification
+                            object: self];
+        }
+    }
+  return connected;
 }
 
 - (void) unlock
