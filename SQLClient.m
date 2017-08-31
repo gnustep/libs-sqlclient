@@ -1477,18 +1477,11 @@ static int	        poolConnections = 0;
 
 - (BOOL) connect
 {
-  if (NO == connected)
+  if (NO == [self tryConnect] && abandonAfter > 0.0)
     {
       NSTimeInterval    end;
 
-      if (abandonAfter > 0.0)
-        {
-          end = [NSDate timeIntervalSinceReferenceDate] + abandonAfter;
-        }
-      else
-        {
-          end = 0.0;
-        }
+      end = [NSDate timeIntervalSinceReferenceDate] + abandonAfter;
       while (NO == connected && [NSDate timeIntervalSinceReferenceDate] < end)
 	{
           [self tryConnect];
