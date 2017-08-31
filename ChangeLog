@@ -2,6 +2,18 @@
 
 	* SQLClient.h:
 	* SQLClient.m:
+	Temporarily restore earlier behavior ...
+	Autoquote warnings off by default.
+	Connection retries off by default.
+	In future releases the plan is to
+	a. have connection attempts retried forever by default
+	b. first turn on warnings about autoquote issues by default
+	c. later, rurn on autoquote by default
+
+2017-07-27 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
 	Have connection attempts automatically retried (blocking
 	indefinitely).  Have queries and statements outside a transaction
 	automatically retried if they fail due to loss of connection. 

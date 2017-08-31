@@ -92,7 +92,7 @@ static Class	SQLStringClass = Nil;
 static unsigned SQLStringSize = 0;
 
 static BOOL     autoquote = NO;
-static BOOL     autoquoteWarning = YES;
+static BOOL     autoquoteWarning = NO;
 
 /* This is the layout of the instance variables of the constant string class
  * produced by the compiler.
@@ -1489,8 +1489,7 @@ static int	        poolConnections = 0;
         {
           end = 0.0;
         }
-      while (NO == connected
-        && (0.0 == end || [NSDate timeIntervalSinceReferenceDate] < end))
+      while (NO == connected && [NSDate timeIntervalSinceReferenceDate] < end)
 	{
           [self tryConnect];
 	}

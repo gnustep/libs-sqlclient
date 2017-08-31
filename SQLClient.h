@@ -576,8 +576,9 @@ SQLCLIENT_PRIVATE
 + (void) purgeConnections: (NSDate*)since;
 
 /** Sets the retry period after which connection attempts are abandoned.
- * a delay less than or equal to zero (the default) means that reties are
- * never abandoned.
+ * a delay less than or equal to zero means that connection attempts are
+ * abandoned after the first failure (the -connect method behaves the
+ * same way as the -tryConnect method).
  */
 + (void) setAbandonFailedConnectionsAfter: (NSTimeInterval)delay;
 
@@ -2186,7 +2187,7 @@ SQLCLIENT_PRIVATE
 /** Turns autoquote warning on/off for the process.<br />
  * When autoquote warning is on, an NSLog() warning is generated whenever
  * the arguments to the [SQLClient-prepare:args:] method (and therefore
- * all methods that use it) are automatically quoted (or woudl be if
+ * all methods that use it) are automatically quoted (or would be if
  * autoquote was turned on).<br />
  * Turn this on when using software which you expect to migrate to using
  * autoquote.
