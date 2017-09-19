@@ -1,3 +1,10 @@
+2017-09-19 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Simplify observation of database notifications ... one observation per
+	name per observing object.
+
 2017-07-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

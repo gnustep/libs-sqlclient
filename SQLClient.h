@@ -1401,7 +1401,10 @@ SQLCLIENT_PRIVATE
  * so you can't call this method on a client from a pool, and you should
  * make sure that you don't close the client connection (or if you do,
  * that you make sure to re-open it in order to start receiving
- * notifications again).
+ * notifications again).<br />
+ * Each observer, may only have one observation set up for a particular
+ * name.  If an attempt is made to add a second observation for the same
+ * name it will be silently ignored.
  */
 - (void) addObserver: (id)anObserver
             selector: (SEL)aSelector
@@ -1414,13 +1417,12 @@ SQLCLIENT_PRIVATE
 - (void) postNotificationName: (NSString*)name payload: (NSString*)more;
 
 /** Removes anObserver as an observer for asynchronous notifications from
- * the database server.  Each removal matches one earlier addition, and the
- * observer is not actually removed until all additions are balanced.<br />
- * If name is omitted, the observer will be removed for all names and for
- * all additions  (ie complete removal is forced).<br />
+ * the database server.<br />
+ * If name is omitted, the observer will be removed for all names.<br />
  * If anObserver is nil, the removal will be performed for all current
  * observers (and if both name and anObserver are nil, then all observations
- * are removed).
+ * are removed).<br />
+ * Any atempt to remove a non existent observation is silently ignored.
  */
 - (void) removeObserver: (id)anObserver name: (NSString*)name;
 @end

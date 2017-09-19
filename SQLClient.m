@@ -4323,8 +4323,6 @@ validName(NSString *name)
             selector: (SEL)aSelector
                 name: (NSString*)name
 {
-  NSMutableSet          *set;
-
   if (nil == anObserver)
     {
       [NSException raise: NSInvalidArgumentException
@@ -4339,6 +4337,8 @@ validName(NSString *name)
   [lock lock];
   NS_DURING
     {
+      NSMutableSet      *set;
+
       if (nil == _observers)
         {
           _observers = NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks,
@@ -4354,19 +4354,17 @@ validName(NSString *name)
         }
       if (nil == [set member: name])
         {
-          NSUInteger        count = [_names countForObject: name];
-
           [set addObject: name];
+          [[NSNotificationCenter defaultCenter] addObserver: anObserver
+                                                   selector: aSelector
+                                                       name: name
+                                                     object: self];
           [_names addObject: name];
-          if (0 == count && YES == connected)
+          if (YES == connected && 1 == [_names countForObject: name])
             {
               [self backendListen: [self quoteName: name]];
             }
         }
-      [[NSNotificationCenter defaultCenter] addObserver: anObserver
-                                               selector: aSelector
-                                                   name: name
-                                                 object: self];
     }
   NS_HANDLER
     {
@@ -4426,34 +4424,29 @@ validName(NSString *name)
           while (anObserver != nil)
             {
               NSMutableSet      *set;
-              NSEnumerator      *se = nil;
+              NSEnumerator      *nameEnumerator = nil;
 
               set = (NSMutableSet*)NSMapGet(_observers, (void*)anObserver);
               if (nil == name)
                 {
-                  se = [[set allObjects] objectEnumerator];
-                  name = [se nextObject];
+                  /* Remove all names for this observer.
+                   */
+                  nameEnumerator = [[set allObjects] objectEnumerator];
                 }
               else
                 {
-                  name = [[name retain] autorelease];
+                  nameEnumerator
+                    = [[NSArray arrayWithObject: name] objectEnumerator];
                 }
-              while (nil != name)
+              while (nil != (name = [nameEnumerator nextObject]))
                 {
                   if (nil != [set member: name])
                     {
+                      [[name retain] autorelease];
+                      [set removeObject: name];
                       [nc removeObserver: anObserver
                                     name: name
                                   object: self];
-                      [[name retain] autorelease];
-                      [set removeObject: name];
-                      if (nil != se)
-                        {
-                          while (nil != [set member: name])
-                            {
-                              [set removeObject: name];
-                            }
-                        }
                       [_names removeObject: name];
                       if (YES == connected
                         && 0 == [_names countForObject: name])
@@ -4461,7 +4454,6 @@ validName(NSString *name)
                           [self backendUnlisten: [self quoteName: name]];
                         }
                     }
-                  name = [se nextObject];
                 }
               if ([set count] == 0)
                 {
