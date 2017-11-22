@@ -2227,6 +2227,11 @@ static int	        poolConnections = 0;
   return [s autorelease];
 }
 
+- (SQLLiteral*) quoteBoolean: (int)i
+{
+  return (SQLLiteral*)(i ? @"true" : @"false");
+}
+
 - (SQLLiteral*) quoteCString: (const char *)s
 {
   NSString	*str;
@@ -4660,6 +4665,11 @@ validName(NSString *name)
                   format: @"Object (%@) is not a positive number", self];
     }
   return quoteBigInteger(v);
+}
+
+- (SQLLiteral*) quoteBoolean
+{
+  return (SQLLiteral*)([[self description] boolValue] ? @"true" : @"false");
 }
 
 - (SQLLiteral*) quoteForSQLClient: (SQLClient*)db

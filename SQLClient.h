@@ -249,6 +249,12 @@ extern NSString * const SQLClientDidDisconnectNotification;
  */
 - (SQLLiteral*) quoteBigPositive;
 
+/** If the -boolValue of the -description of the receiver is YES,
+ * return the string literal representation of the SQL true boolean,
+ * otherwise return the string literal false boolean.
+ */
+- (SQLLiteral*) quoteInteger;
+
 /** Classes may override this method to provide a value for use as part of
  * an SQL query or statement.  The method is used internally when quoting
  * objects.<br />
@@ -984,6 +990,11 @@ SQLCLIENT_PRIVATE
  * Convert a big (64 bit) integer to a string suitable for use in an SQL query.
  */
 - (SQLLiteral*) quoteBigInteger: (int64_t)i;
+
+/** Return the string literal representation of the SQL true boolean
+ * if i is non-zero, and the false boolean if it is zero.
+ */
+- (SQLLiteral*) quoteInteger: (int)i;
 
 /**
  * Convert a 'C' string to a string suitable for use in an SQL query
