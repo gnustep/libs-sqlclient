@@ -4681,7 +4681,7 @@ validName(NSString *name)
 {
   int64_t       v = (int64_t)[[self description] longLongValue];
 
-  if ((v & 0xffffffff) != v)
+  if (v > 2147483647 || v < -2147483648)
     {
       [NSException raise: NSInternalInconsistencyException
                   format: @"Object (%@) is not a 32bit number", self];
