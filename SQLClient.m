@@ -2037,7 +2037,7 @@ static int	        poolConnections = 0;
 		  o = [(NSDictionary*)o objectForKey: k];
 		}
 	    }
-	  if (o == values)
+	  if (o == values || o == nil)
 	    {
 	      v = nil;		// Mo match found.
 	    }

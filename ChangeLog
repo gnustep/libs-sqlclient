@@ -1,3 +1,8 @@
+2018-04-16 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Fix error checking for nil values when preparing with
+	a dictionary.  This should make the {key?default} syntax work.
+
 2017-09-19 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:
