@@ -3651,6 +3651,7 @@ static int	        poolConnections = 0;
   transaction->_info = [NSMutableArray new];
   transaction->_batch = isBatched;
   transaction->_stop = stopOnFailure;
+  transaction->_lock = [NSRecursiveLock new];
   return [transaction autorelease];
 }
 
@@ -3688,8 +3689,10 @@ static int	        poolConnections = 0;
 
 - (void) addPrepared: (NSArray*)statement
 {
+  [_lock lock];
   [_info addObject: statement];
   _count++;
+  [_lock unlock];
 }
 
 - (void) _countLength: (unsigned*)length andArgs: (unsigned*)args
@@ -3887,7 +3890,9 @@ static int	        poolConnections = 0;
   va_start (ap, stmt);
   p = [_owner prepare: stmt args: ap];
   va_end (ap);
+  [_lock lock];
   [self _merge: p];
+  [_lock unlock];
 }
 
 - (void) add: (NSString*)stmt with: (NSDictionary*)values
@@ -3895,58 +3900,91 @@ static int	        poolConnections = 0;
   NSMutableArray        *p;
 
   p = [_owner prepare: stmt with: values];
+  [_lock lock];
   [self _merge: p];
+  [_lock unlock];
 }
 
 - (void) append: (SQLTransaction*)other
 {
-  if (other != nil && other->_count > 0)
+  if (nil == other)
     {
-      /* Owners must the the same client, or the same pool, or members
-       * of the same pool or a client and the pool it belongs to.
-       */
-      if (NO == [_owner isEqual: other->_owner]
-       && NO == [[_owner pool] isEqual: [other->_owner pool]])
-	{
-	  [NSException raise: NSInvalidArgumentException
-		      format: @"[%@-%@] database owner missmatch",
-	    NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
-	}
-      if (_merge > 0)
+      return;
+    }
+  NSAssert(other != self, NSInvalidArgumentException);
+  NSAssert([other isKindOfClass: [SQLTransaction class]],
+    NSInvalidArgumentException);
+  [other lock];
+  [_lock lock];
+  NS_DURING
+    {
+      if (other->_count > 0)
         {
-          unsigned      index;
-
-          /* Merging of statements is turned on ... try to merge statements
-           * from other transaction rather than simply appending a copy of it.
+          /* Owners must the the same client, or the same pool, or members
+           * of the same pool or a client and the pool it belongs to.
            */
-          for (index = 0; index < other->_count; index++)
+          if (NO == [_owner isEqual: other->_owner]
+           && NO == [[_owner pool] isEqual: [other->_owner pool]])
             {
-              [self _merge: [other->_info objectAtIndex: index]];
+              [NSException raise: NSInvalidArgumentException
+                          format: @"[%@-%@] database owner missmatch",
+                NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
+            }
+          if (_merge > 0)
+            {
+              unsigned      index;
+
+              /* Merging of statements is turned on ...
+               * try to merge statements from other transaction
+               * rather than simply appending a copy of it.
+               */
+              for (index = 0; index < other->_count; index++)
+                {
+                  [self _merge: [other->_info objectAtIndex: index]];
+                }
+            }
+          else
+            {
+              SQLTransaction    *t = [other copy];
+
+              [_info addObject: t];
+              _count += t->_count;
+              [t release];
             }
         }
-      else
-        {
-          other = [other copy];
-          [_info addObject: other];
-          _count += other->_count;
-          [other release];
-        }
     }
+  NS_HANDLER
+    {
+      [_lock unlock];
+      [other unlock];
+      [localException raise];
+    }
+  NS_ENDHANDLER
+  [_lock unlock];
+  [other unlock];
 }
 
 - (id) copyWithZone: (NSZone*)z
 {
   SQLTransaction        *c;
 
+  [_lock lock];
   c = (SQLTransaction*)NSCopyObject(self, 0, z);
   c->_owner = [c->_owner retain];
   c->_info = [c->_info mutableCopy];
+  c->_lock = [NSRecursiveLock new];
+  [_lock unlock];
   return c;
 }
 
 - (NSUInteger) count
 {
-  return [_info count];
+  NSUInteger    count;
+
+  [_lock lock];
+  count = [_info count];
+  [_lock unlock];
+  return count;
 }
 
 - (id) db
@@ -3958,100 +3996,121 @@ static int	        poolConnections = 0;
 {
   [_owner release]; _owner = nil;
   [_info release]; _info = nil;
+  [_lock release]; _lock = nil;
   [super dealloc];
 }
 
 - (NSString*) description
 {
-  return [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
+  NSString      *str;
+
+  [_lock lock];
+  str = [NSString stringWithFormat: @"%@ with SQL '%@' for %@",
     [super description],
     (_count == 0 ? (id)@"" : (id)_info), _owner];
+  [_lock unlock];
+  return str;
 }
 
 - (void) execute
 {
+  [_lock lock];
   if (_count > 0)
     {
-      NSMutableArray    *info = nil;
-      SQLClientPool     *pool = nil;
-      SQLClient         *db;
-      NSRecursiveLock   *dbLock;
-      BOOL              wrap;
-
-      if ([_owner isKindOfClass: [SQLClientPool class]])
-        {
-          pool = (SQLClientPool*)_owner;
-          db = [pool provideClient];
-        }
-      else
-        {
-          db = _owner;
-        }
-          
-      dbLock = [db _lock];
-      [dbLock lock];
-      wrap = [db isInTransaction] ? NO : YES;
       NS_DURING
-	{
-          NSMutableString   *sql;
-          unsigned          sqlSize = 0;
-          unsigned          argCount = 0;
+        {
+          NSMutableArray    *info = nil;
+          SQLClientPool     *pool = nil;
+          SQLClient         *db;
+          NSRecursiveLock   *dbLock;
+          BOOL              wrap;
 
-          [self _countLength: &sqlSize andArgs: &argCount];
-
-          /* Allocate and initialise the transaction statement.
-           */
-          info = [[NSMutableArray alloc] initWithCapacity: argCount + 1];
-          sql = [[NSMutableString alloc] initWithCapacity: sqlSize + 13];
-          [info addObject: sql];
-          [sql release];
-          if (YES == wrap)
+          if ([_owner isKindOfClass: [SQLClientPool class]])
             {
-              [sql appendString: @"begin;"];
+              pool = (SQLClientPool*)_owner;
+              db = [pool provideClient];
             }
-
-          [self _addSQL: sql andArgs: info];
-
-          if (YES == wrap)
+          else
             {
-              [sql appendString: @"commit;"];
+              db = _owner;
             }
-
-          [db simpleExecute: info];
-          [info release]; info = nil;
-          [dbLock unlock];
-          if (nil != pool)
+              
+          dbLock = [db _lock];
+          [dbLock lock];
+          wrap = [db isInTransaction] ? NO : YES;
+          NS_DURING
             {
-              [pool swallowClient: db];
+              NSMutableString   *sql;
+              unsigned          sqlSize = 0;
+              unsigned          argCount = 0;
+
+              [self _countLength: &sqlSize andArgs: &argCount];
+
+              /* Allocate and initialise the transaction statement.
+               */
+              info = [[NSMutableArray alloc] initWithCapacity: argCount + 1];
+              sql = [[NSMutableString alloc] initWithCapacity: sqlSize + 13];
+              [info addObject: sql];
+              [sql release];
+              if (YES == wrap)
+                {
+                  [sql appendString: @"begin;"];
+                }
+
+              [self _addSQL: sql andArgs: info];
+
+              if (YES == wrap)
+                {
+                  [sql appendString: @"commit;"];
+                }
+
+              [db simpleExecute: info];
+              [info release]; info = nil;
+              [dbLock unlock];
+              if (nil != pool)
+                {
+                  [pool swallowClient: db];
+                }
             }
-	}
+          NS_HANDLER
+            {
+              NSException   *e = localException;
+
+              [info release];
+              if (YES == wrap)
+                {
+                  NS_DURING
+                    {
+                      [db simpleExecute: rollbackStatement];
+                    }
+                  NS_HANDLER
+                    {
+                      [db disconnect];
+                      NSLog(@"Disconnected due to failed rollback after %@", e);
+                    }
+                  NS_ENDHANDLER
+                }
+              [dbLock unlock];
+              if (nil != pool)
+                {
+                  [pool swallowClient: db];
+                }
+              [e raise];
+            }
+          NS_ENDHANDLER
+        }
       NS_HANDLER
-	{
-          NSException   *e = localException;
-
-          [info release];
-          if (YES == wrap)
-            {
-              NS_DURING
-                {
-                  [db simpleExecute: rollbackStatement];
-                }
-              NS_HANDLER
-                {
-                  [db disconnect];
-                  NSLog(@"Disconnected due to failed rollback after %@", e);
-                }
-              NS_ENDHANDLER
-            }
-          [dbLock unlock];
-          if (nil != pool)
-            {
-              [pool swallowClient: db];
-            }
-          [e raise];
-	}
+        {
+          [_lock unlock];
+          [localException raise];
+        }
       NS_ENDHANDLER
+      if (YES == _reset)
+        {
+          [self reset];
+        }
     }
+  [_lock unlock];
 }
 
 - (unsigned) executeBatch
@@ -4064,145 +4123,163 @@ static int	        poolConnections = 0;
 {
   unsigned      executed = 0;
 
+  [_lock lock];
   if (_count > 0)
     {
-      NSRecursiveLock   *dbLock;
-      SQLClientPool     *pool = nil;
-      SQLClient         *db;
-
-      if ([_owner isKindOfClass: [SQLClientPool class]])
-        {
-          pool = (SQLClientPool*)_owner;
-          db = [pool provideClient];
-        }
-      else
-        {
-          db = _owner;
-        }
-
-      dbLock = [db _lock];
-      [dbLock lock];
       NS_DURING
         {
-          [self execute];
-          executed = _count;
-        }
-      NS_HANDLER
-        {
-	  if (log == YES || [db debugging] > 0)
-	    {
-	      [db debug: @"Initial failure executing batch %@: %@",
-		self, localException];
-	    }
-          if (_batch == YES)
+          NSRecursiveLock   *dbLock;
+          SQLClientPool     *pool = nil;
+          SQLClient         *db;
+
+          if ([_owner isKindOfClass: [SQLClientPool class]])
             {
-	      SQLTransaction	*wrapper = nil;
-              unsigned  	count = [_info count];
-              unsigned  	i;
+              pool = (SQLClientPool*)_owner;
+              db = [pool provideClient];
+            }
+          else
+            {
+              db = _owner;
+            }
 
-              for (i = 0; i < count; i++)
+          dbLock = [db _lock];
+          [dbLock lock];
+          NS_DURING
+            {
+              [self execute];
+              executed = _count;
+            }
+          NS_HANDLER
+            {
+              if (log == YES || [db debugging] > 0)
                 {
-                  BOOL      success = NO;
-	          id        o = [_info objectAtIndex: i];
+                  [db debug: @"Initial failure executing batch %@: %@",
+                    self, localException];
+                }
+              if (_batch == YES)
+                {
+                  SQLTransaction	*wrapper = nil;
+                  unsigned  	count = [_info count];
+                  unsigned  	i;
 
-		  if ([o isKindOfClass: NSArrayClass] == YES)
-		    {
-		      NS_DURING
-			{
-			  /* Wrap the statement inside a transaction so
-			   * its context will still be that of a statement
-			   * in a transaction rather than a standalone
-			   * statement.  This might be important if the
-			   * statement is actually a call to a stored
-			   * procedure whose code must all be executed
-			   * with the visibility rules of a single
-			   * transaction.
-			   */
-			  if (wrapper == nil)
-			    {
-			      wrapper = [db transaction];
-			    }
-			  [wrapper reset];
-			  [wrapper addPrepared: o];
-                          [wrapper execute];
-                          executed++;
-                          success = YES;
-                        }
-		      NS_HANDLER
-			{
-			  if (failures != nil)
-			    {
-			      [failures addPrepared: o];
-			    }
-			  if (log == YES || [db debugging] > 0)
-			    {
-			      [db debug:
-				@"Failure of %d executing batch %@: %@",
-				i, self, localException];
-			    }
-			  success = NO;
-			}
-		      NS_ENDHANDLER
-		    }
-		  else
-		    {
-		      unsigned      result;
-
-		      result = [(SQLTransaction*)o
-			executeBatchReturningFailures: failures
-			logExceptions: log];
-		      executed += result;
-		      if (result == [(SQLTransaction*)o totalCount])
-			{
-			  success = YES;
-			}
-		    }
-                  if (success == NO && _stop == YES)
+                  for (i = 0; i < count; i++)
                     {
-		      /* We are configured to stop after a failure,
-		       * so we need to add all the subsequent statements
-		       * or transactions to the list of those which have
-		       * not been done.
-		       */
-		      i++;
-		      while (i < count)
-			{
-			  id        o = [_info objectAtIndex: i++];
+                      BOOL      success = NO;
+                      id        o = [_info objectAtIndex: i];
 
-			  if ([o isKindOfClass: NSArrayClass] == YES)
-			    {
-			      [failures addPrepared: o];
-			    }
-			  else
-			    {
-			      [failures append: (SQLTransaction*)o];
-			    }
-			}
-                      break;
+                      if ([o isKindOfClass: NSArrayClass] == YES)
+                        {
+                          NS_DURING
+                            {
+                              /* Wrap the statement inside a transaction so
+                               * its context will still be that of a statement
+                               * in a transaction rather than a standalone
+                               * statement.  This might be important if the
+                               * statement is actually a call to a stored
+                               * procedure whose code must all be executed
+                               * with the visibility rules of a single
+                               * transaction.
+                               */
+                              if (wrapper == nil)
+                                {
+                                  wrapper = [db transaction];
+                                }
+                              [wrapper reset];
+                              [wrapper addPrepared: o];
+                              [wrapper execute];
+                              executed++;
+                              success = YES;
+                            }
+                          NS_HANDLER
+                            {
+                              if (failures != nil)
+                                {
+                                  [failures addPrepared: o];
+                                }
+                              if (log == YES || [db debugging] > 0)
+                                {
+                                  [db debug:
+                                    @"Failure of %d executing batch %@: %@",
+                                    i, self, localException];
+                                }
+                              success = NO;
+                            }
+                          NS_ENDHANDLER
+                        }
+                      else
+                        {
+                          unsigned      result;
+
+                          result = [(SQLTransaction*)o
+                            executeBatchReturningFailures: failures
+                            logExceptions: log];
+                          executed += result;
+                          if (result == [(SQLTransaction*)o totalCount])
+                            {
+                              success = YES;
+                            }
+                        }
+                      if (success == NO && _stop == YES)
+                        {
+                          /* We are configured to stop after a failure,
+                           * so we need to add all the subsequent statements
+                           * or transactions to the list of those which have
+                           * not been done.
+                           */
+                          i++;
+                          while (i < count)
+                            {
+                              id        o = [_info objectAtIndex: i++];
+
+                              if ([o isKindOfClass: NSArrayClass] == YES)
+                                {
+                                  [failures addPrepared: o];
+                                }
+                              else
+                                {
+                                  [failures append: (SQLTransaction*)o];
+                                }
+                            }
+                          break;
+                        }
                     }
                 }
             }
+          NS_ENDHANDLER
+          [dbLock unlock];
+          if (nil != pool)
+            {
+              [pool swallowClient: db];
+            }
+        }
+      NS_HANDLER
+        {
+          [_lock unlock];
+          [localException raise];
         }
       NS_ENDHANDLER
-      [dbLock unlock];
-      if (nil != pool)
+      if (YES == _reset)
         {
-          [pool swallowClient: db];
+          [self reset];
         }
     }
+  [_lock unlock];
   return executed;
 }
 
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index
 {
+  [_lock lock];
   if (index > [_info count])
     {
+      [_lock unlock];
       [NSException raise: NSRangeException
 		  format: @"[%@-%@] index too large",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
     }
   if (trn == nil || trn->_count == 0)
     {
+      [_lock unlock];
       [NSException raise: NSInvalidArgumentException
 		  format: @"[%@-%@] attempt to insert nil/empty transaction",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
@@ -4210,6 +4287,7 @@ static int	        poolConnections = 0;
   if (NO == [_owner isEqual: trn->_owner]
    && NO == [[_owner pool] isEqual: [trn->_owner pool]])
     {
+      [_lock unlock];
       [NSException raise: NSInvalidArgumentException
 		  format: @"[%@-%@] database owner missmatch",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
@@ -4218,6 +4296,12 @@ static int	        poolConnections = 0;
   [_info addObject: trn];
   _count += trn->_count;
   [trn release];
+  [_lock unlock];
+}
+
+- (void) lock
+{
+  [_lock lock];
 }
 
 - (id) owner
@@ -4229,8 +4313,10 @@ static int	        poolConnections = 0;
 {
   id	o;
 
+  [_lock lock];
   if (index >= [_info count])
     {
+      [_lock unlock];
       [NSException raise: NSRangeException
 		  format: @"[%@-%@] index too large",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
@@ -4245,19 +4331,36 @@ static int	        poolConnections = 0;
       _count -= [(SQLTransaction*)o totalCount];
     }
   [_info removeObjectAtIndex: index];
+  [_lock unlock];
 }
 
 - (void) reset
 {
+  [_lock lock];
   [_info removeAllObjects];
   _count = 0;
+  [_lock unlock];
 }
 
 - (uint8_t) setMerge: (uint8_t)history
 {
-  uint8_t       old = _merge;
+  uint8_t       old;
 
+  [_lock lock];
+  old = _merge;
   _merge = history;
+  [_lock unlock];
+  return old;
+}
+
+- (BOOL) setResetOnExecute: (BOOL)aFlag
+{
+  BOOL  old;
+
+  [_lock lock];
+  old = _reset;
+  _reset = (aFlag ? YES : NO);
+  [_lock unlock];
   return old;
 }
 
@@ -4270,8 +4373,10 @@ static int	        poolConnections = 0;
 {
   id	o;
 
+  [_lock lock];
   if (index >= [_info count])
     {
+      [_lock unlock];
       [NSException raise: NSRangeException
 		  format: @"[%@-%@] index too large",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
@@ -4282,13 +4387,20 @@ static int	        poolConnections = 0;
       SQLTransaction	*t = [[self owner] transaction];
 
       [t addPrepared: o];
+      [_lock unlock];
       return t;
     }
   else
     {
       o = [o copy];
+      [_lock unlock];
       return [o autorelease];
     }
+}
+
+- (void) unlock
+{
+  [_lock unlock];
 }
 @end
 

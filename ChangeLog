@@ -1,3 +1,12 @@
+2018-06-28 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Make SQLTransaction thread-safe, also add -lock and -unlock methods
+	to allow a sequence of other methods  to be called without another
+	thread interfering.  Add -setResetOnExecute: method to configure a
+	transaction to be automatically reset on successful execution.
+
 2018-04-16 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Fix error checking for nil values when preparing with

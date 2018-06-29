@@ -187,6 +187,7 @@
 @class	NSMapTable;
 @class	NSMutableDictionary;
 @class	NSMutableSet;
+@class	NSRecursiveLock;
 @class	NSThread;
 
 @class	GSCache;
@@ -1956,10 +1957,7 @@ typedef struct {
  * and then use the -execute method to perform all the statements as a
  * single operation.<br />
  * Any exception is caught and re-raised in the -execute method after any
- * tidying up to leave the database in a consistent state.<br />
- * NB. This class is not in itsself thread-safe, though the underlying
- * database operations should be.   If you have multiple threads, you
- * should create multiple SQLTransaction instances, at least one per thread.
+ * tidying up to leave the database in a consistent state.
  */
 @interface	SQLTransaction : NSObject <NSCopying>
 {
@@ -1969,7 +1967,9 @@ SQLCLIENT_PRIVATE
   unsigned		_count;
   BOOL                  _batch;
   BOOL                  _stop;
+  BOOL                  _reset;
   uint8_t               _merge;
+  NSRecursiveLock       *_lock;
 }
 
 /**
@@ -2082,6 +2082,12 @@ SQLCLIENT_PRIVATE
  */
 - (void) insertTransaction: (SQLTransaction*)trn atIndex: (unsigned)index;
 
+/** Explicitly obtains the transaction lock so that multiple methods may
+ * be called without another thread interfering.  Each call to this method
+ * must be matched by a call to the -unlock method.
+ */
+- (void) lock;
+
 /**
  * Returns the database client with which this instance operates.<br />
  * This client is retained by the transaction.<br />
@@ -2094,10 +2100,9 @@ SQLCLIENT_PRIVATE
  */
 - (void) removeTransactionAtIndex: (unsigned)index;
 
-/**
- * Resets the transaction, removing all previously added statements.
+/** Resets the transaction, removing all previously added statements.
  * This allows the transaction object to be re-used for multiple
- * transactions.
+ * transactions.  See also the -setResetOnExecute: method.
  */
 - (void) reset;
 
@@ -2107,6 +2112,13 @@ SQLCLIENT_PRIVATE
  * </p>
  */
 - (uint8_t) setMerge: (uint8_t)history;
+
+/** Configures the transaction to be reset automatically whenever it is
+ * successfully executed.  Normally transaction execution leaves all the
+ * statements in the transaction after execution.<br />
+ * Returns the previous setting.
+ */
+- (BOOL) setResetOnExecute: (BOOL)aFlag;
 
 /**
  * Returns the total count of statements in this transaction including
@@ -2121,6 +2133,11 @@ SQLCLIENT_PRIVATE
  * in the receiver, you can modify it without effecting the original.
  */
 - (SQLTransaction*) transactionAtIndex: (unsigned)index;
+
+/** Explicitly unlocks the thransaction.  This should only be called by code
+ * which has previously called the -lock method.
+ */
+- (void) unlock;
 @end
 
 
