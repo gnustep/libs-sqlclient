@@ -1,3 +1,7 @@
+2018-07-27  Yavor Doganov  <yavor@gnu.org>
+
+	* SQLClient.m: Fix some spelling errors.
+
 2018-06-28 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

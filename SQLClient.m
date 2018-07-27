@@ -3927,7 +3927,7 @@ static int	        poolConnections = 0;
            && NO == [[_owner pool] isEqual: [other->_owner pool]])
             {
               [NSException raise: NSInvalidArgumentException
-                          format: @"[%@-%@] database owner missmatch",
+                          format: @"[%@-%@] database owner mismatch",
                 NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
             }
           if (_merge > 0)
@@ -4289,7 +4289,7 @@ static int	        poolConnections = 0;
     {
       [_lock unlock];
       [NSException raise: NSInvalidArgumentException
-		  format: @"[%@-%@] database owner missmatch",
+		  format: @"[%@-%@] database owner mismatch",
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
     }
   trn = [trn copy];
