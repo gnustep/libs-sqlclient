@@ -1,3 +1,12 @@
+2018-11-23  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	* SQLClientPool.m:
+	Use a double for the argument of quoteFloat: and replace the
+	inappropriate %f conversion by %.17g to avoid loss of precision
+	when quoting floating-point numbers.
+
 2018-07-27  Yavor Doganov  <yavor@gnu.org>
 
 	* SQLClient.m: Fix some spelling errors.

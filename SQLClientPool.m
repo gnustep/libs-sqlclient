@@ -1367,7 +1367,7 @@ static Class      cls = Nil;
   return (SQLLiteral*)[_items[0].c quoteChar: chr];
 }
 
-- (SQLLiteral*) quoteFloat: (float)f
+- (SQLLiteral*) quoteFloat: (double)f
 {
   return (SQLLiteral*)[_items[0].c quoteFloat: f];
 }

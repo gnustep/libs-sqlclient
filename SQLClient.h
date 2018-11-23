@@ -1014,7 +1014,7 @@ SQLCLIENT_PRIVATE
 /**
  * Convert a float to a string suitable for use in an SQL query.
  */
-- (SQLLiteral*) quoteFloat: (float)f;
+- (SQLLiteral*) quoteFloat: (double)f;
 
 /**
  * Convert an integer to a string suitable for use in an SQL query.
@@ -1934,7 +1934,7 @@ typedef struct {
 - (SQLLiteral*) quoteBigInteger: (int64_t)i;
 - (SQLLiteral*) quoteCString: (const char *)s;
 - (SQLLiteral*) quoteChar: (char)c;
-- (SQLLiteral*) quoteFloat: (float)f;
+- (SQLLiteral*) quoteFloat: (double)f;
 - (SQLLiteral*) quoteInteger: (int)i;
 - (SQLLiteral*) quoteName: (NSString *)s;
 - (SQLLiteral*) quoteSet: (id)obj;

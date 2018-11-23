@@ -2263,13 +2263,13 @@ static int	        poolConnections = 0;
   return quoted;
 }
 
-- (SQLLiteral*) quoteFloat: (float)f
+- (SQLLiteral*) quoteFloat: (double)f
 {
   char          buf[32];
   unsigned      len;
   SQLLiteral    *s;
 
-  len = sprintf(buf, "%f", f);
+  len = sprintf(buf, "%.17g", f);
   s = SQLClientNewLiteral(buf, len);
   return [s autorelease];
 }
