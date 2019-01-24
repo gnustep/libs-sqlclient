@@ -1198,8 +1198,12 @@ static inline unsigned int trim(char *str, unsigned len)
 		       * to the value in the same column of the previous
 		       * row.  Only if it isn't do we create a new object.
 		       */
-		      if (size != len[j] || size > 20
-		        || memcmp(p, ptr[j], (size_t)len) != 0)
+		      if (size == len[j] && size <= 20
+		        && memcmp(p, ptr[j], (size_t)size) == 0)
+                        {
+                          v = obj[j];
+                        }
+                      else
 			{
 			  [obj[j] release];
 			  if (fformat[j] == 0)	// Text
@@ -1208,6 +1212,8 @@ static inline unsigned int trim(char *str, unsigned len)
 						 type: ftype[j]
 						 size: size];
 			      obj[j] = v;
+                              len[j] = size;
+                              ptr[j] = p;
 			    }
 			  else			// Binary
 			    {
