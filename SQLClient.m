@@ -3729,6 +3729,7 @@ static int	        poolConnections = 0;
   va_start (ap, stmt);
   p = [_owner prepare: stmt args: ap];
   va_end (ap);
+  [self addPrepared: p];
 }
 
 - (void) add: (NSString*)stmt with: (NSDictionary*)values
@@ -3736,6 +3737,7 @@ static int	        poolConnections = 0;
   NSMutableArray        *p;
 
   p = [_owner prepare: stmt with: values];
+  [self addPrepared: p];
 }
 
 - (void) append: (SQLTransaction*)other
