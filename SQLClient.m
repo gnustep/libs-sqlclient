@@ -3721,167 +3721,6 @@ static int	        poolConnections = 0;
     }
 }
 
-/* Try to merge the prepared statement p with an earlier statement in the
- * transaction.  We search up to 5 earlier statements and we merge if we can.
- */
-- (void) _merge: (NSMutableArray*)p
-{
-  if (_count > 0 && _merge > 0)
-    {
-      static NSCharacterSet     *w = nil;
-      NSString  *s;
-      NSRange   r;
-
-      s = [p objectAtIndex: 0];         // Get SQL part of array
-
-      if (nil == w)
-        {
-          w = [[NSCharacterSet whitespaceAndNewlineCharacterSet] retain];
-        }
-
-      r = [s rangeOfString: @"INSERT" options: NSCaseInsensitiveSearch];
-      if (r.length > 0 && 0 == r.location)
-        {
-          r = [s rangeOfString: @"VALUES" options: NSCaseInsensitiveSearch];
-          if (r.length > 0)
-            {
-              NSUInteger        l = [s length];
-              NSUInteger        pos = NSMaxRange(r);
-
-              while (pos < l
-                && [w characterIsMember: [s characterAtIndex: pos]])
-                {
-                  pos++;
-                }
-              if (pos < l && [s characterAtIndex: pos] == '(')
-                {
-                  NSString              *t = [s substringToIndex: pos];
-                  NSUInteger            index = _count;
-                  NSUInteger            attempts = 0;
-
-                  s = [s substringFromIndex: pos];
-                  while (index-- > 0 && attempts++ < _merge)
-                    {
-                      NSMutableArray    *o;
-                      NSString          *os;
-
-                      o = [_info objectAtIndex: index];
-                      os = [o objectAtIndex: 0];
-                      if ([os hasPrefix: t])
-                        {
-                          NSMutableString       *m;
-
-                          if ([os isKindOfClass: [NSMutableString class]])
-                            {
-                              m = (NSMutableString*)os;
-                            }
-                          else
-                            {
-                              m = [NSMutableString
-                                stringWithCapacity: [os length] * 100];
-                              [m appendString: os];
-                            }
-                          [m appendString: @","];
-                          [m appendString: s];
-                          [o replaceObjectAtIndex: 0 withObject: m];
-                          for (index = 1; index < [p count]; index++)
-                            {
-                              [o addObject: [p objectAtIndex: index]];
-                            }
-                          return;
-                        }
-                    }
-                }
-            }
-        }
-
-      r = [s rangeOfString: @"UPDATE" options: NSCaseInsensitiveSearch];
-      if (0 == r.length)
-        {
-          r = [s rangeOfString: @"DELETE" options: NSCaseInsensitiveSearch];
-        }
-      if (r.length > 0 && 0 == r.location)
-        {
-          r = [s rangeOfString: @"WHERE" options: NSCaseInsensitiveSearch];
-          if (r.length > 0)
-            {
-              NSUInteger        l = [s length];
-              NSUInteger        pos = NSMaxRange(r);
-
-              while (pos < l
-                && [w characterIsMember: [s characterAtIndex: pos]])
-                {
-                  pos++;
-                }
-              if (pos < l && [s characterAtIndex: pos] == '(')
-                {
-                  NSString              *t = [s substringToIndex: pos];
-                  NSUInteger            index = _count;
-                  NSUInteger            attempts = 0;
-
-                  /* Get the condition after the WHERE and if it's not
-                   * in brackets, add them so the merge can work.
-                   */
-                  s = [s substringFromIndex: pos];
-                  if ([s characterAtIndex: 0] != '(')
-                    {
-                      s = [NSString stringWithFormat: @"(%@)", s];
-                    }
-                    
-                  while (index-- > 0 && attempts++ < _merge)
-                    {
-                      NSMutableArray    *o;
-                      NSString          *os;
-
-                      o = [_info objectAtIndex: index];
-                      os = [o objectAtIndex: 0];
-                      if ([os hasPrefix: t])
-                        {
-                          NSMutableString       *m;
-
-                          l = [os length];
-                          if ([os characterAtIndex: l - 1] == ')')
-                            {
-                              if ([os isKindOfClass: [NSMutableString class]])
-                                {
-                                  m = (NSMutableString*)os;
-                                }
-                              else
-                                {
-                                  m = [NSMutableString
-                                    stringWithCapacity: l * 100];
-                                  [m appendString: os];
-                                }
-                            }
-                          else
-                            {
-                              /* The condition of the WHERE clause was not
-                               * bracketed, so we extract it and build a
-                               * new statement in which it is bracketed.
-                               */
-                              os = [os substringFromIndex: pos];
-                              m = [NSMutableString
-                                stringWithCapacity: l * 100];
-                              [m appendFormat: @"%@(%@)", t, os];
-                            }
-                          [m appendString: @" OR "];
-                          [m appendString: s];
-                          [o replaceObjectAtIndex: 0 withObject: m];
-                          for (index = 1; index < [p count]; index++)
-                            {
-                              [o addObject: [p objectAtIndex: index]];
-                            }
-                          return;
-                        }
-                    }
-                }
-            }
-        }
-    }
-  [_info addObject: p];
-  _count++;
-}
-
 - (void) add: (NSString*)stmt,...
 {
   va_list               ap;
@@ -3890,9 +3729,6 @@ static int	        poolConnections = 0;
   va_start (ap, stmt);
   p = [_owner prepare: stmt args: ap];
   va_end (ap);
-  [_lock lock];
-  [self _merge: p];
-  [_lock unlock];
 }
 
 - (void) add: (NSString*)stmt with: (NSDictionary*)values
@@ -3900,9 +3736,6 @@ static int	        poolConnections = 0;
   NSMutableArray        *p;
 
   p = [_owner prepare: stmt with: values];
-  [_lock lock];
-  [self _merge: p];
-  [_lock unlock];
 }
 
 - (void) append: (SQLTransaction*)other
@@ -3920,6 +3753,8 @@ static int	        poolConnections = 0;
     {
       if (other->_count > 0)
         {
+          SQLTransaction        *t;
+
           /* Owners must the the same client, or the same pool, or members
            * of the same pool or a client and the pool it belongs to.
            */
@@ -3930,27 +3765,12 @@ static int	        poolConnections = 0;
                           format: @"[%@-%@] database owner mismatch",
                 NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
             }
-          if (_merge > 0)
-            {
-              unsigned      index;
 
-              /* Merging of statements is turned on ...
-               * try to merge statements from other transaction
-               * rather than simply appending a copy of it.
-               */
-              for (index = 0; index < other->_count; index++)
-                {
-                  [self _merge: [other->_info objectAtIndex: index]];
-                }
-            }
-          else
-            {
-              SQLTransaction    *t = [other copy];
+          t = [other copy];
 
-              [_info addObject: t];
-              _count += t->_count;
-              [t release];
-            }
+          [_info addObject: t];
+          _count += t->_count;
+          [t release];
         }
     }
   NS_HANDLER
@@ -4340,17 +4160,6 @@ static int	        poolConnections = 0;
   [_info removeAllObjects];
   _count = 0;
   [_lock unlock];
-}
-
-- (uint8_t) setMerge: (uint8_t)history
-{
-  uint8_t       old;
-
-  [_lock lock];
-  old = _merge;
-  _merge = history;
-  [_lock unlock];
-  return old;
 }
 
 - (BOOL) setResetOnExecute: (BOOL)aFlag

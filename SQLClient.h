@@ -1968,7 +1968,6 @@ SQLCLIENT_PRIVATE
   BOOL                  _batch;
   BOOL                  _stop;
   BOOL                  _reset;
-  uint8_t               _merge;
   NSRecursiveLock       *_lock;
 }
 
@@ -2105,13 +2104,6 @@ SQLCLIENT_PRIVATE
  * transactions.  See also the -setResetOnExecute: method.
  */
 - (void) reset;
-
-/** <p>DEPRECATED ... merging of statments is quite database specific and
- * also much better done by hand rather than trying to rely on anything
- * automatic.
- * </p>
- */
-- (uint8_t) setMerge: (uint8_t)history;
 
 /** Configures the transaction to be reset automatically whenever it is
  * successfully executed.  Normally transaction execution leaves all the
