@@ -1,3 +1,10 @@
+2019-02-28 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h:
+	* SQLClient.m:
+	Add -prepareQuery:... method and make simpleQuery methods check that
+	they are given a literal (or proxy);
+
 2019-02-19 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h:

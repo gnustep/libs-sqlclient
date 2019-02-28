@@ -876,6 +876,11 @@ SQLCLIENT_PRIVATE
  */
 - (NSMutableArray*) prepare: (NSString*)stmt, ...;
 
+/** Builds a query by calling [SQLClient-prepare:args:] where the argument
+ * list needs to be nil terminated list of objects.
+ */
+- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...;
+
 /**
  * This is the method used to convert a query or statement to a standard
  * form used internally by other methods.<br />

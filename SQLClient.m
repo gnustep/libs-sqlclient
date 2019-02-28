@@ -226,13 +226,22 @@ SQLClientProxyLiteral(NSString *aString)
 NSString *
 SQLClientUnProxyLiteral(id aString)
 {
-  if (nil == aString)
+  if (nil != aString)
     {
-      return nil;
-    }
-  else if (object_getClass(aString) == LitProxyClass)
-    {
-      return ((SQLLiteralProxy*)aString)->content;
+      Class	c = object_getClass(aString);
+
+      if (c == LitProxyClass)
+	{
+	  aString = ((SQLLiteralProxy*)aString)->content;
+	}
+      else if (c != LitStringClass && c != SQLStringClass)
+	{
+	  aString = [aString description];
+	  if (YES == autoquoteWarning)
+	    {
+	      NSLog(@"SQLClient expected SQLLiteral type for %@", aString);
+	    }
+	}
     }
   return (NSString*)aString;
 }
@@ -1841,6 +1850,18 @@ static int	        poolConnections = 0;
   va_end (ap);
 
   return result;
+}
+
+- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...
+{
+  va_list		ap;
+  NSMutableArray	*result;
+
+  va_start (ap, stmt);
+  result = [self prepare: stmt args: ap];
+  va_end (ap);
+  NSAssert([result count] == 1, NSInvalidArgumentException);
+  return SQLClientProxyLiteral([result objectAtIndex: 0]);
 }
 
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
