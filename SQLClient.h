@@ -1926,6 +1926,7 @@ typedef struct {
 - (NSMutableArray*) prepare: (NSString*)stmt, ...;
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
 - (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values;
+- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...;
 - (NSMutableArray*) query: (NSString*)stmt,...;
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values;
 - (SQLRecord*) queryRecord: (NSString*)stmt,...;
