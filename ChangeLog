@@ -2,6 +2,7 @@
 
 	* SQLClient.h:
 	* SQLClient.m:
+	* SQLClientPool.m:
 	Add -prepareQuery:... method and make simpleQuery methods check that
 	they are given a literal (or proxy);
 

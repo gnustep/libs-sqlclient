@@ -1199,6 +1199,18 @@ static Class      cls = Nil;
   return [_items[0].c prepare: stmt with: values];
 }
 
+- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...
+{
+  va_list		ap;
+  NSMutableArray	*result;
+
+  va_start (ap, stmt);
+  result = [_items[0].c prepare: stmt args: ap];
+  va_end (ap);
+  NSAssert([result count] == 1, NSInvalidArgumentException);
+  return SQLClientProxyLiteral([result objectAtIndex: 0]);
+}
+
 - (NSMutableArray*) query: (NSString*)stmt, ...
 {
   SQLClient             *db;
