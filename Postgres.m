@@ -494,8 +494,13 @@ connectQuote(NSString *str)
                       if (result != 0)
                         {
                           PQclear(result);
+                          result = 0;
                         }
                       [self _backendDisconnected];
+                    }
+                  if (result != 0)
+                    {
+                      PQclear(result);
                     }
                 }
               else
