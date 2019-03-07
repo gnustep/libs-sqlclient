@@ -1861,7 +1861,7 @@ static int	        poolConnections = 0;
   result = [self prepare: stmt args: ap];
   va_end (ap);
   NSAssert([result count] == 1, NSInvalidArgumentException);
-  return SQLClientProxyLiteral([result objectAtIndex: 0]);
+  return [result objectAtIndex: 0];
 }
 
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
@@ -1931,7 +1931,7 @@ static int	        poolConnections = 0;
             }
         }
     }
-  [ma insertObject: stmt atIndex: 0];
+  [ma insertObject: SQLClientProxyLiteral(stmt) atIndex: 0];
   [arp release];
   return ma;
 }
@@ -1945,26 +1945,26 @@ static int	        poolConnections = 0;
 
   if (l < 2)
     {
-      [ma addObject: stmt];		// Can't contain a {...} sequence
+      [ma addObject: SQLClientMakeLiteral(stmt)];	// Can't contain {...}
     }
   else if ((r = [stmt rangeOfString: @"{"]).length == 0)
     {
-      [ma addObject: stmt];		// No '{' markup
+      [ma addObject: SQLClientMakeLiteral(stmt)];	// No '{' markup
     }
   else if (l - r.location < 2)
     {
-      [ma addObject: stmt];		// Can't contain a {...} sequence
+      [ma addObject: SQLClientMakeLiteral(stmt)];	// Can't contain {...}
     }
   else if ([stmt rangeOfString: @"}" options: NSLiteralSearch
     range: NSMakeRange(r.location, l - r.location)].length == 0
     && [stmt rangeOfString: @"{{" options: NSLiteralSearch
     range: NSMakeRange(0, l)].length == 0)
     {
-      [ma addObject: stmt];		// No closing '}' or repeated '{{'
+      [ma addObject: SQLClientMakeLiteral(stmt)];	// No '}' or '{{'
     }
   else if (r.length == 0)
     {
-      [ma addObject: stmt];		// Nothing to do.
+      [ma addObject: SQLClientMakeLiteral(stmt)];	// Nothing to do.
     }
   else
     {
