@@ -1382,7 +1382,6 @@ static int	        poolConnections = 0;
   [lock lock];
   if (_inTransaction == NO)
     {
-      _inTransaction = YES;
       NS_DURING
 	{
 	  [self simpleExecute: beginStatement];
@@ -1393,11 +1392,11 @@ static int	        poolConnections = 0;
 	}
       NS_HANDLER
 	{
-	  _inTransaction = NO;
 	  [lock unlock];
 	  [localException raise];
 	}
       NS_ENDHANDLER
+      _inTransaction = YES;
     }
   else
     {

@@ -2,6 +2,8 @@
 
 	* SQLClient.m: fix to make the result of a prepare method contain
 	'literal' strings.
+	In -begin do not set the flag to say we are in a transaction until
+	the statement has actually executed.
 
 2019-02-28  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
