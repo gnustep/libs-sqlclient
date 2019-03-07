@@ -1,3 +1,8 @@
+2019-03-07 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: fix to make the result of a prepare method contain
+	'literal' strings.
+
 2019-02-28  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* Postgres.m:

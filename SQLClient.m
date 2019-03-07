@@ -1931,7 +1931,7 @@ static int	        poolConnections = 0;
             }
         }
     }
-  [ma insertObject: SQLClientProxyLiteral(stmt) atIndex: 0];
+  [ma insertObject: SQLClientMakeLiteral(stmt) atIndex: 0];
   [arp release];
   return ma;
 }
