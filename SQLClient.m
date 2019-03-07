@@ -1385,6 +1385,7 @@ static int	        poolConnections = 0;
       NS_DURING
 	{
 	  [self simpleExecute: beginStatement];
+	  _inTransaction = YES;
 	  /* NB.  We leave the lock locked ... until a matching -commit
 	   * or -rollback is called.  This prevents other threads from
 	   * interfering with this transaction.
@@ -1396,7 +1397,6 @@ static int	        poolConnections = 0;
 	  [localException raise];
 	}
       NS_ENDHANDLER
-      _inTransaction = YES;
     }
   else
     {
