@@ -4135,7 +4135,7 @@ static int	        poolConnections = 0;
 	NSStringFromClass([self class]), NSStringFromSelector(_cmd)];
     }
   trn = [trn copy];
-  [_info addObject: trn];
+  [_info insertObject: trn atIndex: index];
   _count += trn->_count;
   [trn release];
   [_lock unlock];
