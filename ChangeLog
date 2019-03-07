@@ -1,3 +1,9 @@
+2019-03-07  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* SQLClient.m:
+	Fix insertTransaction:atIndex: to work as advertised and insert at
+	the specified index.
+
 2019-03-07 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: fix to make the result of a prepare method contain
