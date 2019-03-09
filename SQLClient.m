@@ -2767,7 +2767,6 @@ static int	        poolConnections = 0;
 {
   NSMutableArray	*result = nil;
   NSString              *debug = nil;
-  NSString              *query = SQLClientUnProxyLiteral(stmt);
   BOOL                  done = NO;
 
   if (rtype == 0) rtype = rClass;
@@ -2779,7 +2778,7 @@ static int	        poolConnections = 0;
       NS_DURING
         {
           _lastStart = GSTickerTimeNow();
-          result = [self backendQuery: query recordType: rtype listType: ltype];
+          result = [self backendQuery: stmt recordType: rtype listType: ltype];
           _lastOperation = GSTickerTimeNow();
           if (_duration >= 0)
             {
@@ -2789,7 +2788,7 @@ static int	        poolConnections = 0;
               if (d >= _duration)
                 {
                   debug = [NSString stringWithFormat:
-                    @"Duration %g for query %@", d, query];
+                    @"Duration %g for query %@", d, stmt];
                 }
             }
         }
