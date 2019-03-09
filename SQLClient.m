@@ -2121,7 +2121,7 @@ static int	        poolConnections = 0;
 			   options: NSLiteralSearch
 			     range: r];
 	}
-      [ma insertObject: mtext atIndex: 0];
+      [ma insertObject: SQLClientProxyLiteral(mtext) atIndex: 0];
       if (nil != warn && YES == autoquoteWarning)
         {
           if (YES == autoquote)
@@ -3892,7 +3892,7 @@ static int	        poolConnections = 0;
                */
               info = [[NSMutableArray alloc] initWithCapacity: argCount + 1];
               sql = [[NSMutableString alloc] initWithCapacity: sqlSize + 13];
-              [info addObject: sql];
+              [info addObject: SQLClientProxyLiteral(sql)];
               [sql release];
               if (YES == wrap)
                 {
