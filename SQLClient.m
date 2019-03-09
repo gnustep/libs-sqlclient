@@ -239,7 +239,8 @@ SQLClientUnProxyLiteral(id aString)
 	  aString = [aString description];
 	  if (YES == autoquoteWarning)
 	    {
-	      NSLog(@"SQLClient expected SQLLiteral type for %@", aString);
+	      NSLog(@"SQLClient expected SQLLiteral type for %@ %@",
+		NSStringFromClass(c), aString);
 	    }
 	}
     }
