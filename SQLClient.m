@@ -2854,7 +2854,7 @@ static int	        poolConnections = 0;
 	      _lastStart = GSTickerTimeNow();
 	      if (YES == [self backendConnect])
                 {
-                  /* On establishng a new connection, we must restore any
+                  /* On establishing a new connection, we must restore any
                    * listen instructions in the backend.
                    */
                   if (nil != _names)

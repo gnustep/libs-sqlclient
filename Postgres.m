@@ -532,16 +532,14 @@ connectQuote(NSString *str)
   return connected;
 }
 
+/* Called by the -disconnect method aftert it has updated ivars/locks.
+ */
 - (void) backendDisconnect
 {
   if (extra != 0 && connection != 0)
     {
       NS_DURING
 	{
-	  if ([self isInTransaction] == YES)
-	    {
-	      [self rollback];
-	    }
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Disconnecting client %@", [self clientName]];
@@ -718,7 +716,7 @@ connectQuote(NSString *str)
             }
           if (PQstatus(connection) != CONNECTION_OK)
             {
-              [self backendDisconnect];
+              [self disconnect];
               [NSException raise: SQLConnectionException
                           format: @"Error executing %@: %@", stmt, str];
             }
@@ -1132,7 +1130,7 @@ static inline unsigned int trim(char *str, unsigned len)
             }
           if (PQstatus(connection) != CONNECTION_OK)
             {
-              [self backendDisconnect];
+              [self disconnect];
               [NSException raise: SQLConnectionException
                           format: @"Error executing %@: %@", stmt, str];
             }
@@ -1803,7 +1801,7 @@ static inline unsigned int trim(char *str, unsigned len)
               /* The connection has been lost, so we must disconnect,
                * which will stop us receiving events on the descriptor.
                */
-              [self backendDisconnect];
+              [self disconnect];
             }
           [self debug: @"Error consuming input for '%@' - %s", nam, msg];
         }
