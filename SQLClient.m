@@ -3919,8 +3919,9 @@ static int	        poolConnections = 0;
               NSException   *e = localException;
 
               [info release];
-              if (YES == wrap)
-                {
+	      if (YES == wrap
+		&& NO == [[e name] isEqual: SQLConnectionException])
+		{
                   NS_DURING
                     {
                       [db simpleExecute: rollbackStatement];
@@ -4001,8 +4002,8 @@ static int	        poolConnections = 0;
               if (_batch == YES)
                 {
                   SQLTransaction	*wrapper = nil;
-                  unsigned  	count = [_info count];
-                  unsigned  	i;
+                  NSUInteger  		count = [_info count];
+                  NSUInteger  		i;
 
                   for (i = 0; i < count; i++)
                     {
