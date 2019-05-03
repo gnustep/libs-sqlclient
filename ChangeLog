@@ -1,3 +1,9 @@
+2019-05-03  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* SQLClient.m:
+	Rewrite release method to work with version 1.9 of the GNUstep
+	Objective-C runtime system and also Apple's runtime.
+
 2019-03-07  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* SQLClient.m:

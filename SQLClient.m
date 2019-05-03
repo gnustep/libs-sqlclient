@@ -2426,24 +2426,25 @@ static int	        poolConnections = 0;
    * and try to use it while it is being deallocated.
    */
   [clientsLock lock];
-  if (NSDecrementExtraRefCountWasZero(self))
+  if (nil != _pool && [self retainCount] == 1)
     {
-      if (nil != _pool)
-        {
-          [_pool _swallowClient: self explicit: NO];
-        }
-      else
-        {
-          [self dealloc];
-        }
+      /* If this is the only reference to a client associated with
+       * a connection pool we put this client back to the pool.
+       *
+       * wl 2019-05-01: The original implementation was calling this code
+       * when NSDecrementExtraRefCountWasZero returns YES, but
+       * this does not work with newer versions of the GNUstep
+       * Objective-C runtime nor with recent versions of Apple's
+       * Objective-C runtime, which both don't handle resurrection
+       * gracefully for objects whose retain count has become zero.
+       */
+      [_pool _swallowClient: self explicit: NO];
+    }
+  else
+    {
+      [super release];
     }
   [clientsLock unlock];
-}
-
-- (id) retain
-{
-  NSIncrementExtraRefCount(self);
-  return self;
 }
 
 - (SQLClientPool*) pool
