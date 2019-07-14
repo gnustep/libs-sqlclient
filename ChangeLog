@@ -1,3 +1,10 @@
+2019-07-14  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* SQLClient.h
+	* SQLClientPool.m:
+	Hide definition of SQLClientPoolItem from the public interface,
+	as it is incompatible with automatic reference counting.
+
 2019-05-03  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* SQLClient.m:

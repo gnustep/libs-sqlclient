@@ -39,6 +39,13 @@
 #import	<Performance/GSCache.h>
 #import	"SQLClient.h"
 
+struct _SQLClientPoolItem {
+    SQLClient           *c;     /** The clients of the pool. */
+    NSThread            *o;     /** The thread owning the client */
+    NSUInteger          u;      /** Count of client usage. */
+    NSTimeInterval      t;      /** When client was removed from pool. */
+};
+
 @interface      SQLClient(Pool)
 - (void) _clearPool: (SQLClientPool*)p;
 @end
