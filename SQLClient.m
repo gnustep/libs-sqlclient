@@ -3505,6 +3505,7 @@ static int	        poolConnections = 0;
   NSMutableDictionary	*md;
   GSCache		*c;
   id			toCache;
+  BOOL			cacheHit;
 
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
@@ -3530,6 +3531,7 @@ static int	        poolConnections = 0;
     {
       CacheQuery	*a;
 
+      cacheHit = NO;
       a = [CacheQuery new];
       a->query = [stmt copy];
       a->recordType = rtype;
@@ -3552,17 +3554,10 @@ static int	        poolConnections = 0;
 				      modes: queryModes];
 	}
       result = [c objectForKey: stmt];
-      _lastOperation = GSTickerTimeNow();
-      if (_duration >= 0)
-	{
-	  NSTimeInterval	d;
-
-	  d = _lastOperation - _lastStart;
-	  if (d >= _duration)
-	    {
-	      [self debug: @"Duration %g for query %@", d, stmt];
-	    }
-	}
+    }
+  else
+    {
+      cacheHit = YES;
     }
 
   if (seconds == 0)
@@ -3584,6 +3579,19 @@ static int	        poolConnections = 0;
        * Return an autoreleased copy ... not the original cached data.
        */
       result = [[result mutableCopy] autorelease];
+    }
+
+  _lastOperation = GSTickerTimeNow();
+  if (_duration >= 0)
+    {
+      NSTimeInterval	d;
+
+      d = _lastOperation - _lastStart;
+      if (d >= _duration)
+	{
+	  [self debug: @"Duration %g for cache-%@ query %@",
+	    d, (YES == cacheHit) ? @"hit" : @"miss", stmt];
+	}
     }
   return result;
 }
