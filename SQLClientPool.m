@@ -1284,13 +1284,13 @@ static Class      cls = Nil;
   if ([result count] > 1)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"Query returns more than one record -\n%@\n", stmt];
+		  format: @"Query returns more than one record -\n%@\n", query];
     }
   record = [result lastObject];
   if (record == nil)
     {
       [NSException raise: SQLEmptyException
-		  format: @"Query returns no data -\n%@\n", stmt];
+		  format: @"Query returns no data -\n%@\n", query];
     }
   return record;
 }
@@ -1319,18 +1319,18 @@ static Class      cls = Nil;
   if ([result count] > 1)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"Query returns more than one record -\n%@\n", stmt];
+		  format: @"Query returns more than one record -\n%@\n", query];
     }
   record = [result lastObject];
   if (record == nil)
     {
       [NSException raise: SQLEmptyException
-		  format: @"Query returns no data -\n%@\n", stmt];
+		  format: @"Query returns no data -\n%@\n", query];
     }
   if ([record count] > 1)
     {
       [NSException raise: NSInvalidArgumentException
-		  format: @"Query returns multiple fields -\n%@\n", stmt];
+		  format: @"Query returns multiple fields -\n%@\n", query];
     }
   return [[record lastObject] description];
 }
