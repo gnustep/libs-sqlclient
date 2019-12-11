@@ -287,6 +287,17 @@ newDateFromBuffer(const char *b, int l)
   return d;
 }
 
+static inline NSString *
+sanitize(NSString *str, NSRange range)
+{
+  if (range.length != 0)
+    {
+      str = [str stringByReplacingCharactersInRange: range
+                                         withString: @"'******'"];
+    }
+  return str;
+}
+
 @implementation	SQLClientPostgres
 
 + (void) initialize
@@ -379,6 +390,7 @@ connectQuote(NSString *str)
 	  NSString		*dbase = [self database];
 	  NSString		*str;
 	  NSRange		r;
+	  NSRange		pwRange = NSMakeRange(NSNotFound, 0);
 	  NSMutableString	*m;
 
 	  [[self class] purgeConnections: nil];
@@ -430,6 +442,7 @@ connectQuote(NSString *str)
 	  if (str != nil)
 	    {
 	      [m appendString: @" password="];
+	      pwRange = NSMakeRange([m length], [str length]);
 	      [m appendString: str];
 	    }
 	  str = connectQuote([self clientName]);
@@ -442,19 +455,19 @@ connectQuote(NSString *str)
 	  if ([self debugging] > 0)
 	    {
 	      [self debug: @"Connect to '%@' as %@ (%@)",
-                m, [self name], [self clientName]];
+                sanitize(m, pwRange), [self name], [self clientName]];
 	    }
 	  connection = PQconnectdb([m UTF8String]);
 	  if (PQstatus(connection) != CONNECTION_OK)
 	    {
 	      [self debug: @"Error connecting to '%@' (%@) - %s",
-		[self name], m, PQerrorMessage(connection)];
+		[self name], sanitize(m, pwRange), PQerrorMessage(connection)];
 	      [self _backendDisconnected];
 	    }
 	  else if (PQsetClientEncoding(connection, "UTF-8") < 0)
 	    {
 	      [self debug: @"Error setting UTF-8 with '%@' (%@) - %s",
-		[self name], m, PQerrorMessage(connection)];
+		[self name], sanitize(m, pwRange), PQerrorMessage(connection)];
 	      [self _backendDisconnected];
 	    }
 	  else
@@ -490,7 +503,8 @@ connectQuote(NSString *str)
                     {
                       [self debug: @"Error setting string handling"
                         @" with '%@' (%@) - %s",
-                        [self name], m, PQerrorMessage(connection)];
+                        [self name], sanitize(m, pwRange),
+                        PQerrorMessage(connection)];
                       if (result != 0)
                         {
                           PQclear(result);

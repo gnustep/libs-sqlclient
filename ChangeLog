@@ -1,3 +1,7 @@
+2019-12-11  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* Postgres.m: Hide database connection password from debug logs.
+
 2019-08-06 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClientPool.m: Fix error specifying query string in exceptions
