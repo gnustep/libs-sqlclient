@@ -1,3 +1,7 @@
+2020-01-22 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Fix notification posting to refrain from coalescing.
+
 2019-12-11  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* Postgres.m: Hide database connection password from debug logs.
