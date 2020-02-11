@@ -876,11 +876,6 @@ SQLCLIENT_PRIVATE
  */
 - (NSMutableArray*) prepare: (NSString*)stmt, ...;
 
-/** Builds a query by calling [SQLClient-prepare:args:] where the argument
- * list needs to be nil terminated list of objects.
- */
-- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...;
-
 /**
  * This is the method used to convert a query or statement to a standard
  * form used internally by other methods.<br />
@@ -1921,7 +1916,6 @@ typedef struct _SQLClientPoolItem SQLClientPoolItem;
 - (NSMutableArray*) prepare: (NSString*)stmt, ...;
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args;
 - (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values;
-- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...;
 - (NSMutableArray*) query: (NSString*)stmt,...;
 - (NSMutableArray*) query: (NSString*)stmt with: (NSDictionary*)values;
 - (SQLRecord*) queryRecord: (NSString*)stmt,...;

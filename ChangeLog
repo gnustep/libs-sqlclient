@@ -1,3 +1,11 @@
+2020-02-11 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Remove redundant -prepareQuery: method.
+	* SQLClient.m: Remove redundant -prepareQuery: method and redundant
+	code from query building methods.
+	* SQLClientPool.m: Remove redundant -prepareQuery: method and redundant
+	code from query building methods.
+
 2020-01-22 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: Fix notification posting to refrain from coalescing.

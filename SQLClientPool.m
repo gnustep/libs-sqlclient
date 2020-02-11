@@ -1017,7 +1017,7 @@ static Class      cls = Nil;
 
 - (SQLLiteral*) buildQuery: (NSString*)stmt, ...
 {
-  NSString	*sql;
+  SQLLiteral	*sql;
   va_list	ap;
 
   /*
@@ -1027,24 +1027,16 @@ static Class      cls = Nil;
   sql = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  if ([sql length] < 1000)
-    {
-      return SQLClientMakeLiteral(sql);
-    }
-  return SQLClientProxyLiteral(sql);
+  return sql;
 }
 
 - (SQLLiteral*) buildQuery: (NSString*)stmt with: (NSDictionary*)values
 {
-  NSString	*sql;
+  SQLLiteral	*sql;
 
   sql = [_items[0].c buildQuery: stmt with: values];
 
-  if ([sql length] < 1000)
-    {
-      return SQLClientMakeLiteral(sql);
-    }
-  return SQLClientProxyLiteral(sql);
+  return sql;
 }
 
 - (NSMutableArray*) cacheCheckSimpleQuery: (NSString*)stmt
@@ -1204,18 +1196,6 @@ static Class      cls = Nil;
 - (NSMutableArray*) prepare: (NSString*)stmt with: (NSDictionary*)values
 {
   return [_items[0].c prepare: stmt with: values];
-}
-
-- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...
-{
-  va_list		ap;
-  NSMutableArray	*result;
-
-  va_start (ap, stmt);
-  result = [_items[0].c prepare: stmt args: ap];
-  va_end (ap);
-  NSAssert([result count] == 1, NSInvalidArgumentException);
-  return SQLClientProxyLiteral([result objectAtIndex: 0]);
 }
 
 - (NSMutableArray*) query: (NSString*)stmt, ...

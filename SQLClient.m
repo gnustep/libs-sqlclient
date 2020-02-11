@@ -1852,18 +1852,6 @@ static int	        poolConnections = 0;
   return result;
 }
 
-- (SQLLiteral*) prepareQuery: (NSString*)stmt, ...
-{
-  va_list		ap;
-  NSMutableArray	*result;
-
-  va_start (ap, stmt);
-  result = [self prepare: stmt args: ap];
-  va_end (ap);
-  NSAssert([result count] == 1, NSInvalidArgumentException);
-  return [result objectAtIndex: 0];
-}
-
 - (NSMutableArray*) prepare: (NSString*)stmt args: (va_list)args
 {
   NSMutableArray	*ma = [NSMutableArray arrayWithCapacity: 2];
