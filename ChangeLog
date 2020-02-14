@@ -1,3 +1,9 @@
+2020-02-14 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Re-implement SQLString as a true subclass rather than
+	using trick depending on internals of gnustep-base (which change with
+	the ObjC-2.0 ABI and would break).
+
 2020-02-11 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.h: Remove redundant -prepareQuery: method.

@@ -94,6 +94,127 @@ static unsigned SQLStringSize = 0;
 static BOOL     autoquote = NO;
 static BOOL     autoquoteWarning = NO;
 
+static BOOL
+isByteCoding(NSStringEncoding encoding)
+{
+  if (NSASCIIStringEncoding == encoding
+    || NSNEXTSTEPStringEncoding == encoding
+    || NSISOLatin1StringEncoding == encoding
+    || NSISOLatin2StringEncoding == encoding
+    || NSISOThaiStringEncoding == encoding
+    || NSISOLatin9StringEncoding == encoding)
+    {
+      return YES;
+    }
+  return NO;
+}
+
+/* Determine the length of the UTF-8 string as a unicode (UTF-16) string.
+ * sets the ascii flag according to the content found.
+ */
+static NSUInteger
+lengthUTF8(const uint8_t *p, unsigned l, BOOL *ascii, BOOL *latin1)
+{
+  const uint8_t	*e = p + l;
+  BOOL		a = YES;
+  BOOL		l1 = YES;
+
+  l = 0;
+  while (p < e)
+    {
+      uint8_t	c = *p;
+      uint32_t	u = c;
+
+      if (c > 0x7f)
+	{
+	  int i, sle = 0;
+
+	  a = NO;
+	  /* calculated the expected sequence length */
+	  while (c & 0x80)
+	    {
+	      c = c << 1;
+	      sle++;
+	    }
+
+	  /* legal ? */
+	  if ((sle < 2) || (sle > 6))
+	    {
+	      [NSException raise: NSInternalInconsistencyException
+			  format: @"Bad sequence length in constant string"];
+	    }
+
+	  if (p + sle > e)
+	    {
+	      [NSException raise: NSInternalInconsistencyException
+			  format: @"Short data in constant string"];
+	    }
+
+	  /* get the codepoint */
+	  for (i = 1; i < sle; i++)
+	    {
+	      if (p[i] < 0x80 || p[i] >= 0xc0)
+		break;
+	      u = (u << 6) | (p[i] & 0x3f);
+	    }
+
+	  if (i < sle)
+	    {
+	      [NSException raise: NSInternalInconsistencyException
+			  format: @"Codepoint out of range in constant string"];
+	    }
+	  u = u & ~(0xffffffff << ((5 * sle) + 1));
+	  p += sle;
+
+	  /*
+	   * We check for invalid codepoints here.
+	   */
+	  if (u > 0x10ffff)
+	    {
+	      [NSException raise: NSInternalInconsistencyException
+			  format: @"Codepoint invalid in constant string"];
+	    }
+
+	  if ((u >= 0xd800) && (u <= 0xdfff))
+	    {
+	      [NSException raise: NSInternalInconsistencyException
+			  format: @"Bad surrogate pair in constant string"];
+	    }
+	}
+      else
+	{
+	  p++;
+	}
+
+      /*
+       * Add codepoint as either a single unichar for BMP
+       * or as a pair of surrogates for codepoints over 16 bits.
+       */
+      if (u < 0x10000)
+	{
+	  l++;
+	  if (u > 255)
+	    {
+	      l1 = NO;
+	    }
+	}
+      else
+	{
+	  l += 2;
+          l1 = NO;
+	}
+    }
+  if (0 != ascii)
+    {
+      *ascii = a;
+    }
+  if (0 != latin1)
+    {
+      *latin1 = l1;
+    }
+  return l;
+}
+
 /* This is the layout of the instance variables of the constant string class
  * produced by the compiler.
  * The pointer give us the start of a UTF8 string, so we can create our own
@@ -104,8 +225,13 @@ static BOOL     autoquoteWarning = NO;
 @interface SQLString: SQLLiteral
 {
 @public
-  char          *nxcsptr;
-  unsigned int  nxcslen;
+  NSUInteger    hash;
+  BOOL          hasHash;
+  BOOL          ascii;
+  BOOL          latin1;
+  const uint8_t *utf8Bytes;
+  NSUInteger    byteLen;
+  NSUInteger    charLen;
 }
 @end
 
@@ -135,12 +261,14 @@ SQLLiteral *
 SQLClientNewLiteral(const char *bytes, unsigned count)
 {
   SQLString     *s;
+  uint8_t       *p;
 
   s = NSAllocateObject(SQLStringClass, count+1, NSDefaultMallocZone());
-  s->nxcsptr = ((char*)(void*)s) + SQLStringSize;
-  s->nxcslen = count;
-  memcpy(s->nxcsptr, bytes, count);
-  s->nxcsptr[count] = '\0';
+  s->utf8Bytes = p = ((uint8_t*)(void*)s) + SQLStringSize;
+  s->byteLen = count;
+  memcpy(p, bytes, count);
+  p[count] = '\0';
+  s->charLen = lengthUTF8(s->utf8Bytes, s->byteLen, &s->ascii, &s->latin1);
   return s;
 }
 
@@ -1146,67 +1274,13 @@ static int	        poolConnections = 0;
       
       if (Nil == LitStringClass)
         {
-          Class root = [NSObject class];
-          IMP   imp;
-          SEL   sel;
-
-          LitProxyClass = [SQLLiteralProxy class];
-
           /* Find the literal string class used by the foundation library.
            */
           LitStringClass = object_getClass(@"test");
 
-          /* Create the SQLString class as a subclass of that one.
-           */
-          SQLStringClass = (Class)objc_allocateClassPair(
-            LitStringClass, "SQLString", 0);
-          objc_registerClassPair(SQLStringClass);
-
-          /* The the NSObject memory management methods because the
-           * literal string doesn't get retained/released.
-           */
-
-#define enc \
-  method_getTypeEncoding(class_getInstanceMethod(SQLStringClass, sel))
-
-          sel = @selector(release);
-          imp = class_getMethodImplementation(root, sel);
-          class_addMethod(SQLStringClass, sel, imp, enc);
-          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
-            NSInternalInconsistencyException);
-
-          sel = @selector(autorelease);
-          imp = class_getMethodImplementation(root, sel);
-          class_addMethod(SQLStringClass, sel, imp, enc);
-          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
-            NSInternalInconsistencyException);
-
-          sel = @selector(dealloc);
-          imp = class_getMethodImplementation(root, sel);
-          class_addMethod(SQLStringClass, sel, imp, enc);
-          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
-            NSInternalInconsistencyException);
-
-          sel = @selector(retain);
-          imp = class_getMethodImplementation(root, sel);
-          class_addMethod(SQLStringClass, sel, imp, enc);
-          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
-            NSInternalInconsistencyException);
-
-          /* The -copy and -copyWithZone: methods should simply retain
-           * the receiver.
-           */
-          sel = @selector(copy);
-          class_addMethod(SQLStringClass, sel, imp, enc);
-          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
-            NSInternalInconsistencyException);
-
-          sel = @selector(copyWithZone:);
-          class_addMethod(SQLStringClass, sel, imp, enc);
-          NSAssert(imp == [SQLStringClass instanceMethodForSelector: sel],
-            NSInternalInconsistencyException);
-
+          SQLStringClass = [SQLString class];
           SQLStringSize = class_getInstanceSize(SQLStringClass);
+          LitProxyClass = [SQLLiteralProxy class];
         }
 
       if (nil == null)
@@ -2318,8 +2392,9 @@ static int	        poolConnections = 0;
         }
     }
   q = NSAllocateObject(SQLStringClass, count + 1, NSDefaultMallocZone());
-  q->nxcsptr = dst = ((char*)(void*)q) + SQLStringSize;
-  q->nxcslen = count;
+  dst = ((char*)(void*)q) + SQLStringSize;
+  q->utf8Bytes = (uint8_t*)dst;
+  q->byteLen = count;
   *dst++ = '\"';
   for (i = 0; i < len; i++)
     {
@@ -2336,6 +2411,7 @@ static int	        poolConnections = 0;
      }   
   *dst++ = '\"';
   *dst = '\0';
+  q->charLen = lengthUTF8(q->utf8Bytes, q->byteLen, &q->ascii, &q->latin1);
   return [q autorelease];
 }
 
@@ -2383,8 +2459,9 @@ static int	        poolConnections = 0;
         }
     }
   q = NSAllocateObject(SQLStringClass, count + 1, NSDefaultMallocZone());
-  q->nxcsptr = dst = ((char*)(void*)q) + SQLStringSize;
-  q->nxcslen = count;
+  dst = ((char*)(void*)q) + SQLStringSize;
+  q->utf8Bytes = (uint8_t*)dst;
+  q->byteLen = count;
   *dst++ = '\'';
   for (i = 0; i < len; i++)
     {
@@ -2401,6 +2478,7 @@ static int	        poolConnections = 0;
      }   
   *dst++ = '\'';
   *dst = '\0';
+  q->charLen = lengthUTF8(q->utf8Bytes, q->byteLen, &q->ascii, &q->latin1);
   return [q autorelease];
 }
 
@@ -4805,3 +4883,439 @@ validName(NSString *name)
 }
 @end
 
+
+/* Count the number of bytes that make up this UTF-8 code point.
+ * This to keep in mind:
+ * This macro doesn't return anything larger than '4'
+ * Legal UTF-8 cannot be larger than 4 bytes long (0x10FFFF)
+ * It will return 0 for anything illegal
+ */
+#define UTF8_BYTE_COUNT(c) \
+  (((c) < 0xf8) ? 1 + ((c) >= 0xc0) + ((c) >= 0xe0) + ((c) >= 0xf0) : 0)
+
+/* Sequentially extracts characters from UTF-8 string
+ * p = pointer to the utf-8 data
+ * l = length (bytes) of the utf-8 data
+ * o = pointer to current offset within the data
+ * n = pointer to either zero or the next pre-read part of a surrogate pair.
+ * The condition for having read the entire string is that the offset (*o)
+ * is the number of bytes in the string, and the unichar pointed to by *n
+ * is zero (meaning there is no second part of a surrogate pair remaining).
+ */
+static inline unichar
+nextUTF8(const uint8_t *p, unsigned l, unsigned *o, unichar *n)
+{
+  unsigned	i;
+
+  /* If we still have the second part of a surrogate pair, return it.
+   */
+  if (*n > 0)
+    {
+      unichar	u = *n;
+
+      *n = 0;
+      return u;
+    }
+
+  if ((i = *o) < l)
+    {
+      uint8_t	c = p[i];
+      uint32_t	u = c;
+
+      if (c > 0x7f)
+	{
+	  int j, sle = 0;
+
+	  /* calculated the expected sequence length */
+	  sle = UTF8_BYTE_COUNT(c);
+
+	  /* legal ? */
+	  if (sle < 2)
+	    {
+	      [NSException raise: NSInvalidArgumentException
+			  format: @"bad multibyte character length"];
+	    }
+
+	  if (sle + i > l)
+	    {
+	      [NSException raise: NSInvalidArgumentException
+			  format: @"multibyte character extends beyond data"];
+	    }
+
+	  /* get the codepoint */
+	  for (j = 1; j < sle; j++)
+	    {
+	      uint8_t	b = p[i + j];
+
+	      if (b < 0x80 || b >= 0xc0)
+		break;
+	      u = (u << 6) | (b & 0x3f);
+	    }
+
+	  if (j < sle)
+	    {
+	      [NSException raise: NSInvalidArgumentException
+			  format: @"bad data in multibyte character"];
+	    }
+	  u = u & ~(0xffffffff << ((5 * sle) + 1));
+	  i += sle;
+
+	  /*
+	   * We discard invalid codepoints here.
+	   */
+	  if (u > 0x10ffff)
+	    {
+	      [NSException raise: NSInvalidArgumentException
+			  format: @"invalid unicode codepoint"];
+	    }
+	}
+      else
+	{
+	  i++;
+	}
+
+      /*
+       * Add codepoint as either a single unichar for BMP
+       * or as a pair of surrogates for codepoints over 16 bits.
+       */
+      if (u >= 0x10000)
+	{
+	  unichar ul, uh;
+
+	  u -= 0x10000;
+	  ul = u & 0x3ff;
+	  uh = (u >> 10) & 0x3ff;
+
+	  *n = ul + 0xdc00;	// record second part of pair
+	  u = uh + 0xd800;	// return first part.
+	}
+      *o = i;			// Return new index
+      return (unichar)u;
+    }
+  [NSException raise: NSInvalidArgumentException
+	      format: @"no more data in UTF-8 string"];
+  return 0;
+}
+
+@implementation SQLString
+
+- (const char*) UTF8String
+{
+  return (const char*)utf8Bytes;
+}
+
+- (unichar) characterAtIndex: (NSUInteger)index
+{
+  NSUInteger	l = 0;
+  unichar	u;
+  unichar	n = 0;
+  unsigned	i = 0;
+
+  while (i < byteLen || n > 0)
+    {
+      u = nextUTF8(utf8Bytes, byteLen, &i, &n);
+      if (l++ == index)
+	{
+	  return u;
+	}
+    }
+
+  [NSException raise: NSInvalidArgumentException
+	      format: @"-characterAtIndex: index out of range"];
+  return 0;
+}
+
+- (BOOL) canBeConvertedToEncoding: (NSStringEncoding)encoding
+{
+  if (NSUTF8StringEncoding == encoding
+    || NSUnicodeStringEncoding == encoding
+    || (NSISOLatin1StringEncoding == encoding && YES == latin1)
+    || (isByteCoding(encoding) && YES == ascii))
+    {
+      return YES;
+    }
+  NS_DURING
+    {
+      id d = [self dataUsingEncoding: encoding allowLossyConversion: NO];
+
+      NS_VALRETURN(d != nil ? YES : NO);
+    }
+  NS_HANDLER
+    {
+      return NO;
+    }
+  NS_ENDHANDLER
+}
+
+- (NSData*) dataUsingEncoding: (NSStringEncoding)encoding
+	 allowLossyConversion: (BOOL)flag
+{
+  if (0 == byteLen)
+    {
+      return [NSData data];
+    }
+
+  if (NSUTF8StringEncoding == encoding
+    || (YES == ascii && YES == isByteCoding(encoding)))
+    {
+      /* We can just copy the data unmodified
+       */
+      return [NSData dataWithBytes: (void*)utf8Bytes
+                            length: byteLen];
+    }
+  else if (YES == latin1 && NSISOLatin1StringEncoding == encoding)
+    {
+      unichar	        n = 0;
+      unsigned	        i = 0;
+      NSUInteger	index = 0;
+      uint8_t           *buf = malloc(charLen); 
+
+      while (index < charLen && (i < byteLen || n > 0))
+	{
+	  buf[index++] = nextUTF8(utf8Bytes, byteLen, &i, &n);
+	}
+      return [NSData dataWithBytesNoCopy: buf
+                                  length: charLen
+                            freeWhenDone: YES];
+    }
+  else if (NSUnicodeStringEncoding == encoding)
+    {
+      unichar	        n = 0;
+      unsigned	        i = 0;
+      NSUInteger	index = 0;
+      unichar           *buf = malloc(charLen * sizeof(unichar)); 
+
+      while (index < charLen && (i < byteLen || n > 0))
+	{
+	  buf[index++] = nextUTF8(utf8Bytes, byteLen, &i, &n);
+	}
+      return [NSData dataWithBytesNoCopy: buf
+                                  length: charLen * sizeof(unichar)
+                            freeWhenDone: YES];
+    }
+
+  return [super dataUsingEncoding: encoding allowLossyConversion: flag];
+}
+
+- (void) getCharacters: (unichar*)buffer
+		 range: (NSRange)aRange
+{
+  unichar	n = 0;
+  unsigned	i = 0;
+  NSUInteger	max = NSMaxRange(aRange);
+  NSUInteger	index = 0;
+
+  if (NSNotFound == aRange.location)
+    [NSException raise: NSRangeException format:
+      @"in %s, range { %"PRIuPTR", %"PRIuPTR" } extends beyond string",
+      GSNameFromSelector(_cmd), aRange.location, aRange.length];
+
+  while (index < aRange.location && (i < byteLen || n > 0))
+    {
+      nextUTF8(utf8Bytes, byteLen, &i, &n);
+      index++;
+    }
+  if (index == aRange.location)
+    {
+      while (index < max && (i < byteLen || n > 0))
+	{
+	  *buffer++ = nextUTF8(utf8Bytes, byteLen, &i, &n);
+	  index++;
+	}
+    }
+  if (index != max)
+    {
+      [NSException raise: NSRangeException format:
+	@"in %s, range { %"PRIuPTR", %"PRIuPTR" } extends beyond string",
+        GSNameFromSelector(_cmd), aRange.location, aRange.length];
+    }
+}
+
+- (BOOL) getCString: (char*)buffer
+	  maxLength: (NSUInteger)maxLength
+	   encoding: (NSStringEncoding)encoding
+{
+  const uint8_t *ptr = utf8Bytes;
+  int           length = byteLen;
+  int           index;
+
+  if (0 == maxLength || 0 == buffer)
+    {
+      return NO;	// Can't fit in here
+    }
+  if (NSUTF8StringEncoding == encoding
+    || (YES == ascii && isByteCoding(encoding)))
+    {
+      BOOL	result = (length < maxLength) ? YES : NO;
+
+      /* We can just copy directly.
+       */
+      if (maxLength <= length)
+        {
+          length = maxLength - 1;
+        }
+      for (index = 0; index < length; index++)
+        {
+          buffer[index] = (char)ptr[index];
+        }
+      /* Step back before any multibyte sequence
+       */
+      while (index > 0 && (ptr[index - 1] & 0x80))
+	{
+          index--;
+        }
+      buffer[index] = '\0';
+      return result;
+    }
+  return [super getCString: buffer maxLength: maxLength encoding: encoding];
+}
+
+/* Must match the implementation in NSString
+ * To avoid allocating memory, we build the hash incrementally.
+ */
+- (NSUInteger) hash
+{
+  if (NO == hasHash)
+    {
+      hash = [super hash];
+      hasHash = YES;
+    }
+  return hash;
+}
+
+- (id) initWithBytes: (const void*)bytes
+	      length: (NSUInteger)length
+	    encoding: (NSStringEncoding)encoding
+{
+  RELEASE(self);
+  [NSException raise: NSGenericException
+	      format: @"Attempt to init an SQL string"];
+  return nil;
+}
+
+- (id) initWithBytesNoCopy: (void*)bytes
+		    length: (NSUInteger)length
+		  encoding: (NSStringEncoding)encoding
+	      freeWhenDone: (BOOL)flag
+{
+  RELEASE(self);
+  [NSException raise: NSGenericException
+	      format: @"Attempt to init an SQL string"];
+  return nil;
+}
+
+- (int) intValue
+{
+  return strtol((const char*)utf8Bytes, 0, 10);
+}
+
+- (NSInteger) integerValue
+{
+  return (NSInteger)strtoll((const char*)utf8Bytes, 0, 10);
+}
+
+- (NSUInteger) length
+{
+  return charLen;
+}
+
+- (long long) longLongValue
+{
+  return strtoll((const char*)utf8Bytes, 0, 10);
+}
+
+- (NSRange) rangeOfCharacterFromSet: (NSCharacterSet*)aSet
+			    options: (NSUInteger)mask
+			      range: (NSRange)aRange
+{
+  NSUInteger	index;
+  NSUInteger	start;
+  NSUInteger	stop;
+  NSRange	range;
+
+  GS_RANGE_CHECK(aRange, charLen);
+
+  start = aRange.location;
+  stop = NSMaxRange(aRange);
+
+  range.location = NSNotFound;
+  range.length = 0;
+
+  if (stop > start)
+    {
+      BOOL	(*mImp)(id, SEL, unichar);
+      unichar	n = 0;
+      unsigned	i = 0;
+
+      mImp = (BOOL(*)(id,SEL,unichar))
+	[aSet methodForSelector: @selector(characterIsMember:)];
+
+      for (index = 0; index < start; index++)
+	{
+	  nextUTF8(utf8Bytes, byteLen, &i, &n);
+	}
+      if ((mask & NSBackwardsSearch) == NSBackwardsSearch)
+	{
+	  unichar	buf[stop - start];
+	  NSUInteger	pos = 0;
+	  
+	  for (pos = 0; pos + start < stop; pos++)
+	    {
+	      buf[pos] = nextUTF8(utf8Bytes, byteLen, &i, &n);
+	    }
+	  index = stop;
+	  while (index-- > start)
+	    {
+	      if ((*mImp)(aSet, @selector(characterIsMember:), buf[--pos]))
+		{
+		  range = NSMakeRange(index, 1);
+		  break;
+		}
+	    }
+	}
+      else
+	{
+	  while (index < stop)
+	    {
+	      unichar letter;
+
+	      letter = nextUTF8(utf8Bytes, byteLen, &i, &n);
+	      if ((*mImp)(aSet, @selector(characterIsMember:), letter))
+		{
+		  range = NSMakeRange(index, 1);
+		  break;
+		}
+	      index++;
+	    }
+	}
+    }
+
+  return range;
+}
+
+- (id) copyWithZone: (NSZone*)z
+{
+  return RETAIN(self);
+}
+
+- (NSZone*) zone
+{
+  return NSDefaultMallocZone();
+}
+
+- (NSStringEncoding) fastestEncoding
+{
+  return NSUTF8StringEncoding;
+}
+
+- (NSStringEncoding) smallestEncoding
+{
+  return NSUTF8StringEncoding;
+}
+
+- (NSUInteger) sizeOfContentExcluding: (NSHashTable*)exclude
+{
+  return byteLen + 1;
+}
+
+@end
