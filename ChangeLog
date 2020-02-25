@@ -1,3 +1,7 @@
+2020-02-25 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Changes t -release to avoid deadlock purging pool.
+
 2020-02-14 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Re-implement SQLString as a true subclass rather than
