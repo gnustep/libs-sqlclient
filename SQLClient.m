@@ -88,6 +88,7 @@ static Class	NSSetClass = Nil;
 static Class	SQLClientClass = Nil;
 static Class	LitProxyClass = Nil;
 static Class	LitStringClass = Nil;
+static Class	TinyStringClass = Nil;
 static Class	SQLStringClass = Nil;
 static unsigned SQLStringSize = 0;
 
@@ -249,7 +250,8 @@ SQLClientIsLiteral(NSString *aString)
     {
       Class c = object_getClass(aString);
 
-      if (c == LitStringClass || c == SQLStringClass || c == LitProxyClass)
+      if (c == LitStringClass || c == TinyStringClass
+        || c == SQLStringClass || c == LitProxyClass)
         {
           return YES;
         }
@@ -284,7 +286,7 @@ SQLClientCopyLiteral(NSString *aString)
           aString = ((SQLLiteralProxy*)aString)->content;
           c = object_getClass(aString);
         }
-      if (c != LitStringClass && c != SQLStringClass)
+      if (c != LitStringClass && c != TinyStringClass && c != SQLStringClass)
         {
           const char    *p = [aString UTF8String];
           int           l = strlen(p);
@@ -311,7 +313,7 @@ SQLClientMakeLiteral(NSString *aString)
           aString = ((SQLLiteralProxy*)aString)->content;
           c = object_getClass(aString);
         }
-      if (c != LitStringClass && c != SQLStringClass)
+      if (c != LitStringClass && c != TinyStringClass && c != SQLStringClass)
         {
           const char    *p = [aString UTF8String];
           int           l = strlen(p);
@@ -362,13 +364,15 @@ SQLClientUnProxyLiteral(id aString)
 	{
 	  aString = ((SQLLiteralProxy*)aString)->content;
 	}
-      else if (c != LitStringClass && c != SQLStringClass)
+      else if (c != LitStringClass
+        && c != TinyStringClass
+        && c != SQLStringClass)
 	{
 	  aString = [aString description];
 	  if (YES == autoquoteWarning)
 	    {
-	      NSLog(@"SQLClient expected SQLLiteral type for %@ %@",
-		NSStringFromClass(c), aString);
+	      NSLog(@"SQLClient expected SQLLiteral type for %@ (%@)",
+		aString, NSStringFromClass(c));
 	    }
 	}
     }
@@ -1275,8 +1279,10 @@ static int	        poolConnections = 0;
       if (Nil == LitStringClass)
         {
           /* Find the literal string class used by the foundation library.
+           * We may have two varieties.
            */
-          LitStringClass = object_getClass(@"test");
+          LitStringClass = object_getClass(@"test string");
+          TinyStringClass = object_getClass(@"test");
 
           SQLStringClass = [SQLString class];
           SQLStringSize = class_getInstanceSize(SQLStringClass);
@@ -1962,12 +1968,15 @@ static int	        poolConnections = 0;
                 {
                   tmp = ((SQLLiteralProxy*)tmp)->content;
                 }
-              else if (c != LitStringClass && c != SQLStringClass)
+              else if (c != LitStringClass
+                && c != TinyStringClass
+                && c != SQLStringClass)
                 {
                   if (nil == warn)
                     {
                       warn = [NSString stringWithFormat:
-                        @"\"%@\" (argument %u)", tmp, index];
+                        @"\"%@\" (argument %u, %@)",
+                        tmp, index, NSStringFromClass(c)];
                     }
                   if (YES == autoquote)
                     {
@@ -2144,12 +2153,15 @@ static int	        poolConnections = 0;
                     {
                       v = ((SQLLiteralProxy*)o)->content;
                     }
-                  else if (c != LitStringClass && c != SQLStringClass)
+                  else if (c != LitStringClass
+                    && c != TinyStringClass
+                    && c != SQLStringClass)
                     {
                       if (nil == warn)
                         {
                           warn = [NSString stringWithFormat:
-                            @"\"%@\" (value for \"%@\")", o, k];
+                            @"\"%@\" (value for \"%@\", %@)",
+                            o, k, NSStringFromClass(c)];
                         }
                       if (YES == autoquote)
                         {
@@ -2484,21 +2496,18 @@ static int	        poolConnections = 0;
 
 - (oneway void) release
 {
-  /* We lock the table while checking, to prevent another thread
-   * from grabbing this object while we are checking it.
+  /* We lock the table while checking, to prevent
+   * another thread from grabbing this object while we are
+   * checking it.
+   * If we are going to deallocate the object, we first remove
+   * it from the table so that no other thread will find it
+   * and try to use it while it is being deallocated.
    */
   [clientsLock lock];
   if (nil != _pool && [self retainCount] == 1)
     {
-      /* This is the only reference to a client associated with
+      /* If this is the only reference to a client associated with
        * a connection pool we put this client back to the pool.
-       *
-       * That being the case, we know that this thread 'owns'
-       * the client and it's not going to be deallocated and not
-       * going to have the _pool iinstance variable changed, so it
-       * is safe to unlock clientsLock before returning the client
-       * to the pool.  This avoids a possible deadlock when a pool
-       * is being purged.
        *
        * wl 2019-05-01: The original implementation was calling this code
        * when NSDecrementExtraRefCountWasZero returns YES, but
@@ -2507,14 +2516,13 @@ static int	        poolConnections = 0;
        * Objective-C runtime, which both don't handle resurrection
        * gracefully for objects whose retain count has become zero.
        */
-      [clientsLock unlock];
       [_pool _swallowClient: self explicit: NO];
     }
   else
     {
       [super release];
-      [clientsLock unlock];
     }
+  [clientsLock unlock];
 }
 
 - (SQLClientPool*) pool

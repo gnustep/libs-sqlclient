@@ -1,6 +1,13 @@
+2020-02-27 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.m: Make the code aware of the tiny string class used by
+	the gnustep base library.  Treat tiny strings as literal strings
+	because, unfortunately, we can't tell if they were created at
+	compile time or at run time.
+
 2020-02-25 Richard Frith-Macdonald  <rfm@gnu.org>
 
-	* SQLClient.m: Changes t -release to avoid deadlock purging pool.
+	* SQLClient.m: Changes to -release to avoid deadlock purging pool.
 
 2020-02-14 Richard Frith-Macdonald  <rfm@gnu.org>
 
