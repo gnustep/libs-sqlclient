@@ -2980,21 +2980,31 @@ static int	        poolConnections = 0;
 	      if (_duration >= 0)
 		{
 		  NSTimeInterval	d;
+		  NSString		*s;
 
-		  d = _lastOperation - _lastStart;
+		  if (0 == _connectFails)
+		    {
+		      s = @"success";
+		      d = _lastConnect - _lastStart;
+		    }
+		  else
+		    {
+		      s = @"failure";
+		      d = _lastOperation - _lastStart;
+		    }
+
 		  if (d >= _duration)
 		    {
 		      if (_lastListen > 0.0)
 			{
 			  [self debug: @"Duration %g for connection (%@)"
 			    @", of which %g adding observers.",
-			    d, (0 == _connectFails ? @"success" : @"failure"),
-			    _lastOperation - _lastListen];
+			    d, s, _lastOperation - _lastListen];
 			}
 		      else
 			{
 			  [self debug: @"Duration %g for connection (%@).",
-			    d, (0 == _connectFails ? @"success" : @"failure")];
+			    d, s];
 			}
 		    }
 		}
