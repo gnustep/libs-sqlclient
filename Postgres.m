@@ -686,16 +686,6 @@ connectQuote(NSString *str)
       const char        *tuples;
       unsigned		length;
 
-      /*
-       * Ensure we have a working connection.
-       */
-      if ([self connect] == NO)
-	{
-	  [NSException raise: SQLConnectionException
-	    format: @"Unable to connect to '%@' to execute statement %@",
-	    [self name], stmt];
-	} 
-
       statement = (char*)[stmt UTF8String];
       length = strlen(statement);
       statement = [self insertBLOBs: info
@@ -1107,16 +1097,6 @@ static inline unsigned int trim(char *str, unsigned len)
   NS_DURING
     {
       char	*statement;
-
-      /*
-       * Ensure we have a working connection.
-       */
-      if ([self connect] == NO)
-	{
-	  [NSException raise: SQLConnectionException
-	    format: @"Unable to connect to '%@' to run query %@",
-	    [self name], stmt];
-	} 
 
       statement = (char*)[stmt UTF8String];
       result = PQexec(connection, statement);

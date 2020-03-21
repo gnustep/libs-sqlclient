@@ -2733,6 +2733,17 @@ static int	        poolConnections = 0;
   [lock lock];
 
   statement = [info objectAtIndex: 0];
+
+  /* Ensure we have a working connection.
+   */
+  if ([self connect] == NO)
+    {
+      [lock unlock];
+      [NSException raise: SQLConnectionException
+	format: @"Unable to connect to '%@' to run statement %@",
+	[self name], statement];
+    }
+
   if ([statement isEqualToString: commitString])
     {
       isCommit = YES;
@@ -2741,7 +2752,6 @@ static int	        poolConnections = 0;
     {
       isRollback = YES;
     }
-  _lastStart = GSTickerTimeNow();
 
   while (NO == done)
     {
@@ -2749,6 +2759,7 @@ static int	        poolConnections = 0;
       done = YES;
       NS_DURING
         {
+	  _lastStart = GSTickerTimeNow();
           result = [self backendExecute: info];
           _lastOperation = GSTickerTimeNow();
           [_statements addObject: statement];
@@ -2851,6 +2862,13 @@ static int	        poolConnections = 0;
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
   [lock lock];
+  if ([self connect] == NO)
+    {
+      [lock unlock];
+      [NSException raise: SQLConnectionException
+	format: @"Unable to connect to '%@' to run query %@",
+	[self name], stmt];
+    }
   while (NO == done)
     {
       done = YES;
@@ -2912,6 +2930,8 @@ static int	        poolConnections = 0;
 	{
 	  NS_DURING
 	    {
+	      NSTimeInterval	_lastListen = 0.0;
+
               if (_connectFails > 1)
                 {
                   NSTimeInterval	delay;
@@ -2941,6 +2961,7 @@ static int	        poolConnections = 0;
                       NSEnumerator  *e;
                       NSString      *n;
 
+		      _lastListen = GSTickerTimeNow();
                       e = [_names objectEnumerator];
                       while (nil != (n = [e nextObject]))
                         {
@@ -2955,6 +2976,28 @@ static int	        poolConnections = 0;
                   _lastOperation = GSTickerTimeNow();
                   _connectFails++;
                 }
+
+	      if (_duration >= 0)
+		{
+		  NSTimeInterval	d;
+
+		  d = _lastOperation - _lastStart;
+		  if (d >= _duration)
+		    {
+		      if (_lastListen > 0.0)
+			{
+			  [self debug: @"Duration %g for connection (%@)"
+			    @", of which %g adding observers.",
+			    d, (0 == _connectFails ? @"success" : @"failure"),
+			    _lastOperation - _lastListen];
+			}
+		      else
+			{
+			  [self debug: @"Duration %g for connection (%@).",
+			    d, (0 == _connectFails ? @"success" : @"failure")];
+			}
+		    }
+		}
 	    }
 	  NS_HANDLER
 	    {
@@ -4424,6 +4467,13 @@ validName(NSString *name)
         }
     }
   [lock lock];
+  if ([self connect] == NO)
+    {
+      [lock unlock];
+      [NSException raise: SQLConnectionException
+	format: @"Unable to connect to '%@' to notify %@ with %@",
+	[self name], name, more];
+    }
   NS_DURING
     {
       [self backendNotify: [self quoteName: name]

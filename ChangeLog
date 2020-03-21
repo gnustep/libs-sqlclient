@@ -1,3 +1,10 @@
+2020-03-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Don't attempt to establish connection before query or
+	execute (the superclass should do it).
+	* SQLClient.m: Ensure connection is established before calling backend
+	methods where possible.  Add timing to establishment of connection.
+
 2020-02-27 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* SQLClient.m: Make the code aware of the tiny string class used by
