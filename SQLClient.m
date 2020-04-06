@@ -1803,6 +1803,18 @@ static int	        poolConnections = 0;
     {
       [self release];
       self = [existing retain];
+
+      if ([conf isKindOfClass: [NSUserDefaults class]] == NO)
+        {
+          /* If the configuration object is not the user defaults
+           * make sure to update the existing connnection's configuration.
+           */
+          n = [NSNotification
+	    notificationWithName: NSUserDefaultsDidChangeNotification
+            object: conf
+            userInfo: nil];
+          [self _configure: n];
+        }
     }
   [clientsLock unlock];
 
