@@ -1246,6 +1246,18 @@ static int	        poolConnections = 0;
       o = [[[SQLClient alloc] initWithConfiguration: config name: reference]
         autorelease];
     }
+  else if ([config isKindOfClass: [NSUserDefaults class]] == NO)
+    {
+      /* If the configuration object is not the user defaults
+       * make sure to update the existing connnection's configuration.
+       */
+      NSNotification *n = [NSNotification
+	notificationWithName: NSUserDefaultsDidChangeNotification
+        object: config
+        userInfo: nil];
+      [o _configure: n];
+    }
+
   return o;
 }
 

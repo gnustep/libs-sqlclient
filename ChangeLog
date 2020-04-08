@@ -1,7 +1,8 @@
-2020-04-06  Wolfgang Lux  <wolfgang.lux@gmail.com>
+2020-04-08  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
-	* SQLClient.m(initWithConfiguration:name:pool:): Eventually
-	reconfigure a client connection that gets reused.
+	* SQLClient.m (clientWithConfiguration:name:):
+	* SQLClient.m (initWithConfiguration:name:pool:):
+	Eventually reconfigure a client connection that gets reused.
 
 2020-03-21 Richard Frith-Macdonald  <rfm@gnu.org>
 
