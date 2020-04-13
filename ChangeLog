@@ -1,3 +1,10 @@
+2020-04-13  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* MySQL.m (backendQuery:recordType:listType:):
+	Change argument types to match those of the overridden base class
+	implementation to make the override work with the GNUstep
+	Objective-C runtime.
+
 2020-04-08  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* SQLClient.m (clientWithConfiguration:name:):
