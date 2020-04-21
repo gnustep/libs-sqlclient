@@ -1401,10 +1401,11 @@ SQLCLIENT_PRIVATE
  * If the 'Payload' value is not nil, then it is a string providing extra
  * information about the notification.<br />
  * Notifications are posted asynchronously using the default notification
- * queue for the current thread, so they should be delivered to the
- * observer after the database statement in which they were detected
+ * queue for the thread which receives them (or the main thread if the
+ * receiving thread run loop is not active), so they should be delivered to
+ * the observer after the database statement in which they were detected
  * has completed.  However, delivery of the notification could still
- * occur inside a transaction is the -begin and -commit statements
+ * occur inside a transaction if the -begin and -commit statements
  * are used.  For this reason, observing code may want to use the
  * -lockBeforeDate: -isInTransaction and -unlock methods to ensure
  * that they don't interfere with ongoing transactions.<br />
@@ -1434,7 +1435,7 @@ SQLCLIENT_PRIVATE
  * If anObserver is nil, the removal will be performed for all current
  * observers (and if both name and anObserver are nil, then all observations
  * are removed).<br />
- * Any atempt to remove a non existent observation is silently ignored.
+ * Any attempt to remove a non existent observation is silently ignored.
  */
 - (void) removeObserver: (id)anObserver name: (NSString*)name;
 @end

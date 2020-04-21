@@ -581,6 +581,10 @@ connectQuote(NSString *str)
 
   /* Post asynchronously
    */
+  if ([self debugging] > 0)
+    {
+      [self debug: @"Notified (database): %@", n];
+    }
   nq = [NSNotificationQueue defaultQueue];
   [nq enqueueNotification: n
              postingStyle: NSPostASAP
@@ -588,19 +592,59 @@ connectQuote(NSString *str)
                  forModes: nil];
 }
 
+- (void) _postNotifications: (NSArray*)notifications
+{
+  NSUInteger	count = [notifications count];
+  NSUInteger	index;
+
+  for (index = 0; index < count; index++)
+    {
+      NSNotification	*n = [notifications objectAtIndex: index];
+
+      NS_DURING
+	{
+	  [self _postNotification: n];
+	}
+      NS_HANDLER
+	{
+	  NSLog(@"Problem posting notification: %@ %@",
+	    n, localException);
+	}
+      NS_ENDHANDLER
+    }
+}
+
 /* This method must only be called when the receiver is locked.
  */
 - (void) _checkNotifications: (BOOL)async
 {
-  PGnotify      *notify;
+  NSMutableArray	*notifications = nil;
+  PGnotify      	*notify;
 
+  /* While postgres sometimes de-duplicates notifications it is not guaranteed
+   * that it will do so, and it is therefore possible for the database server
+   * to send many duplicate notifications.
+   * So we read the notifications and add them to an array only if they are not
+   * already present.
+   */
   while ((notify = PQnotifies(connection)) != 0)
     {
       NS_DURING
         {
+	  static NSNumber   	*nY = nil;
+	  static NSNumber   	*nN = nil;
           NSNotification        *n;
           NSMutableDictionary   *userInfo;
           NSString              *name;
+
+	  if (nil == nN)
+	    {
+	      ASSIGN(nN, [NSNumber numberWithBool: NO]);
+	    }
+	  if (nil == nY)
+	    {
+	      ASSIGN(nY, [NSNumber numberWithBool: YES]);
+	    }
 
           name = [[NSString alloc] initWithUTF8String: notify->relname];
           userInfo = [[NSMutableDictionary alloc] initWithCapacity: 2];
@@ -612,57 +656,91 @@ connectQuote(NSString *str)
               if (nil != payload)
                 {
                   [userInfo setObject: payload forKey: @"Payload"];
-                  [payload release];
+                  RELEASE(payload);
                 }
             }
           if (notify->be_pid == backendPID)
             {
-              static NSNumber   *nY = nil;
-
-              if (nil == nY)
-                {
-                  nY = [[NSNumber numberWithBool: YES] retain];
-                }
               [userInfo setObject: nY forKey: @"Local"];
             }
           else
             {
-              static NSNumber   *nN = nil;
-
-              if (nil == nN)
-                {
-                  nN = [[NSNumber numberWithBool: NO] retain];
-                }
               [userInfo setObject: nN forKey: @"Local"];
             }
+	  if (YES == async)
+	    {
+              [userInfo setObject: nY forKey: @"Async"];
+	    }
+	  else
+	    {
+              [userInfo setObject: nN forKey: @"Async"];
+	    }
           n = [NSNotification notificationWithName: name
                                             object: self
                                           userInfo: (NSDictionary*)userInfo];
-          [name release];
-          [userInfo release];
-
-	  if ([self debugging] > 0)
-	    {
-              if (YES == async)
-                {
-                  [self debug: @"Notified (asynchronously): %@", n];
-                }
-              else
-                {
-                  [self debug: @"Notified (query/execute): %@", n];
-                }
+	  if (nil == notifications)
+ 	    {
+	      notifications = [[NSMutableArray alloc] initWithCapacity: 10];
 	    }
-          [self performSelectorOnMainThread: @selector(_postNotification:)
-                                 withObject: n
-                              waitUntilDone: NO];
+	  if (NO == [notifications containsObject: n])
+	    {
+	      [notifications addObject: n];
+	    }
+          RELEASE(name);
+          RELEASE(userInfo);
         }
       NS_HANDLER
         {
-          NSLog(@"Problem handling asynchronous notification: %@",
-            localException);
+          NSLog(@"Problem handling %@ notification: %@",
+            (async ? @"asynchronous" : @"query/execute"), localException);
         }
       NS_ENDHANDLER
       PQfreemem(notify);
+    }
+
+  /* Now that we have read all the available notifications from the database,
+   * we post them locally in the current thread (if its run loop is active)
+   * or the main thread.
+   */
+  if (notifications != nil)
+    {
+      if ([[NSRunLoop currentRunLoop] currentMode] == nil)
+	{
+	  if ([self debugging] > 0)
+	    {
+	      [self debug: @"Notifying (main thread): %@", notifications];
+	    }
+	  NS_DURING
+	    {
+	      [self performSelectorOnMainThread: @selector(_postNotifications:)
+				     withObject: notifications
+				  waitUntilDone: NO];
+	    }
+	  NS_HANDLER
+	    {
+	      NSLog(@"Problem posting to main thread: %@ %@",
+		notifications, localException);
+	    }
+	  NS_ENDHANDLER
+	}
+      else
+	{
+	  if ([self debugging] > 0)
+	    {
+	      [self debug: @"Notifying (receiving thread): %@", notifications];
+	    }
+	  NS_DURING
+	    {
+	      [self _postNotifications: notifications];
+	    }
+	  NS_HANDLER
+	    {
+	      NSLog(@"Problem posting in receiving thread: %@ %@",
+		notifications, localException);
+	    }
+	  NS_ENDHANDLER
+	}
+      RELEASE(notifications);
     }
 }
 

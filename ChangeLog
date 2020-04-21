@@ -1,3 +1,11 @@
+2020-04-21 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Change notification code to de-duplicate notifications
+	if/when postgres sends many copies of the same notification at the
+	same time.  Also change the code to queue notifications in the thread
+	that received them (as documented) and only queue them in the main
+	thread if the receiving thread does not have an active run loop.
+
 2020-04-06  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* SQLClient.m(initWithConfiguration:name:pool:): Eventually
