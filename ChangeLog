@@ -6,10 +6,18 @@
 	that received them (as documented) and only queue them in the main
 	thread if the receiving thread does not have an active run loop.
 
-2020-04-06  Wolfgang Lux  <wolfgang.lux@gmail.com>
+2020-04-13  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
-	* SQLClient.m(initWithConfiguration:name:pool:): Eventually
-	reconfigure a client connection that gets reused.
+	* MySQL.m (backendQuery:recordType:listType:):
+	Change argument types to match those of the overridden base class
+	implementation to make the override work with the GNUstep
+	Objective-C runtime.
+
+2020-04-08  Wolfgang Lux  <wolfgang.lux@gmail.com>
+
+	* SQLClient.m (clientWithConfiguration:name:):
+	* SQLClient.m (initWithConfiguration:name:pool:):
+	Eventually reconfigure a client connection that gets reused.
 
 2020-03-21 Richard Frith-Macdonald  <rfm@gnu.org>
 

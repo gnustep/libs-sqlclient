@@ -290,8 +290,8 @@ static unsigned int trim(char *str)
 }
 
 - (NSMutableArray*) backendQuery: (NSString*)stmt
-		      recordType: (Class)rtype
-		        listType: (Class)ltype
+		      recordType: (id)rtype
+		        listType: (id)ltype
 {
   NSAutoreleasePool     *arp = [NSAutoreleasePool new];
   NSMutableArray	*records = nil;
