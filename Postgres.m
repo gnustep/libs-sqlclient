@@ -614,6 +614,50 @@ connectQuote(NSString *str)
     }
 }
 
+- (void) _post: (NSMutableArray*)notifications
+{
+  if ([notifications count] > 0)
+    {
+      if ([[NSRunLoop currentRunLoop] currentMode] == nil)
+	{
+	  if ([self debugging] > 0)
+	    {
+	      [self debug: @"Notifying (main thread): %@", notifications];
+	    }
+	  NS_DURING
+	    {
+	      [self performSelectorOnMainThread: @selector(_postNotifications:)
+				     withObject: notifications
+				  waitUntilDone: NO];
+	    }
+	  NS_HANDLER
+	    {
+	      NSLog(@"Problem posting to main thread: %@ %@",
+		notifications, localException);
+	    }
+	  NS_ENDHANDLER
+	}
+      else
+	{
+	  if ([self debugging] > 0)
+	    {
+	      [self debug: @"Notifying (receiving thread): %@", notifications];
+	    }
+	  NS_DURING
+	    {
+	      [self _postNotifications: notifications];
+	    }
+	  NS_HANDLER
+	    {
+	      NSLog(@"Problem posting in receiving thread: %@ %@",
+		notifications, localException);
+	    }
+	  NS_ENDHANDLER
+	}
+      [notifications removeAllObjects];
+    }
+}
+
 /* This method must only be called when the receiver is locked.
  */
 - (void) _checkNotifications: (BOOL)async
@@ -625,7 +669,7 @@ connectQuote(NSString *str)
    * that it will do so, and it is therefore possible for the database server
    * to send many duplicate notifications.
    * So we read the notifications and add them to an array only if they are not
-   * already present.
+   * already present, flushing the buffer when it gets large.
    */
   while ((notify = PQnotifies(connection)) != 0)
     {
@@ -647,7 +691,7 @@ connectQuote(NSString *str)
 	    }
 
           name = [[NSString alloc] initWithUTF8String: notify->relname];
-          userInfo = [[NSMutableDictionary alloc] initWithCapacity: 2];
+          userInfo = [[NSMutableDictionary alloc] initWithCapacity: 3];
           if (0 != notify->extra)
             {
               NSString      *payload;
@@ -696,52 +740,19 @@ connectQuote(NSString *str)
         }
       NS_ENDHANDLER
       PQfreemem(notify);
+      if ([notifications count] >= 1000)
+	{
+          NSLog(@"WARNING ... 1000 dbase notifications in buffer (flushing)");
+	  [self _post: notifications];
+	}
     }
 
   /* Now that we have read all the available notifications from the database,
    * we post them locally in the current thread (if its run loop is active)
    * or the main thread.
    */
-  if (notifications != nil)
-    {
-      if ([[NSRunLoop currentRunLoop] currentMode] == nil)
-	{
-	  if ([self debugging] > 0)
-	    {
-	      [self debug: @"Notifying (main thread): %@", notifications];
-	    }
-	  NS_DURING
-	    {
-	      [self performSelectorOnMainThread: @selector(_postNotifications:)
-				     withObject: notifications
-				  waitUntilDone: NO];
-	    }
-	  NS_HANDLER
-	    {
-	      NSLog(@"Problem posting to main thread: %@ %@",
-		notifications, localException);
-	    }
-	  NS_ENDHANDLER
-	}
-      else
-	{
-	  if ([self debugging] > 0)
-	    {
-	      [self debug: @"Notifying (receiving thread): %@", notifications];
-	    }
-	  NS_DURING
-	    {
-	      [self _postNotifications: notifications];
-	    }
-	  NS_HANDLER
-	    {
-	      NSLog(@"Problem posting in receiving thread: %@ %@",
-		notifications, localException);
-	    }
-	  NS_ENDHANDLER
-	}
-      RELEASE(notifications);
-    }
+  [self _post: notifications];
+  RELEASE(notifications);
 }
 
 - (NSInteger) backendExecute: (NSArray*)info
