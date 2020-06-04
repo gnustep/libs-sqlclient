@@ -2794,10 +2794,11 @@ static int	        poolConnections = 0;
               d = _lastOperation - _lastStart;
               if (d >= _duration)
                 {
+		  NSMutableString	*m;
+
                   if (isCommit || isRollback)
                     {
                       NSEnumerator      *e = [_statements objectEnumerator];
-                      NSMutableString   *m;
 
                       if (isCommit)
                         {
@@ -2813,7 +2814,6 @@ static int	        poolConnections = 0;
                         {
                           [m appendFormat: @"  %@;\n", statement];
                         }
-                      debug = m;
                     }
                   else if ([self debugging] > 1)
                     {
@@ -2821,14 +2821,17 @@ static int	        poolConnections = 0;
                        * For higher debug levels, we log data objects as well
                        * as the query string, otherwise we omit them.
                        */
-                      debug = [NSString stringWithFormat:
+                      m = [NSMutableString stringWithFormat:
                         @"Duration %g for statement %@", d, info];
                     }
                   else
                     {
-                      debug = [NSString stringWithFormat:
+                      m = [NSMutableString stringWithFormat:
                         @"Duration %g for statement %@", d, statement];
                     }
+		  [m appendFormat: @"  affecting %"PRIdPTR" record%s\n",
+		    result, ((1 == result) ? "" : "s")];
+		  debug = m;
                 }
             }
           if (_inTransaction == NO)
@@ -2908,8 +2911,11 @@ static int	        poolConnections = 0;
               d = _lastOperation - _lastStart;
               if (d >= _duration)
                 {
+		  NSUInteger	count = [result count];
+
                   debug = [NSString stringWithFormat:
-                    @"Duration %g for query %@", d, stmt];
+                    @"Duration %g for query %@ producing %"PRIuPTR" record%s",
+		    d, stmt, count, ((1 == count) ? "" : "s")];
                 }
             }
         }
