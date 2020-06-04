@@ -2814,7 +2814,7 @@ static int	        poolConnections = 0;
                         {
                           [m appendFormat: @"  %@;\n", statement];
                         }
-		      [m appendFormat: @"  affecting %"PRIdPTR" record%s\n",
+		      [m appendFormat: @"  affected %"PRIdPTR" record%s\n",
 			result, ((1 == result) ? "" : "s")];
                     }
                   else if ([self debugging] > 1)
@@ -2824,15 +2824,15 @@ static int	        poolConnections = 0;
                        * as the query string, otherwise we omit them.
                        */
                       m = [NSMutableString stringWithFormat:
-                        @"Duration %g for statement %@", d, info];
-		      [m appendFormat: @" affecting %"PRIdPTR" record%s",
+                        @"Duration %g for statement %@;", d, info];
+		      [m appendFormat: @" affected %"PRIdPTR" record%s",
 			result, ((1 == result) ? "" : "s")];
                     }
                   else
                     {
                       m = [NSMutableString stringWithFormat:
-                        @"Duration %g for statement %@", d, statement];
-		      [m appendFormat: @" affecting %"PRIdPTR" record%s",
+                        @"Duration %g for statement %@;", d, statement];
+		      [m appendFormat: @" affected %"PRIdPTR" record%s",
 			result, ((1 == result) ? "" : "s")];
                     }
 		  debug = m;
@@ -2918,7 +2918,7 @@ static int	        poolConnections = 0;
 		  NSUInteger	count = [result count];
 
                   debug = [NSString stringWithFormat:
-                    @"Duration %g for query %@ producing %"PRIuPTR" record%s",
+                    @"Duration %g for query %@;  produced %"PRIuPTR" record%s",
 		    d, stmt, count, ((1 == count) ? "" : "s")];
                 }
             }
