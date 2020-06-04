@@ -2814,6 +2814,8 @@ static int	        poolConnections = 0;
                         {
                           [m appendFormat: @"  %@;\n", statement];
                         }
+		      [m appendFormat: @"  affecting %"PRIdPTR" record%s\n",
+			result, ((1 == result) ? "" : "s")];
                     }
                   else if ([self debugging] > 1)
                     {
@@ -2823,14 +2825,16 @@ static int	        poolConnections = 0;
                        */
                       m = [NSMutableString stringWithFormat:
                         @"Duration %g for statement %@", d, info];
+		      [m appendFormat: @" affecting %"PRIdPTR" record%s",
+			result, ((1 == result) ? "" : "s")];
                     }
                   else
                     {
                       m = [NSMutableString stringWithFormat:
                         @"Duration %g for statement %@", d, statement];
+		      [m appendFormat: @" affecting %"PRIdPTR" record%s",
+			result, ((1 == result) ? "" : "s")];
                     }
-		  [m appendFormat: @"  affecting %"PRIdPTR" record%s\n",
-		    result, ((1 == result) ? "" : "s")];
 		  debug = m;
                 }
             }
