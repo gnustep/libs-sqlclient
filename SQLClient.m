@@ -4622,6 +4622,11 @@ validName(NSString *name)
   return content;
 }
 
+- (NSUInteger) count
+{
+  return [content count];
+}
+
 - (void) dealloc
 {
   [content release];
@@ -4676,6 +4681,11 @@ validName(NSString *name)
 - (NSCountedSet*) content
 {
   return content;
+}
+
+- (NSUInteger) count
+{
+  return [content count];
 }
 
 - (void) dealloc

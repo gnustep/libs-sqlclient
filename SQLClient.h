@@ -1281,10 +1281,11 @@ SQLCLIENT_PRIVATE
  * <p>The ltype argument specifies an object to be used to create objects to
  * store the records produced by the query.<br />
  * The should be a subclass of NSMutableArray.  It must at least
- * implement the [NSObject+alloc] method to create an instnce to store
+ * implement the [NSObject+alloc] method to create an instance to store
  * records.  The instance must implement [NSMutableArray-initWithCapacity:]
- * to initialise itsself and [NSMutableArray-addObject:] to allow the
- * backend to add records to it.<br />
+ * to initialise itsself, [NSMutableArray-addObject:] to allow the
+ * backend to add records to it, and -count to return the number of records
+ * added.<br />
  * For caching to work, it must be possible to make a mutable copy of the
  * instance using the mutableCopy method.
  * </p>
@@ -1633,8 +1634,9 @@ SQLCLIENT_PRIVATE
  * If rtype is nil then the [SQLRecord] class is used.<br />
  * The value of ltype must respond to the [NSObject+alloc] method to produce
  * a container which must repond to the [NSMutableArray-initWithCapacity:]
- * method to initialise itsself and the [NSMutableArray-addObject:] method
- * to add records to the list.<br />
+ * method to initialise itsself, the [NSMutableArray-addObject:] method
+ * to add records to the list, and the [NSMutableArray-count] method to
+ * return the number of records added.<br />
  * If ltype is nil then the [NSMutableArray] class is used.<br />
  * The list produced by this argument is used as the return value of
  * this method.<br /> 
