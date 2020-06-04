@@ -216,12 +216,7 @@ lengthUTF8(const uint8_t *p, unsigned l, BOOL *ascii, BOOL *latin1)
   return l;
 }
 
-/* This is the layout of the instance variables of the constant string class
- * produced by the compiler.
- * The pointer give us the start of a UTF8 string, so we can create our own
- * subclass using all the methods of the original class as long as we set
- * that pointer to a buffer of UTF8 data stored in the object after the
- * instance variables.
+/*
  */
 @interface SQLString: SQLLiteral
 {
@@ -288,10 +283,25 @@ SQLClientCopyLiteral(NSString *aString)
         }
       if (c != LitStringClass && c != TinyStringClass && c != SQLStringClass)
         {
-          const char    *p = [aString UTF8String];
-          int           l = strlen(p);
+	  /* The SQLString class uses utf8 and can be very inefficient
+	   * if it's too long.  For long strings we use a proxy instead.
+	   */
+	  if ([aString length] > 64)
+	    {
+	      SQLLiteralProxy  *l;
 
-          aString = SQLClientNewLiteral(p, l);
+	      l = (SQLLiteralProxy*)
+		NSAllocateObject(LitProxyClass, 0, NSDefaultMallocZone());
+	      l->content = [aString copy];
+	      aString = l;
+	    }
+	  else
+	    {
+	      const char    *p = [aString UTF8String];
+	      int           l = strlen(p);
+
+	      aString = SQLClientNewLiteral(p, l);
+	    }
         }
       else
         {
@@ -315,11 +325,26 @@ SQLClientMakeLiteral(NSString *aString)
         }
       if (c != LitStringClass && c != TinyStringClass && c != SQLStringClass)
         {
-          const char    *p = [aString UTF8String];
-          int           l = strlen(p);
-          NSString      *s = SQLClientNewLiteral(p, l);
+	  /* The SQLString class uses utf8 and can be very inefficient
+	   * if it's too long.  For long strings we use a proxy instead.
+	   */
+	  if ([aString length] > 64)
+	    {
+	      SQLLiteralProxy  *l;
 
-          aString = [s autorelease];
+	      l = (SQLLiteralProxy*)
+		NSAllocateObject(LitProxyClass, 0, NSDefaultMallocZone());
+	      l->content = [aString copy];
+	      return (SQLLiteral*)[l autorelease];  
+	    }
+	  else
+	    {
+	      const char    *p = [aString UTF8String];
+	      int           l = strlen(p);
+	      NSString      *s = SQLClientNewLiteral(p, l);
+
+	      aString = [s autorelease];
+	    }
         }
     }
   return (SQLLiteral*)aString;
