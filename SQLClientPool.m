@@ -570,6 +570,7 @@ static Class      cls = Nil;
   int   index;
 
   if (minConnections < 1) minConnections = 1;
+  if (maxConnections < 1) maxConnections = 5;
   if (maxConnections > 100) maxConnections = 100;
   if (minConnections > maxConnections) minConnections = maxConnections;
 
