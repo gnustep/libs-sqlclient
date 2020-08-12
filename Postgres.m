@@ -1727,7 +1727,7 @@ static inline unsigned int trim(char *str, unsigned len)
 {
   NSMutableString       *s = [NSMutableString stringWithCapacity: 1000];
 
-  [self quoteArray: a to: s quotingStrings: YES];
+  [self quoteArray: a toString: s quotingStrings: YES];
   return SQLClientProxyLiteral(s);
 }
 
