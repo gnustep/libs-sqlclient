@@ -972,10 +972,17 @@ SQLCLIENT_PRIVATE
 
 /* Produce a quoted string from an array on databases where arrays are
  * supported (currently only Postgres).  This method is implemented by
- * calling -quoteArray:toString:quotingStrings: with the option to
+ * calling -quoteArray:toString:quotingStrings: with the option to NOT
  * quote strings found in the array.
  */
 - (SQLLiteral*) quoteArray: (NSArray*)a;
+
+/* Produce a quoted string from an array on databases where arrays are
+ * supported (currently only Postgres).  This method is implemented by
+ * calling -quoteArray:toString:quotingStrings: with the option to
+ * quote strings found in the array.
+ */
+- (SQLLiteral*) quoteArraySafe: (NSArray*)a;
 
 /* Produce a quoted string from an array on databases where arrays are
  * supported (currently only Postgres).<br />
@@ -1933,6 +1940,7 @@ typedef struct _SQLClientPoolItem SQLClientPoolItem;
 - (NSString*) queryString: (NSString*)stmt,...;
 - (SQLLiteral*) quote: (id)obj;
 - (SQLLiteral*) quoteArray: (NSArray *)a;
+- (SQLLiteral*) quoteArraySafe: (NSArray *)a;
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
                  quotingStrings: (BOOL)_q;

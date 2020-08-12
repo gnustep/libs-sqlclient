@@ -2346,9 +2346,22 @@ static int	        poolConnections = 0;
 
 - (SQLLiteral*) quoteArray: (NSArray *)a
 {
-  [NSException raise: NSGenericException
-    format: @"%@ not supported for this database", NSStringFromSelector(_cmd)]; 
-  return nil;
+  NSMutableString	*s;
+
+  s = [self quoteArray: a 
+	      toString: nil 
+	quotingStrings: NO];
+  return SQLClientProxyLiteral(s);
+}
+
+- (SQLLiteral*) quoteArraySafe: (NSArray *)a
+{
+  NSMutableString	*s;
+
+  s = [self quoteArray: a 
+	      toString: nil 
+	quotingStrings: YES];
+  return SQLClientProxyLiteral(s);
 }
 
 - (NSMutableString*) quoteArray: (NSArray *)a

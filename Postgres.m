@@ -1723,14 +1723,6 @@ static inline unsigned int trim(char *str, unsigned len)
   [super dealloc];
 }
 
-- (SQLLiteral*) quoteArray: (NSArray *)a
-{
-  NSMutableString       *s = [NSMutableString stringWithCapacity: 1000];
-
-  [self quoteArray: a toString: s quotingStrings: YES];
-  return SQLClientProxyLiteral(s);
-}
-
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
                  quotingStrings: (BOOL)q

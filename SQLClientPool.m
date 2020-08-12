@@ -1326,6 +1326,11 @@ static Class      cls = Nil;
   return (SQLLiteral*)[_items[0].c quoteArray: a];
 }
 
+- (SQLLiteral*) quoteArraySafe: (NSArray*)a
+{
+  return (SQLLiteral*)[_items[0].c quoteArraySafe: a];
+}
+
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
                  quotingStrings: (BOOL)_q
