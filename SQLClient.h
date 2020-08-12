@@ -971,17 +971,25 @@ SQLCLIENT_PRIVATE
 - (SQLLiteral*) quotef: (NSString*)fmt, ...;
 
 /* Produce a quoted string from an array on databases where arrays are
- * supported (currently only Postgres).
+ * supported (currently only Postgres).  This method is implemented by
+ * calling -quoteArray:toString:quotingStrings: with the option to
+ * quote strings found in the array.
  */
 - (SQLLiteral*) quoteArray: (NSArray*)a;
 
 /* Produce a quoted string from an array on databases where arrays are
  * supported (currently only Postgres).<br />
+ * If the s argument is nil, a new mutable string is created and returned.
  * If the s argument is not nil, the quoted array is appended to it rather
  * than being produced in a new string (this method uses that feature to
- * recursively quote nested arrays).<br />
+ * recursively quote nested arrays) and the method returns the argument.<br />
  * The q argument determines whether string values found in the array
- * are quoted or added literally.
+ * are quoted or added literally.<br />
+ * NB. Passing NO to prevent strings from being quoted is dangerous since
+ * it could result in an invalid quoted array if any of the array contents
+ * is a string which would not be syntactically valid;  use it only when
+ * you are certain that the strings in the array are either already
+ * quoted or are valid representations of some other type. 
  */
 - (NSMutableString*) quoteArray: (NSArray *)a
                        toString: (NSMutableString *)s
