@@ -432,6 +432,14 @@ quoteBigInteger(int64_t i)
               format: @"Illegal attempt to allocate instance of SQLLiteral"];
   return nil;
 }
+- (id) copy
+{
+  return RETAIN(self);
+}
+- (id) copyWithZone: (NSZone*)z
+{
+  return RETAIN(self);
+}
 @end
 
 @implementation SQLLiteralProxy
