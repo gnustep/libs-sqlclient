@@ -2909,9 +2909,10 @@ static int	        poolConnections = 0;
                     {
                       NSLog(@"Will retry after: %@", localException);
                     }
+		  [self connect];
                 }
             }
-          if (done == YES)
+          if (done)
             {
               [lock unlock];
               [localException raise];
@@ -2987,9 +2988,10 @@ static int	        poolConnections = 0;
                     {
                       NSLog(@"Will retry after: %@", localException);
                     }
+		  [self connect];
                 }
             }
-          if (YES == done)
+          if (done)
             {
               [lock unlock];
               [localException raise];
