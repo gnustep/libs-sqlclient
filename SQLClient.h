@@ -1095,6 +1095,15 @@ SQLCLIENT_PRIVATE
  */
 - (void) setName: (NSString*)s;
 
+/** Sets any backend specific parameters for the database connection.
+ * The base class implementation does nothing; subclasses are expected
+ * to store any optional configuration information that they wish to use
+ * themselves.<br />
+ * This is called automatically to configure the connection ...
+ * you normally shouldn't need to call it yourself.
+ */
+- (void) setOptions: (NSDictionary*)o;
+
 /**
  * Set the database password for this object.<br />
  * This is called automatically to configure the connection ...

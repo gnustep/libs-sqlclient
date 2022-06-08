@@ -55,6 +55,9 @@
 #include	<libpq-fe.h>
 
 @interface SQLClientPostgres : SQLClient
+{
+  NSDictionary	*options;
+}
 @end
 
 @interface	SQLClientPostgres(Embedded)
@@ -76,11 +79,13 @@ typedef struct	{
   int           _backendPID;
   int           _descriptor;    // For monitoring in run loop
   NSRunLoop     *_runLoop;      // For listen/unlisten monitoring
+  NSDictionary	*_options;
 } ConnectionInfo;
 
 #define	cInfo			((ConnectionInfo*)(self->extra))
 #define	backendPID		(cInfo->_backendPID)
 #define	connection		(cInfo->_connection)
+#define	options			(cInfo->_options)
 
 static NSDate	*future = nil;
 static NSNull	*null = nil;
@@ -388,6 +393,7 @@ connectQuote(NSString *str)
 	  NSString		*host = nil;
 	  NSString		*port = nil;
 	  NSString		*dbase = [self database];
+	  NSString		*sslmode = [options objectForKey: @"sslmode"];
 	  NSString		*str;
 	  NSRange		r;
 	  NSRange		pwRange = NSMakeRange(NSNotFound, 0);
@@ -450,6 +456,15 @@ connectQuote(NSString *str)
 	    {
 	      [m appendString: @" application_name="];
 	      [m appendString: str];
+	    }
+	  if ([sslmode isEqual: @"require"])
+	    {
+	      str = connectQuote(@"require");
+	      if (str != nil)
+		{
+		  [m appendString: @" sslmode="];
+		  [m appendString: str];
+		}
 	    }
 
 	  if ([self debugging] > 0)
@@ -1718,6 +1733,7 @@ static inline unsigned int trim(char *str, unsigned len)
         {
           [self disconnect];
         }
+      RELEASE(options);
       NSZoneFree(NSDefaultMallocZone(), extra);
     }
   [super dealloc];
@@ -1783,6 +1799,16 @@ static inline unsigned int trim(char *str, unsigned len)
   return s;
 }
 
+- (void) setOptions: (NSDictionary*)o
+{
+  if (0 == extra)
+    {
+      extra = NSZoneMalloc(NSDefaultMallocZone(), sizeof(ConnectionInfo));
+      memset(extra, '\0', sizeof(ConnectionInfo));
+      cInfo->_descriptor = -1;
+    }
+  ASSIGNCOPY(options, o);
+}
 @end
 
 #if     defined(GNUSTEP_BASE_LIBRARY) && !defined(__MINGW__)

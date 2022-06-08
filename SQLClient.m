@@ -2727,6 +2727,11 @@ static int	        poolConnections = 0;
   [lock unlock];
 }
 
+- (void) setOptions: (NSDictionary*)o
+{
+  return;	// Abstract class does not use options
+}
+
 - (void) setPassword: (NSString*)s
 {
   [lock lock];
@@ -3327,7 +3332,8 @@ static int	        poolConnections = 0;
                * explicitly linked into the bundle, but in others it
                * requires them to not be linked. To handle that, we create
                * two versions of each bundle, the seond version has _libs
-               * appended to the bundle name, and has the extra libraries linked.
+               * appended to the bundle name, and has the extra libraries
+               * linked.
                */
               path = [path stringByDeletingPathExtension];
               path = [path stringByAppendingString: @"_libs"];
@@ -3405,6 +3411,8 @@ static int	        poolConnections = 0;
             }
         }
       [self setPassword: s];
+
+      [self setOptions: (nil == d) ? o : d];
     }
   NS_HANDLER
     {

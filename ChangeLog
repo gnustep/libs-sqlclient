@@ -1,3 +1,13 @@
+2022-06-08 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: Declare new (-setOptions:) method.
+	* SQLClient.m: Implement stub for new method and add code to call it
+	to register any optional configuration, passing the configuration
+	dictionary as a parameter.
+	* Postgres.m: Implement new method to store configuration information
+	and use sslmode option if (and only if) it is set to require an
+	encrypted connection.
+
 2020-09-01  Wolfgang Lux  <wolfgang.lux@gmail.com>
 
 	* SQLClient.m (release): Reinstate fix to avoid deadlock while
