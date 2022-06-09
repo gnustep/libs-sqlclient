@@ -3412,7 +3412,11 @@ static int	        poolConnections = 0;
         }
       [self setPassword: s];
 
-      [self setOptions: (nil == d) ? o : d];
+      if (nil == d && [o isKindOfClass: [NSDictionary class]])
+	{
+	  d = (NSDictionary*)o;
+	}
+      [self setOptions: d];
     }
   NS_HANDLER
     {
