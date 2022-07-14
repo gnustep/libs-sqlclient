@@ -119,6 +119,22 @@ static Class      cls = Nil;
   return [_items[0].c cache];
 }
 
+- (uint64_t) committed
+{
+  NSUInteger	index;
+  uint64_t	total = 0;
+
+  [_lock lock];
+  for (index = 0; index < _max; index++)
+    {
+      SQLClient         *client = _items[index].c;
+
+      total += [client committed];
+    }
+  [_lock unlock];
+  return total;
+}
+
 - (void) dealloc
 {
   SQLClientPoolItem     *old;
@@ -648,13 +664,14 @@ static Class      cls = Nil;
   NSString      *s;
 
   s = [NSString stringWithFormat:
-    @"  Immediate provisions: %llu\n"
-    @"  Delayed provisions:   %llu\n"
-    @"  Timed out provisions: %llu\n"
-    @"  Slowest provision:    %g\n"
-    @"  Average delay:        %g\n"
-    @"  Average timeout:      %g\n"
-    @"  Average over all:     %g\n",
+    @"  Immediate provisions:   %llu\n"
+    @"  Delayed provisions:     %llu\n"
+    @"  Timed out provisions:   %llu\n"
+    @"  Slowest provision:      %g\n"
+    @"  Average delay:          %g\n"
+    @"  Average timeout:        %g\n"
+    @"  Average over all:       %g\n"
+    @"  Committed transactions: %"PRIu64"\n",
     (unsigned long long)_immediate,
     (unsigned long long)_delayed,
     (unsigned long long)_failed,
@@ -663,7 +680,8 @@ static Class      cls = Nil;
     (_failed > 0) ? _failWaits / _failed : 0.0,
     (_immediate + _delayed + _failed) > 0
       ? (_failWaits + _delayWaits) / (_immediate + _delayed + _failed)
-      : 0.0];
+      : 0.0,
+    [self committed]];
   return s;
 }
 
@@ -729,7 +747,6 @@ static Class      cls = Nil;
                 }
               [liveInfo addObject: [tmp stringByAppendingFormat:
                 @") active in transaction since %@\n", d]];
-              rc = 0;
             }
           else
             {
@@ -799,7 +816,7 @@ static Class      cls = Nil;
     }
 
   s = [NSMutableString stringWithFormat: @" size min: %u, max: %u\n"
-    @"live:%u, used:%u, idle:%u, free:%u, dead:%u\n",
+    @"  live:%u, used:%u, idle:%u, free:%u, dead:%u\n",
     _min, _max, live, used, idle, free, dead];
 
   if (liveInfo)

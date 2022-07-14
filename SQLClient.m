@@ -1609,6 +1609,11 @@ static int	        poolConnections = 0;
   NS_ENDHANDLER
 }
 
+- (uint64_t) committed
+{
+  return _committed;
+}
+
 - (BOOL) connect
 {
   if (NO == [self tryConnect] && abandonAfter > 0.0)
@@ -1699,6 +1704,7 @@ static int	        poolConnections = 0;
       [s appendFormat: @"  Password    - %@\n",
         [self password] == nil ? @"unknown" : @"known"];
       [s appendFormat: @"  Connected   - %@\n", connected ? @"yes" : @"no"];
+      [s appendFormat: @"  Committed   - %"PRIu64"\n", _committed];
       [s appendFormat: @"  Transaction - %@\n",
         _inTransaction ? @"yes" : @"no"];
     }
@@ -2896,6 +2902,7 @@ static int	        poolConnections = 0;
           if (_inTransaction == NO)
             {
               [_statements removeAllObjects];
+	      _committed++;
             }
         }
       NS_HANDLER
@@ -2977,6 +2984,10 @@ static int	        poolConnections = 0;
                     @"Duration %g for query %@;  produced %"PRIuPTR" record%s",
 		    d, stmt, count, ((1 == count) ? "" : "s")];
                 }
+            }
+          if (_inTransaction == NO)
+            {
+	      _committed++;
             }
         }
       NS_HANDLER

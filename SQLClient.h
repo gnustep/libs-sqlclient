@@ -522,6 +522,7 @@ SQLCLIENT_PRIVATE
   NSTimeInterval	_lastConnect;	/** Last successful connect */
   NSTimeInterval	_lastStart;	/** Last op start or connect */
   NSTimeInterval	_duration;      /** Duration logging threshold */
+  uint64_t		_committed;	/** Count of committed transactions */
   unsigned int		_debugging;	/** The current debugging level */
   GSCache		*_cache;	/** The cache for query results */
   NSThread		*_cacheThread;	/** Thread for cache queries */
@@ -622,6 +623,10 @@ SQLCLIENT_PRIVATE
  * </p>
  */
 - (void) begin;
+
+/** Returns the number of committed transactions.
+ */
+- (uint64_t) committed;
 
 /** This grabs the receiver for use by the current thread.<br />
  * If limit is nil or in the past, makes a single immediate attempt.<br />
@@ -1158,6 +1163,7 @@ SQLCLIENT_PRIVATE
 - (NSMutableArray*) simpleQuery: (SQLLitArg*)stmt
 		     recordType: (id)rtype
 		       listType: (id)ltype;
+
 
 /** If there is no database connection, attempts to establish one.<br />
  * This does not do automatic retries on connection failure.<br />
@@ -1766,6 +1772,10 @@ typedef struct _SQLClientPoolItem SQLClientPoolItem;
  * requests made through them.  Creates a new cache if necessary.
  */
 - (GSCache*) cache;
+
+/** Returns the number of committed transactions.
+ */
+- (uint64_t) committed;
 
 /**
  * Creates a pool of clients using a single client configuration.<br />

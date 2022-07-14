@@ -1,5 +1,13 @@
 2022-06-08 Richard Frith-Macdonald  <rfm@gnu.org>
 
+	* SQLClient.h: Declare new (-committed) method.
+	* SQLClient.m: 
+	* SQLClientPool.m: 
+	Implement -committed to return the count of transactions committed by
+	a client or pool.  Update -description to report that too.
+
+2022-06-08 Richard Frith-Macdonald  <rfm@gnu.org>
+
 	* SQLClient.h: Declare new (-setOptions:) method.
 	* SQLClient.m: Implement stub for new method and add code to call it
 	to register any optional configuration, passing the configuration
