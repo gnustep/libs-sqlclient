@@ -1164,7 +1164,7 @@ static inline unsigned int trim(char *str, unsigned len)
             NSMutableArray      *a;
 
             a = [[NSMutableArray alloc] initWithCapacity: 10];
-            p = [self parseIntoArray: a type: arrayType from: p];
+            (void)[self parseIntoArray: a type: arrayType from: p];
             if ([self debugging] > 2)
               {
                 NSLog(@"Parsed array is %@", a);
