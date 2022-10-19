@@ -885,7 +885,10 @@ static Class      cls = Nil;
                    * caused by deallocation.
                    */
                   _items[index].u = 0;
-                  NSIncrementExtraRefCount(client);
+                  if (client)
+                    {
+                      NSIncrementExtraRefCount(client);
+                    }
                 }
               else
                 {
