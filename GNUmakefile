@@ -25,7 +25,7 @@ GNUSTEP_MAKE_PARALLEL_BUILDING=no
 -include config.make
 
 PACKAGE_NAME = SQLClient
-PACKAGE_VERSION = 1.8.4
+PACKAGE_VERSION = 1.9.0
 CVS_MODULE_NAME = gnustep/dev-libs/SQLClient
 CVS_TAG_NAME = SQLClient
 SVN_BASE_URL=svn+ssh://svn.gna.org/svn/gnustep/libs
@@ -38,7 +38,7 @@ TEST_TOOL_NAME=
 LIBRARY_NAME=SQLClient
 DOCUMENT_NAME=SQLClient
 
-SQLClient_INTERFACE_VERSION=1.8
+SQLClient_INTERFACE_VERSION=1.9
 
 SQLClient_OBJC_FILES = SQLClient.m SQLClientPool.m
 SQLClient_LIBRARIES_DEPEND_UPON = -lPerformance $(FND_LIBS) $(OBJC_LIBS)
