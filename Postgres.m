@@ -393,7 +393,8 @@ connectQuote(NSString *str)
 	  NSString		*host = nil;
 	  NSString		*port = nil;
 	  NSString		*dbase = [self database];
-	  NSString		*sslmode = [options objectForKey: @"sslmode"];
+	  NSString		*sslmode;
+	  int			timeout;
 	  NSString		*str;
 	  NSRange		r;
 	  NSRange		pwRange = NSMakeRange(NSNotFound, 0);
@@ -457,6 +458,8 @@ connectQuote(NSString *str)
 	      [m appendString: @" application_name="];
 	      [m appendString: str];
 	    }
+
+	  sslmode = [options objectForKey: @"sslmode"];
 	  if ([sslmode isEqual: @"require"])
 	    {
 	      str = connectQuote(@"require");
@@ -465,6 +468,12 @@ connectQuote(NSString *str)
 		  [m appendString: @" sslmode="];
 		  [m appendString: str];
 		}
+	    }
+
+	  timeout = [[options objectForKey: @"connect_timeout"] intValue];
+	  if (timeout > 0)
+	    {
+	      [m appendFormat: @" connect_timeout=%d", timeout];
 	    }
 
 	  if ([self debugging] > 0)

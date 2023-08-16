@@ -1,3 +1,8 @@
+2023-08-16 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* Postgres.m: Implement support for connect_timeoout= option to
+	control how long we allow for a connection attempt to a host.
+
 2023-01-13 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* GNUmakefile: bumped version to 1.9.0.
