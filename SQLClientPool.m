@@ -48,6 +48,7 @@ struct _SQLClientPoolItem {
 
 @interface      SQLClient(Pool)
 - (void) _clearPool: (SQLClientPool*)p;
+- (void) _waitPool: (NSTimeInterval)ti;
 @end
 
 @implementation SQLClient(Pool)
@@ -57,6 +58,10 @@ struct _SQLClientPoolItem {
 
   _pool = nil;
 }
+- (void) _waitPool: (NSTimeInterval)ti
+{
+  _waitPool = ti;
+}
 @end
 
 @interface SQLClientPool (Adjust)
@@ -65,6 +70,10 @@ struct _SQLClientPoolItem {
 
 @interface SQLClientPool (Private)
 - (void) _lock;
+- (SQLClient*) _provideClientBeforeDate: (NSDate*)when
+			      exclusive: (BOOL)isLocal
+			        blocked: (NSTimeInterval*)ti;
+- (SQLClient*) _provide;
 - (NSString*) _rc: (SQLClient*)o;
 - (void) _unlock;
 @end
@@ -239,223 +248,9 @@ static Class      cls = Nil;
 
 - (SQLClient*) provideClientBeforeDate: (NSDate*)when exclusive: (BOOL)isLocal
 {
-  NSThread              *thread = [NSThread currentThread];
-  NSTimeInterval        start = [NSDate timeIntervalSinceReferenceDate];
-  NSTimeInterval        now = start;
-  SQLClient             *client = nil;
-  int                   preferred = -1;
-  int                   found = -1;
-  int                   cond = 0;
-  int                   index;
-
-  /* If this is a request for a non-exclusive connection, we can simply
-   * check to see if there's already such a connection available.
-   */
-  if (NO == isLocal)
-    {
-      [_lock lock];
-      for (index = 0; index < _max; index++)
-        {
-          if (_items[index].o == thread && _items[index].u < NSNotFound
-            && NO == [_items[index].c isInTransaction])
-            {
-              preferred = index;        // Ignore any other connected client
-              break;
-            }
-          if (nil == _items[index].o && 0 == _items[index].u)
-            {
-              if (preferred < 0 && YES == [_items[index].c connected])
-                {
-                  preferred = index;
-                }
-              else
-                {
-                  found = index;
-                }
-            }
-        }
-      if (preferred >= 0)
-        {
-          found = preferred;    // Prefer a connected client.
-        }
-      if (found >= 0)
-        {
-          _items[found].t = now;
-          if (0 == _items[found].u++)
-            {
-              ASSIGN(_items[found].o, thread);
-              client = [_items[found].c autorelease];
-            }
-          else
-            {
-              /* We have already provided this client, so we must retain it
-               * before we autorelease it, to keep retain counts  in sync.
-               */
-              client = [[_items[found].c retain] autorelease];
-            }
-          _immediate++;
-        }
-      [self _unlock];
-      if (nil != client)
-        {
-          if (_debugging > 2)
-            {
-              NSLog(@"%@ provides %p%@",
-                self, _items[found].c, [self _rc: client]);
-            }
-          return client;
-        }
-    }
-
-  /* If we haven't been given a timeout, we should wait for a client
-   * indefinitely ... so we set the timeout to be in the distant future.
-   */
-  if (nil == when)
-    {
-      static NSDate     *future = nil;
-
-      if (nil == future)
-        {
-          future = RETAIN([NSDate distantFuture]);
-        }
-      when = future;
-    }
-
-  /* We want to log stuff if we don't get a client quickly.
-   * Ideally we get the lock straight away,
-   * but if not we want to log every ten seconds (and possibly
-   * when we begin waiting).
-   */
-  if (YES == [_lock tryLockWhenCondition: 1])
-    {
-      _immediate++;
-    }
-  else
-    {
-      NSTimeInterval    end = [when timeIntervalSinceReferenceDate];
-      NSTimeInterval    dif = 0.0;
-      NSDate            *until;
-      BOOL              locked;
-
-      if (_debugging > 1)
-        {
-          NSLog(@"%@ has no clients available", self);
-        }
-      until = [[NSDate alloc]
-        initWithTimeIntervalSinceReferenceDate: now + 10.0];
-      locked = NO;
-      while (NO == locked && now < end)
-        {
-          if (now >= end)
-            {
-              /* End date is passed ... try to get the lock immediately.
-               */
-              locked = [_lock tryLockWhenCondition: 1];
-            }
-          else if ([when earlierDate: until] == until)
-            { 
-              locked = [_lock lockWhenCondition: 1 beforeDate: until];
-            }
-          else
-            { 
-              locked = [_lock lockWhenCondition: 1 beforeDate: when];
-            }
-          now = [NSDate timeIntervalSinceReferenceDate];
-          dif = now - start;
-          if (NO == locked && now < end)
-            {
-              if (_debugging > 0 || dif > 30.0
-                || (_duration >= 0.0 && dif > _duration))
-                {
-                  NSLog(@"%@ still waiting after %g seconds:\n%@",
-                    self, dif, [self status]);
-                }
-              [until release];
-              until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
-            }
-        }
-      [until release];
-      if (dif > _longest)
-        {
-          _longest = dif;
-        }
-      if (NO == locked)
-        {
-          if (_debugging > 0 || dif > 30.0
-            || (_duration >= 0.0 && dif > _duration))
-            {
-              NSLog(@"%@ abandoned wait after %g seconds:\n%@",
-                self, dif, [self status]);
-            }
-          _failed++;
-          _failWaits += dif;
-          return nil;
-        }
-      if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
-        {
-          NSLog(@"%@ provided client after %g seconds",
-            self, dif);
-        }
-      _delayed++;
-      _delayWaits += dif;
-    }
-
-  for (index = 0; index < _max && 0 == cond; index++)
-    {
-      if (0 == _items[index].u)
-        {
-          if (preferred >= 0 || found >= 0)
-            {
-              /* There's at least one more client available to be
-               * provided, so we want to re-lock with condition 1.
-               */
-              cond = 1;
-            }
-          if (preferred < 0 && YES == [_items[index].c connected])
-            {
-              preferred = index;
-            }
-          else
-            {
-              found = index;
-            }
-        }
-      else if (NO == isLocal
-        && _items[index].o == thread
-        && _items[index].u < NSNotFound
-        && NO == [_items[index].c isInTransaction])
-        {
-          /* We are allowed to re-use connections in the current thread,
-           * so if we have found one, treat it as the preferred choice.
-           */
-          preferred = index;
-        }
-    }
-
-  /* We prefer to use a client which is already connected, so we
-   * avoid opening unnecessary connections.
-   */
-  if (preferred >= 0)
-    {
-      found = preferred;
-    }
-  if (YES == isLocal)
-    {
-      _items[found].u = NSNotFound;
-    }
-  else
-    {
-      _items[found].u++;
-    }
-  _items[found].t = now;
-  ASSIGN(_items[found].o, thread);
-  [self _unlock];
-  client = [_items[found].c autorelease];
-  if (_debugging > 2)
-    {
-      NSLog(@"%@ provides %p%@", self, _items[found].c, [self _rc: client]);
-    }
-  return client;
+  return [self _provideClientBeforeDate: when
+			      exclusive: isLocal
+			        blocked: (NSTimeInterval*)NULL];
 }
 
 - (SQLClient*) provideClientExclusive
@@ -970,6 +765,259 @@ static Class      cls = Nil;
   [_lock lock];
 }
 
+- (SQLClient*) _provideClientBeforeDate: (NSDate*)when
+			      exclusive: (BOOL)isLocal
+			        blocked: (NSTimeInterval*)ti
+{
+  NSThread              *thread = [NSThread currentThread];
+  NSTimeInterval        start = [NSDate timeIntervalSinceReferenceDate];
+  NSTimeInterval        now = start;
+  NSTimeInterval        block = 0.0;
+  SQLClient             *client = nil;
+  int                   preferred = -1;
+  int                   found = -1;
+  int                   cond = 0;
+  int                   index;
+
+  /* If this is a request for a non-exclusive connection, we can simply
+   * check to see if there's already such a connection available.
+   */
+  if (NO == isLocal)
+    {
+      if (NO == [_lock tryLock])
+	{
+	  [_lock lock];
+	  block = start;
+	}
+      for (index = 0; index < _max; index++)
+        {
+          if (_items[index].o == thread && _items[index].u < NSNotFound
+            && NO == [_items[index].c isInTransaction])
+            {
+              preferred = index;        // Ignore any other connected client
+              break;
+            }
+          if (nil == _items[index].o && 0 == _items[index].u)
+            {
+              if (preferred < 0 && YES == [_items[index].c connected])
+                {
+                  preferred = index;
+                }
+              else
+                {
+                  found = index;
+                }
+            }
+        }
+      if (preferred >= 0)
+        {
+          found = preferred;    // Prefer a connected client.
+        }
+      if (found >= 0)
+        {
+          _items[found].t = now;
+          if (0 == _items[found].u++)
+            {
+              ASSIGN(_items[found].o, thread);
+              client = [_items[found].c autorelease];
+            }
+          else
+            {
+              /* We have already provided this client, so we must retain it
+               * before we autorelease it, to keep retain counts  in sync.
+               */
+              client = [[_items[found].c retain] autorelease];
+            }
+          _immediate++;
+        }
+      [self _unlock];
+      if (nil != client)
+        {
+          if (_debugging > 2)
+            {
+              NSLog(@"%@ provides %p%@",
+                self, _items[found].c, [self _rc: client]);
+            }
+	  if (ti)
+	    {
+	      *ti = block;
+	    }
+          return client;
+        }
+    }
+
+  /* If we haven't been given a timeout, we should wait for a client
+   * indefinitely ... so we set the timeout to be in the distant future.
+   */
+  if (nil == when)
+    {
+      static NSDate     *future = nil;
+
+      if (nil == future)
+        {
+          future = RETAIN([NSDate distantFuture]);
+        }
+      when = future;
+    }
+
+  /* We want to log stuff if we don't get a client quickly.
+   * Ideally we get the lock straight away,
+   * but if not we want to log every ten seconds (and possibly
+   * when we begin waiting).
+   */
+  if ([_lock tryLockWhenCondition: 1])
+    {
+      _immediate++;
+    }
+  else
+    {
+      NSTimeInterval    end = [when timeIntervalSinceReferenceDate];
+      NSTimeInterval    dif = 0.0;
+      NSDate            *until;
+      BOOL              locked;
+
+      block = start;
+      if (_debugging > 1)
+        {
+          NSLog(@"%@ has no clients available", self);
+        }
+      until = [[NSDate alloc]
+        initWithTimeIntervalSinceReferenceDate: now + 10.0];
+      locked = NO;
+      while (NO == locked && now < end)
+        {
+          if (now >= end)
+            {
+              /* End date is passed ... try to get the lock immediately.
+               */
+              locked = [_lock tryLockWhenCondition: 1];
+            }
+          else if ([when earlierDate: until] == until)
+            { 
+              locked = [_lock lockWhenCondition: 1 beforeDate: until];
+            }
+          else
+            { 
+              locked = [_lock lockWhenCondition: 1 beforeDate: when];
+            }
+          now = [NSDate timeIntervalSinceReferenceDate];
+          dif = now - start;
+          if (NO == locked && now < end)
+            {
+              if (_debugging > 0 || dif > 30.0
+                || (_duration >= 0.0 && dif > _duration))
+                {
+                  NSLog(@"%@ still waiting after %g seconds:\n%@",
+                    self, dif, [self status]);
+                }
+              [until release];
+              until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
+            }
+        }
+      [until release];
+      if (dif > _longest)
+        {
+          _longest = dif;
+        }
+      if (NO == locked)
+        {
+          if (_debugging > 0 || dif > 30.0
+            || (_duration >= 0.0 && dif > _duration))
+            {
+              NSLog(@"%@ abandoned wait after %g seconds:\n%@",
+                self, dif, [self status]);
+            }
+          _failed++;
+          _failWaits += dif;
+	  if (ti)
+	    {
+	      *ti = block;
+	    }
+          return nil;
+        }
+      if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
+        {
+          NSLog(@"%@ provided client after %g seconds",
+            self, dif);
+        }
+      _delayed++;
+      _delayWaits += dif;
+    }
+
+  for (index = 0; index < _max && 0 == cond; index++)
+    {
+      if (0 == _items[index].u)
+        {
+          if (preferred >= 0 || found >= 0)
+            {
+              /* There's at least one more client available to be
+               * provided, so we want to re-lock with condition 1.
+               */
+              cond = 1;
+            }
+          if (preferred < 0 && YES == [_items[index].c connected])
+            {
+              preferred = index;
+            }
+          else
+            {
+              found = index;
+            }
+        }
+      else if (NO == isLocal
+        && _items[index].o == thread
+        && _items[index].u < NSNotFound
+        && NO == [_items[index].c isInTransaction])
+        {
+          /* We are allowed to re-use connections in the current thread,
+           * so if we have found one, treat it as the preferred choice.
+           */
+          preferred = index;
+        }
+    }
+
+  /* We prefer to use a client which is already connected, so we
+   * avoid opening unnecessary connections.
+   */
+  if (preferred >= 0)
+    {
+      found = preferred;
+    }
+  if (YES == isLocal)
+    {
+      _items[found].u = NSNotFound;
+    }
+  else
+    {
+      _items[found].u++;
+    }
+  _items[found].t = now;
+  ASSIGN(_items[found].o, thread);
+  [self _unlock];
+  client = [_items[found].c autorelease];
+  if (_debugging > 2)
+    {
+      NSLog(@"%@ provides %p%@", self, _items[found].c, [self _rc: client]);
+    }
+  if (ti)
+    {
+      *ti = block;
+    }
+  return client;
+}
+
+- (SQLClient*) _provide
+{
+  NSTimeInterval	start;
+  SQLClient		*db;
+
+  db = [self _provideClientBeforeDate: nil
+			    exclusive: NO
+			      blocked: &start];
+  [db _waitPool: start];
+  return db;
+}
+
 - (NSString*) _rc: (SQLClient*)o
 {
 #if     defined(GNUSTEP)
@@ -1083,7 +1131,7 @@ static Class      cls = Nil;
   query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db cache: seconds simpleQuery: query];
   NS_HANDLER
@@ -1101,7 +1149,7 @@ static Class      cls = Nil;
   SQLClient             *db;
   NSMutableArray        *result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db cache: seconds query: stmt with: values];
   NS_HANDLER
@@ -1117,7 +1165,7 @@ static Class      cls = Nil;
   SQLClient             *db;
   NSMutableArray        *result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db cache: seconds simpleQuery: stmt];
   NS_HANDLER
@@ -1136,7 +1184,7 @@ static Class      cls = Nil;
   SQLClient             *db;
   NSMutableArray        *result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db cache: seconds
            simpleQuery: stmt
@@ -1165,7 +1213,7 @@ static Class      cls = Nil;
   va_start (ap, stmt);
   info = [_items[0].c prepare: stmt args: ap];
   va_end (ap);
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleExecute: info];
   NS_HANDLER
@@ -1181,7 +1229,7 @@ static Class      cls = Nil;
   SQLClient     *db;
   NSInteger     result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db execute: stmt with: values];
   NS_HANDLER
@@ -1233,7 +1281,7 @@ static Class      cls = Nil;
   query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleQuery: query];
   NS_HANDLER
@@ -1250,7 +1298,7 @@ static Class      cls = Nil;
   SQLClient             *db;
   NSMutableArray        *result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db query: stmt with: values];
   NS_HANDLER
@@ -1273,7 +1321,7 @@ static Class      cls = Nil;
   query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleQuery: query];
   NS_HANDLER
@@ -1308,7 +1356,7 @@ static Class      cls = Nil;
   query = [[_items[0].c prepare: stmt args: ap] objectAtIndex: 0];
   va_end (ap);
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleQuery: query];
   NS_HANDLER
@@ -1422,7 +1470,7 @@ static Class      cls = Nil;
   SQLClient     *db;
   NSInteger     result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleExecute: info];
   NS_HANDLER
@@ -1438,7 +1486,7 @@ static Class      cls = Nil;
   SQLClient             *db;
   NSMutableArray        *result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleQuery: stmt];
   NS_HANDLER
@@ -1456,7 +1504,7 @@ static Class      cls = Nil;
   SQLClient             *db;
   NSMutableArray        *result;
 
-  db = [self provideClient];
+  db = [self _provide];
   NS_DURING
     result = [db simpleQuery: stmt
                   recordType: rtype

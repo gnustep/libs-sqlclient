@@ -521,6 +521,8 @@ SQLCLIENT_PRIVATE
   NSTimeInterval	_lastOperation;	
   NSTimeInterval	_lastConnect;	/** Last successful connect */
   NSTimeInterval	_lastStart;	/** Last op start or connect */
+  NSTimeInterval	_waitLock;	/** When we blocked for locking */
+  NSTimeInterval	_waitPool;	/** When we blocked for pool access */
   NSTimeInterval	_duration;      /** Duration logging threshold */
   uint64_t		_committed;	/** Count of committed transactions */
   unsigned int		_debugging;	/** The current debugging level */

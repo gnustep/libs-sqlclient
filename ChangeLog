@@ -1,3 +1,13 @@
+2023-11-23 Richard Frith-Macdonald  <rfm@gnu.org>
+
+	* SQLClient.h: New instance variables for timing lock waits.
+	* SQLClient.m: Record duration of waits for locks.
+	* SQLClientPool.m: Tell client when pool was locked before query.
+	Changes so that, the time spent waiting to obtain a lock to get a
+	connection from a pool or to be able to execute a query on a
+	connection used by another thread is recorded.  When query duration
+	logging is performed, report lock delays of over a millisecond.
+
 2023-08-16 Richard Frith-Macdonald  <rfm@gnu.org>
 
 	* Postgres.m: Implement support for connect_timeoout= option to

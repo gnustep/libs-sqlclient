@@ -1195,6 +1195,15 @@ static NSArray		*rollbackStatement = nil;
 
 @interface	SQLClient (Private)
 
+/* Takes the timestamp of the end of the operation and checks how long
+ * the operation took, returning a string containing a message to be
+ * logged if the threshold was exceeded.
+ * The message contains the total duration with a separate breakdown
+ * of connection and pool lock wait times if they are a millisecond
+ * or longer.
+ */
+- (NSMutableString*) _checkDuration: (NSTimeInterval)end;
+
 /**
  * Internal method to handle configuration using the notification object.
  * This object may be either a configuration front end or a user defaults
@@ -2795,12 +2804,13 @@ static int	        poolConnections = 0;
 
 - (NSInteger) simpleExecute: (id)info
 {
-  NSInteger     result;
-  NSString      *debug = nil;
-  BOOL          done = NO;
-  BOOL          isCommit = NO;
-  BOOL          isRollback = NO;
-  NSString      *statement;
+  NSInteger     	result;
+  NSString      	*debug = nil;
+  BOOL          	done = NO;
+  BOOL          	isCommit = NO;
+  BOOL          	isRollback = NO;
+  NSString      	*statement;
+  NSTimeInterval	wait = 0.0;
 
   if ([info isKindOfClass: NSArrayClass] == NO)
     {
@@ -2815,7 +2825,12 @@ static int	        poolConnections = 0;
       info = [NSMutableArray arrayWithObject: info];
     }
 
-  [lock lock];
+  if (NO == [lock tryLock])
+    {
+      wait = GSTickerTimeNow();
+      [lock lock];
+    }
+  _waitLock = wait;
 
   statement = [info objectAtIndex: 0];
 
@@ -2823,6 +2838,8 @@ static int	        poolConnections = 0;
    */
   if ([self connect] == NO)
     {
+      _waitPool = 0.0;
+      _waitLock = 0.0;
       [lock unlock];
       [NSException raise: SQLConnectionException
 	format: @"Unable to connect to '%@' to run statement %@",
@@ -2844,60 +2861,51 @@ static int	        poolConnections = 0;
       done = YES;
       NS_DURING
         {
+	  NSMutableString	*m;
+
 	  _lastStart = GSTickerTimeNow();
           result = [self backendExecute: info];
           _lastOperation = GSTickerTimeNow();
           [_statements addObject: statement];
-          if (_duration >= 0)
+	  m = [self _checkDuration: _lastOperation];
+          if (m)
             {
-              NSTimeInterval	d;
+	      if (isCommit || isRollback)
+		{
+		  NSEnumerator      *e = [_statements objectEnumerator];
 
-              d = _lastOperation - _lastStart;
-              if (d >= _duration)
-                {
-		  NSMutableString	*m;
-
-                  if (isCommit || isRollback)
-                    {
-                      NSEnumerator      *e = [_statements objectEnumerator];
-
-                      if (isCommit)
-                        {
-                          m = [NSMutableString stringWithFormat:
-                            @"Duration %g for transaction commit ...\n", d];
-                        }
-                      else 
-                        {
-                          m = [NSMutableString stringWithFormat:
-                            @"Duration %g for transaction rollback ...\n", d];
-                        }
-                      while ((statement = [e nextObject]) != nil)
-                        {
-                          [m appendFormat: @"  %@;\n", statement];
-                        }
-		      [m appendFormat: @"  affected %"PRIdPTR" record%s\n",
-			result, ((1 == result) ? "" : "s")];
-                    }
-                  else if ([self debugging] > 1)
-                    {
-                      /*
-                       * For higher debug levels, we log data objects as well
-                       * as the query string, otherwise we omit them.
-                       */
-                      m = [NSMutableString stringWithFormat:
-                        @"Duration %g for statement %@;", d, info];
-		      [m appendFormat: @" affected %"PRIdPTR" record%s",
-			result, ((1 == result) ? "" : "s")];
-                    }
-                  else
-                    {
-                      m = [NSMutableString stringWithFormat:
-                        @"Duration %g for statement %@;", d, statement];
-		      [m appendFormat: @" affected %"PRIdPTR" record%s",
-			result, ((1 == result) ? "" : "s")];
-                    }
-		  debug = m;
-                }
+		  if (isCommit)
+		    {
+		      [m appendString: @" for transaction commit ...\n"];
+		    }
+		  else 
+		    {
+		      [m appendString: @" for transaction rollback ...\n"];
+		    }
+		  while ((statement = [e nextObject]) != nil)
+		    {
+		      [m appendFormat: @"  %@;\n", statement];
+		    }
+		  [m appendFormat: @"  affected %"PRIdPTR" record%s\n",
+		    result, ((1 == result) ? "" : "s")];
+		}
+	      else if ([self debugging] > 1)
+		{
+		  /*
+		   * For higher debug levels, we log data objects as well
+		   * as the query string, otherwise we omit them.
+		   */
+		  [m appendFormat: @" for statement %@;", info];
+		  [m appendFormat: @" affected %"PRIdPTR" record%s",
+		    result, ((1 == result) ? "" : "s")];
+		}
+	      else
+		{
+		  [m appendFormat: @" for statement %@;", statement];
+		  [m appendFormat: @" affected %"PRIdPTR" record%s",
+		    result, ((1 == result) ? "" : "s")];
+		}
+	      debug = m;
             }
           if (_inTransaction == NO)
             {
@@ -2952,10 +2960,17 @@ static int	        poolConnections = 0;
   NSMutableArray	*result = nil;
   NSString              *debug = nil;
   BOOL                  done = NO;
+  NSTimeInterval	wait = 0.0;
 
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
-  [lock lock];
+  if (NO == [lock tryLock])
+    {
+      wait = GSTickerTimeNow();
+      [lock lock];
+    }
+  _waitLock = wait;
+
   if ([self connect] == NO)
     {
       [lock unlock];
@@ -2968,22 +2983,19 @@ static int	        poolConnections = 0;
       done = YES;
       NS_DURING
         {
+	  NSMutableString	*m;
+
           _lastStart = GSTickerTimeNow();
           result = [self backendQuery: stmt recordType: rtype listType: ltype];
           _lastOperation = GSTickerTimeNow();
-          if (_duration >= 0)
+	  m = [self _checkDuration: _lastOperation];
+          if (m)
             {
-              NSTimeInterval	d;
+	      NSUInteger	count = [result count];
 
-              d = _lastOperation - _lastStart;
-              if (d >= _duration)
-                {
-		  NSUInteger	count = [result count];
-
-                  debug = [NSString stringWithFormat:
-                    @"Duration %g for query %@;  produced %"PRIuPTR" record%s",
-		    d, stmt, count, ((1 == count) ? "" : "s")];
-                }
+	      [m appendFormat: @" for query %@;  produced %"PRIuPTR" record%s",
+		stmt, count, ((1 == count) ? "" : "s")];
+	      debug = m;
             }
           if (_inTransaction == NO)
             {
@@ -3027,8 +3039,25 @@ static int	        poolConnections = 0;
 {
   if (NO == connected)
     {
-      [lock lock];
-      if (NO == connected)
+      NSTimeInterval	wait = 0.0;
+      NSString		*msg;
+
+      if (NO == [lock tryLock])
+	{
+	  wait = GSTickerTimeNow();
+	  [lock lock];
+	}
+      _waitLock = wait;
+      _lastStart = GSTickerTimeNow();
+      if (connected)
+	{
+	  msg = [self _checkDuration: _lastStart];
+	  if (msg)
+	    {
+	      [self debug: @"%@ for existing connection.", msg];
+	    }
+	}
+      else
 	{
 	  NS_DURING
 	    {
@@ -3052,7 +3081,6 @@ static int	        poolConnections = 0;
                     }
                 }
 
-	      _lastStart = GSTickerTimeNow();
 	      if (YES == [self backendConnect])
                 {
                   /* On establishing a new connection, we must restore any
@@ -3071,43 +3099,39 @@ static int	        poolConnections = 0;
                         }
                     }
                   _lastConnect = GSTickerTimeNow();
+		  msg = [self _checkDuration: _lastConnect];
                   _connectFails = 0;
                 }
               else
                 {
                   _lastOperation = GSTickerTimeNow();
+		  msg = [self _checkDuration: _lastOperation];
                   _connectFails++;
                 }
 
-	      if (_duration >= 0)
+	      if (msg)
 		{
-		  NSTimeInterval	d;
-		  NSString		*s;
+		  NSString	*s;
 
 		  if (0 == _connectFails)
 		    {
 		      s = @"success";
-		      d = _lastConnect - _lastStart;
 		    }
 		  else
 		    {
 		      s = @"failure";
-		      d = _lastOperation - _lastStart;
 		    }
 
-		  if (d >= _duration)
+		  if (_lastListen > 0.0)
 		    {
-		      if (_lastListen > 0.0)
-			{
-			  [self debug: @"Duration %g for connection (%@)"
-			    @", of which %g adding observers.",
-			    d, s, _lastOperation - _lastListen];
-			}
-		      else
-			{
-			  [self debug: @"Duration %g for connection (%@).",
-			    d, s];
-			}
+		      [self debug: @"%@ for connection (%@)"
+			@", of which %g adding observers.",
+			msg, s, _lastOperation - _lastListen];
+		    }
+		  else
+		    {
+		      [self debug: @"%@ for connection (%@).",
+			msg, s];
 		    }
 		}
 	    }
@@ -3273,6 +3297,69 @@ static int	        poolConnections = 0;
 @end
 
 @implementation	SQLClient (Private)
+
+- (NSMutableString*) _checkDuration: (NSTimeInterval)end
+{
+  NSMutableString	*m = nil;
+  NSTimeInterval	ti = _lastStart;
+
+  if (_waitLock > 0.0 && _waitLock < ti)
+    {
+      ti = _waitLock;
+    }
+  if (_waitPool > 0.0 && _waitPool < ti)
+    {
+      ti = _waitPool;
+    }
+  ti = end - ti;	// Total duration
+
+  if (ti > _duration)
+    {
+      BOOL	additional = NO;
+
+      m = [NSMutableString stringWithCapacity: 1000];
+      [m appendFormat: @"Duration %g", ti];
+      if (_waitPool > 0.0)
+	{
+	  if (_waitLock > 0.0)
+	    {
+	      ti = _waitLock - _waitPool;
+	    }
+	  else
+	    {
+	      ti = _lastStart - _waitPool;
+	    }
+	  if (ti >= 0.001)
+	    {
+	      [m appendFormat: @" (%g waiting for connection pool", ti];
+	      additional = YES;
+	    }
+	}
+      if (_waitLock > 0.0)
+	{
+	  ti = _lastStart - _waitLock;
+	  if (ti >= 0.001)
+	    {
+	      if (additional)
+		{
+		  [m appendFormat: @", %g waiting for connection lock", ti];
+		}
+	      else
+		{
+		  [m appendFormat: @" (%g waiting for connection lock", ti];
+		}
+	      additional = YES;
+	    }
+	}
+      if (additional)
+	{
+          [m appendString: @")"];
+	}
+    }
+  _waitPool = 0.0;
+  _waitLock = 0.0;
+  return m;
+}
 
 - (void) _configure: (NSNotification*)n
 {
@@ -3746,6 +3833,8 @@ static int	        poolConnections = 0;
   GSCache		*c;
   id			toCache;
   BOOL			cacheHit;
+  NSTimeInterval	start;
+  NSString		*s;
 
   if (rtype == 0) rtype = rClass;
   if (ltype == 0) ltype = aClass;
@@ -3753,7 +3842,7 @@ static int	        poolConnections = 0;
   md = [[NSThread currentThread] threadDictionary];
   [md setObject: rtype forKey: @"SQLClientRecordType"];
   [md setObject: ltype forKey: @"SQLClientListType"];
-  _lastStart = GSTickerTimeNow();
+  start = GSTickerTimeNow();
   c = [self cache];
   toCache = nil;
 
@@ -3821,17 +3910,12 @@ static int	        poolConnections = 0;
       result = [[result mutableCopy] autorelease];
     }
 
+  _lastStart = start;
   _lastOperation = GSTickerTimeNow();
-  if (_duration >= 0)
+  if ((s = [self _checkDuration: _lastOperation]) != nil)
     {
-      NSTimeInterval	d;
-
-      d = _lastOperation - _lastStart;
-      if (d >= _duration)
-	{
-	  [self debug: @"Duration %g for cache-%@ query %@",
-	    d, (YES == cacheHit) ? @"hit" : @"miss", stmt];
-	}
+      [self debug: @"%@ for cache-%@ query %@",
+	s, (YES == cacheHit) ? @"hit" : @"miss", stmt];
     }
   return result;
 }
