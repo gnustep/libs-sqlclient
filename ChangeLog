@@ -7,6 +7,8 @@
 	connection from a pool or to be able to execute a query on a
 	connection used by another thread is recorded.  When query duration
 	logging is performed, report lock delays of over a millisecond.
+	If debug is on or if the query logging duration is zero, then any
+	lock delay (no matter how small) is reported.
 
 2023-08-16 Richard Frith-Macdonald  <rfm@gnu.org>
 

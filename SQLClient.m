@@ -3315,7 +3315,18 @@ static int	        poolConnections = 0;
 
   if (ti > _duration)
     {
-      BOOL	additional = NO;
+      BOOL		additional = NO;
+      NSTimeInterval	threshold = 0.001;
+
+      /* The threshold for reporting lock information is set to zero if
+       * we have debug turned on or if the logging threshold is set to
+       * zero (to log every query).  A level of zero means that any
+       * locjk which was not obtained immediately is recorded.
+       */
+      if (_duration <= 0.0 || _debugging > 0.0)
+	{
+	  threshold = 0.0;
+	}
 
       m = [NSMutableString stringWithCapacity: 1000];
       [m appendFormat: @"Duration %g", ti];
@@ -3329,7 +3340,7 @@ static int	        poolConnections = 0;
 	    {
 	      ti = _lastStart - _waitPool;
 	    }
-	  if (ti >= 0.001)
+	  if (ti >= threshold)
 	    {
 	      [m appendFormat: @" (%g waiting for connection pool", ti];
 	      additional = YES;
@@ -3338,7 +3349,7 @@ static int	        poolConnections = 0;
       if (_waitLock > 0.0)
 	{
 	  ti = _lastStart - _waitLock;
-	  if (ti >= 0.001)
+	  if (ti >= threshold)
 	    {
 	      if (additional)
 		{
