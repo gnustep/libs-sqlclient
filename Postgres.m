@@ -190,24 +190,12 @@ newDateFromBuffer(const char *b, int l)
       if (i < l && '.' == b[i])
 	{
 	  i++;
-          if (i < l && isdigit(b[i]))
-            {
-              milliseconds = b[i++] - '0';
-            }
-          else
-            {
-              return nil;       /* needs at least one digit of milliseconds */
-            }
-          if (i < l && isdigit(b[i]))
-            {
-              milliseconds *= 10;
-              milliseconds += b[i++] - '0';
-            }
-          if (i < l && isdigit(b[i]))
-            {
-              milliseconds *= 10;
-              milliseconds += b[i++] - '0';
-            }
+          if (i >= l || !isdigit(b[i])) return nil;
+          milliseconds = b[i++] - '0';
+          milliseconds *= 10;
+          if (i < l && isdigit(b[i])) milliseconds += b[i++] - '0';
+          milliseconds *= 10;
+          if (i < l && isdigit(b[i])) milliseconds += b[i++] - '0';
 	  while (i < l && isdigit(b[i]))
 	    i++;
 	}
