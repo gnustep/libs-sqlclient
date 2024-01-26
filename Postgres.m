@@ -118,7 +118,7 @@ newDateFromBuffer(const char *b, int l)
 {
   NSCalendarDate	*d;
   NSTimeZone 		*zone = nil;
-  int		        milliseconds = 0;
+  int		        microseconds = 0;
   int			day;
   int			month;
   int			year;
@@ -191,11 +191,17 @@ newDateFromBuffer(const char *b, int l)
 	{
 	  i++;
           if (i >= l || !isdigit(b[i])) return nil;
-          milliseconds = b[i++] - '0';
-          milliseconds *= 10;
-          if (i < l && isdigit(b[i])) milliseconds += b[i++] - '0';
-          milliseconds *= 10;
-          if (i < l && isdigit(b[i])) milliseconds += b[i++] - '0';
+          microseconds = b[i++] - '0';
+          microseconds *= 10;
+          if (i < l && isdigit(b[i])) microseconds += b[i++] - '0';
+          microseconds *= 10;
+          if (i < l && isdigit(b[i])) microseconds += b[i++] - '0';
+          microseconds *= 10;
+          if (i < l && isdigit(b[i])) microseconds += b[i++] - '0';
+          microseconds *= 10;
+          if (i < l && isdigit(b[i])) microseconds += b[i++] - '0';
+          microseconds *= 10;
+          if (i < l && isdigit(b[i])) microseconds += b[i++] - '0';
 	  while (i < l && isdigit(b[i]))
 	    i++;
 	}
@@ -275,15 +281,23 @@ newDateFromBuffer(const char *b, int l)
                    second: second
                  timeZone: zone];
 
-      if (milliseconds > 0)
+      /* Postgres support six digits precision, but the ObjC APIs tend
+       * to use milliseconds.  For now, truncate.
+       */
+      if (microseconds > 0)
         {
-          NSTimeInterval	ti;
+	  int	milliseconds = microseconds / 1000;
 
-          ti = milliseconds;
-          ti /= 1000.0;
-          ti += [d timeIntervalSinceReferenceDate];
-          d = [d initWithTimeIntervalSinceReferenceDate: ti];
-          [d setTimeZone: zone];
+	  if (milliseconds > 0)
+	    {
+	      NSTimeInterval	ti;
+
+	      ti = milliseconds;
+	      ti /= 1000.0;
+	      ti += [d timeIntervalSinceReferenceDate];
+	      d = [d initWithTimeIntervalSinceReferenceDate: ti];
+	      [d setTimeZone: zone];
+	    }
         }
     }
   [d setCalendarFormat: @"%Y-%m-%d %H:%M:%S %z"];
