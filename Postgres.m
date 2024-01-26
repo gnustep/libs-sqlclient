@@ -192,10 +192,10 @@ newDateFromBuffer(const char *b, int l)
 	  i++;
 	  if (i >= l || !isdigit(b[i])) return nil;
 	  milliseconds = b[i++] - '0';
-	  milliseconds *=- 10;
+	  milliseconds *= 10;
 	  if (i < l && isdigit(b[i]))
 	    milliseconds += b[i++] - '0';
-	  milliseconds *=- 10;
+	  milliseconds *= 10;
 	  if (i < l && isdigit(b[i]))
 	    milliseconds += b[i++] - '0';
 	  while (i < l && isdigit(b[i]))
@@ -1302,8 +1302,24 @@ static inline unsigned int trim(char *str, unsigned len)
 
 		      if (d > 1)
 			{ 
-			  [self debug: @"%@ type:%d mod:%d size: %d\n",
-			    keys[j], ftype[j], fmod[j], size];
+#if	0
+			  /* For even more debug we can write some of the
+			   * data retrieved, but that may be a security
+			   * issue.
+			   */
+			  if (0 == fformat[j] && size <= 100)
+			    {
+			      [self debug:
+				@"%@ type:%d mod:%d size: %d %*.*s\n",
+				keys[j], ftype[j], fmod[j], size,
+				size, size, p];
+			    }
+			  else
+#endif
+			    {
+			      [self debug: @"%@ type:%d mod:%d size: %d\n",
+				keys[j], ftype[j], fmod[j], size];
+			    }
 			}
 		      /* Often many rows will contain the same data in
 		       * one or more columns, so we check to see if the
@@ -1843,7 +1859,8 @@ static inline unsigned int trim(char *str, unsigned len)
                                          type: ET_RDESC
                                       forMode: NSDefaultRunLoopMode
                                           all: YES];
-      [self debug: @"Listen event on disconnected client, desc: %d", (int)data];
+      [self debug: @"Listen event on disconnected client, desc: %d",
+	(int)(intptr_t)data];
     }
   else
     {
@@ -1855,7 +1872,7 @@ static inline unsigned int trim(char *str, unsigned len)
           strncpy(msg, PQerrorMessage(connection), sizeof(msg)-1);
           msg[sizeof(msg)-1] = '\0';
           if (PQstatus(connection) != CONNECTION_OK
-            || PQsocket(connection) != (int)data)
+            || PQsocket(connection) != (int)(intptr_t)data)
             {
               /* The connection has been lost, so we must disconnect,
                * which will stop us receiving events on the descriptor.
