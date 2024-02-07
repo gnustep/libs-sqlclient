@@ -773,6 +773,7 @@ static Class      cls = Nil;
   NSTimeInterval        start = [NSDate timeIntervalSinceReferenceDate];
   NSTimeInterval        now = start;
   NSTimeInterval        block = 0.0;
+  NSTimeInterval    	dif = 0.0;
   SQLClient             *client = nil;
   int                   preferred = -1;
   int                   found = -1;
@@ -872,7 +873,6 @@ static Class      cls = Nil;
   else
     {
       NSTimeInterval    end = [when timeIntervalSinceReferenceDate];
-      NSTimeInterval    dif = 0.0;
       NSDate            *until;
       BOOL              locked;
 
@@ -907,8 +907,8 @@ static Class      cls = Nil;
               if (_debugging > 0 || dif > 30.0
                 || (_duration >= 0.0 && dif > _duration))
                 {
-                  NSLog(@"%@ still waiting after %g seconds:\n%@",
-                    self, dif, [self status]);
+                  NSLog(@"%@ still waiting after %g seconds:\n%@%@\n",
+                    self, dif, [self status], [NSThread callStackSymbols]);
                 }
               [until release];
               until = [[NSDate alloc] initWithTimeIntervalSinceNow: 10.0];
@@ -934,11 +934,6 @@ static Class      cls = Nil;
 	      *ti = block;
 	    }
           return nil;
-        }
-      if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
-        {
-          NSLog(@"%@ provided client after %g seconds",
-            self, dif);
         }
       _delayed++;
       _delayWaits += dif;
@@ -995,9 +990,13 @@ static Class      cls = Nil;
   ASSIGN(_items[found].o, thread);
   [self _unlock];
   client = [_items[found].c autorelease];
+  if (_debugging > 0 || (_duration >= 0.0 && dif > _duration))
+    {
+      NSLog(@"%@ provided client %p after %g seconds", self, client, dif);
+    }
   if (_debugging > 2)
     {
-      NSLog(@"%@ provides %p%@", self, _items[found].c, [self _rc: client]);
+      NSLog(@"%@ provides %p %@", self, client, [self _rc: client]);
     }
   if (ti)
     {
