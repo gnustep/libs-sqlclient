@@ -498,6 +498,7 @@ static Class      cls = Nil;
   for (index = 0; index < _max; index++)
     {
       SQLClient         *client = _items[index].c;
+      NSThread         	*owner = _items[index].o;
       NSUInteger        rc = [client retainCount];
       NSUInteger        uc = _items[index].u;
 
@@ -511,15 +512,15 @@ static Class      cls = Nil;
           if (NSNotFound == uc)
             {
               tmp = [NSString stringWithFormat: @"  Client '%@'"
-                @" provided exclusively (retained:%"PRIuPTR,
-                [client name], rc];
+                @" provided to %@ exclusively (retained:%"PRIuPTR,
+                [client name], owner, rc];
             }
           else
             {
               tmp = [NSString stringWithFormat: @"  Client '%@'"
-                @" provided %"PRIuPTR
+                @" provided to %@ %"PRIuPTR
                 @" time%s (retained:%"PRIuPTR,
-                [client name], uc, ((1 == uc) ? "" : "s"), rc];
+                [client name], owner, uc, ((1 == uc) ? "" : "s"), rc];
             }
 
 #if     defined(GNUSTEP)
