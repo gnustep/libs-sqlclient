@@ -1652,14 +1652,6 @@ static int	        poolConnections = 0;
 {
   NSNotificationCenter	*nc;
 
-  [clientsLock lock];
-  NSHashRemove(clientsHash, (void*)self);
-  if (_name != nil
-    && (SQLClient*)NSMapGet(clientsMap, (void*)_name) == self)
-    {
-      NSMapRemove(clientsMap, (void*)_name);
-    }
-  [clientsLock unlock];
   nc = [NSNotificationCenter defaultCenter];
   [nc removeObserver: self];
   if (YES == connected) [self disconnect];
@@ -2609,8 +2601,25 @@ static int	        poolConnections = 0;
     }
   else
     {
-      [super release];
-      [clientsLock unlock];
+      /* If we are going to deallocate the object, we first remove
+       * it from global tables so that no other thread will find it
+       * and try to use it while it is being deallocated.
+       */
+      if (NSDecrementExtraRefCountWasZero(self))
+	{
+	  NSHashRemove(clientsHash, (void*)self);
+	  if (_name != nil
+	    && (SQLClient*)NSMapGet(clientsMap, (void*)_name) == self)
+	    {
+	      NSMapRemove(clientsMap, (void*)_name);
+	    }
+	  [clientsLock unlock];
+	  [self dealloc];
+	}
+      else
+	{
+	  [clientsLock unlock];
+	}
     }
 }
 
