@@ -326,7 +326,8 @@ SQLClientMakeLiteral(NSString *aString)
       if (c != LitStringClass && c != TinyStringClass && c != SQLStringClass)
         {
 	  /* The SQLString class uses utf8 and can be very inefficient
-	   * if it's too long.  For long strings we use a proxy instead.
+	   * if it's too long.  For long strings we use a proxy to a
+	   * copy of the original string.
 	   */
 	  if ([aString length] > 64)
 	    {
