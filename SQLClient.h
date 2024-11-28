@@ -2256,7 +2256,8 @@ SQLCLIENT_PRIVATE
 /** Creates and returns a copy of aString as a literal,
  * whether or not aString is already a literal string.
  */
-extern SQLLiteral * SQLClientCopyLiteral(NSString *aString);
+extern SQLLiteral * SQLClientCopyLiteral(NSString *aString)
+  NS_RETURNS_RETAINED;
 
 /** Function to test an object to see if it is considered to be a literal
  * string by SQLClient.  Use this rather than trying to chewck the class
@@ -2277,7 +2278,8 @@ extern SQLLiteral * SQLClientMakeLiteral(NSString *aString);
  * from a UTF8 or ASCII C string whose length (not including any nul
  * terminator) is the specified count.
  */
-extern SQLLiteral * SQLClientNewLiteral(const char *bytes, unsigned count);
+extern SQLLiteral * SQLClientNewLiteral(const char *bytes, unsigned count)
+  NS_RETURNS_RETAINED;
 
 /** Creates and returns an autoreleased proxy to aString, recording the
  * fact that the programmer considers the string to be a valid literal

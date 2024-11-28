@@ -893,7 +893,7 @@ static Class      cls = Nil;
                */
               locked = [_lock tryLockWhenCondition: 1];
             }
-          else if ([when earlierDate: until] == until)
+          else if ([when earlierDate: until] != when)
             { 
               locked = [_lock lockWhenCondition: 1 beforeDate: until];
             }

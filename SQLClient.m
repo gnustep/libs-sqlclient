@@ -5398,15 +5398,6 @@ nextUTF8(const uint8_t *p, unsigned l, unsigned *o, unichar *n)
   return [super dataUsingEncoding: encoding allowLossyConversion: flag];
 }
 
-- (void) dealloc
-{
-  utf8Bytes = NULL;	// Break reference loops
-  byteLen = 0;
-  charLen = 0;
-  hasHash = NO;
-  DEALLOC
-}
-
 - (void) getCharacters: (unichar*)buffer
 		 range: (NSRange)aRange
 {
