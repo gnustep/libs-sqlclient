@@ -5343,6 +5343,11 @@ nextUTF8(const uint8_t *p, unsigned l, unsigned *o, unichar *n)
   NS_ENDHANDLER
 }
 
+- (id) copyWithZone: (NSZone*)z
+{
+  return RETAIN(self);
+}
+
 - (NSData*) dataUsingEncoding: (NSStringEncoding)encoding
 	 allowLossyConversion: (BOOL)flag
 {
@@ -5391,6 +5396,15 @@ nextUTF8(const uint8_t *p, unsigned l, unsigned *o, unichar *n)
     }
 
   return [super dataUsingEncoding: encoding allowLossyConversion: flag];
+}
+
+- (void) dealloc
+{
+  utf8Bytes = NULL;	// Break reference loops
+  byteLen = 0;
+  charLen = 0;
+  hasHash = NO;
+  DEALLOC
 }
 
 - (void) getCharacters: (unichar*)buffer
@@ -5587,11 +5601,6 @@ nextUTF8(const uint8_t *p, unsigned l, unsigned *o, unichar *n)
     }
 
   return range;
-}
-
-- (id) copyWithZone: (NSZone*)z
-{
-  return RETAIN(self);
 }
 
 - (NSZone*) zone
