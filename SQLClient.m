@@ -2578,14 +2578,21 @@ static int	        poolConnections = 0;
    * from grabbing this object while we are checking it.
    */
   [clientsLock lock];
-  if (nil != _pool && [self retainCount] == 1)
+  if ([self retainCount] > 1)
+    {
+      [super release];
+      [clientsLock unlock];
+      return;
+    }
+
+  if (_pool)
     {
       /* This is the only reference to a client associated with
        * a connection pool we put this client back to the pool.
        *
        * That being the case, we know that this thread 'owns'
        * the client and it's not going to be deallocated and not
-       * going to have the _pool iinstance variable changed, so it
+       * going to have the _pool instance variable changed, so it
        * is safe to unlock clientsLock before returning the client
        * to the pool.  This avoids a possible deadlock when a pool
        * is being purged.
@@ -2602,25 +2609,18 @@ static int	        poolConnections = 0;
     }
   else
     {
-      /* If we are going to deallocate the object, we first remove
+      /* As we are going to deallocate the object, we first remove
        * it from global tables so that no other thread will find it
        * and try to use it while it is being deallocated.
        */
-      if (NSDecrementExtraRefCountWasZero(self))
-	{
-	  NSHashRemove(clientsHash, (void*)self);
-	  if (_name != nil
-	    && (SQLClient*)NSMapGet(clientsMap, (void*)_name) == self)
-	    {
-	      NSMapRemove(clientsMap, (void*)_name);
-	    }
-	  [clientsLock unlock];
-	  [self dealloc];
-	}
-      else
-	{
-	  [clientsLock unlock];
-	}
+      NSHashRemove(clientsHash, (void*)self);
+      if (_name != nil
+        && (SQLClient*)NSMapGet(clientsMap, (void*)_name) == self)
+        {
+          NSMapRemove(clientsMap, (void*)_name);
+        }
+      [clientsLock unlock];
+      [super release];
     }
 }
 
