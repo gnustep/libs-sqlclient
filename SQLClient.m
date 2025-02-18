@@ -3256,6 +3256,7 @@ static int	        poolConnections = 0;
       unsigned char		*buf;
       unsigned char		*ptr;
       const unsigned char	*from = (const unsigned char*)statement;
+      const unsigned char	*end = from + strlen((const char*)statement);
 
       /*
        * Calculate length of buffer needed.
@@ -3274,10 +3275,10 @@ static int	        poolConnections = 0;
        * Merge quoted data objects into statement.
        */
       i = 1;
-      from = (unsigned char*)statement;
-      while (*from != 0)
+      while (from < end)
 	{
 	  if (*from == *(unsigned char*)marker
+	    && (from + mLength) < end
 	    && memcmp(from, marker, mLength) == 0)
 	    {
 	      NSData	*d = [blobs objectAtIndex: i++];
