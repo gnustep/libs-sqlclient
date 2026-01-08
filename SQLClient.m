@@ -667,7 +667,7 @@ static Class rClass = 0;
       id	keys[count];
       id        vals[count];
 
-      [self getKeys: keys];
+      [[self allKeys] getObjects: keys];
       [self getObjects: vals];
       return [NSMutableDictionary dictionaryWithObjects: vals
                                                 forKeys: keys
@@ -732,7 +732,7 @@ static Class rClass = 0;
       NSUInteger        pos;
       id	        keys[count];
 
-      [self getKeys: keys];
+      [[self allKeys] getObjects: keys];
       for (pos = 0; pos < count; pos++)
         {
           if ([key isEqualToString: keys[pos]] == YES)
@@ -777,7 +777,7 @@ static Class rClass = 0;
         {
           anObject = null;
         }
-      [self getKeys: keys];
+      [[self allKeys] getObjects: keys];
       for (pos = 0; pos < count; pos++)
         {
           if ([aKey isEqualToString: keys[pos]] == YES)
